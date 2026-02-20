@@ -279,4 +279,4 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup, code conventions, 
 
 ## License
 
-TBD
+[MIT](LICENSE)
