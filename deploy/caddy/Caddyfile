@@ -1,0 +1,30 @@
+{
+	# Disable automatic HTTPS for air-gapped deployments.
+	# Remove this block if using a public domain with Let's Encrypt.
+	auto_https off
+}
+
+:443 {
+	tls /etc/caddy/certs/cert.pem /etc/caddy/certs/key.pem
+
+	# API and WebSocket
+	handle /api/* {
+		reverse_proxy api:8080
+	}
+	handle /healthz {
+		reverse_proxy api:8080
+	}
+	handle /readyz {
+		reverse_proxy api:8080
+	}
+
+	# Web client (catch-all)
+	handle {
+		reverse_proxy web:3000
+	}
+}
+
+# HTTP -> HTTPS redirect
+:80 {
+	redir https://{host}{uri} permanent
+}
