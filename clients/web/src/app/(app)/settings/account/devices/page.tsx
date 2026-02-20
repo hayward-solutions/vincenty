@@ -1,5 +1,8 @@
 "use client";
 
+import { useEffect } from "react";
+import { useMyDevices } from "@/lib/hooks/use-devices";
+import { useWebSocket } from "@/lib/websocket-context";
 import {
   Card,
   CardContent,
@@ -7,8 +10,118 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
+
+// ---------------------------------------------------------------------------
+// User-agent parsing helpers
+// ---------------------------------------------------------------------------
+
+/** Extract a human-readable browser + OS label from a raw UA string. */
+function parseBrowserName(ua?: string): string {
+  if (!ua) return "Unknown";
+
+  let browser = "Unknown browser";
+  let os = "";
+
+  // Browser detection (order matters — check specific engines first)
+  if (/Edg(?:e|A|iOS)?\/(\d+)/i.test(ua)) {
+    browser = `Edge ${RegExp.$1}`;
+  } else if (/OPR\/(\d+)/i.test(ua) || /Opera\/(\d+)/i.test(ua)) {
+    browser = `Opera ${RegExp.$1}`;
+  } else if (/Firefox\/(\d+)/i.test(ua)) {
+    browser = `Firefox ${RegExp.$1}`;
+  } else if (/(?:CriOS|Chrome)\/(\d+)/i.test(ua)) {
+    browser = `Chrome ${RegExp.$1}`;
+  } else if (/Version\/(\d+).*Safari/i.test(ua)) {
+    browser = `Safari ${RegExp.$1}`;
+  } else if (/Safari\/(\d+)/i.test(ua)) {
+    browser = "Safari";
+  }
+
+  // OS detection
+  if (/Windows NT 10/i.test(ua)) {
+    os = "Windows";
+  } else if (/Windows/i.test(ua)) {
+    os = "Windows";
+  } else if (/Mac OS X/i.test(ua)) {
+    os = "macOS";
+  } else if (/Android/i.test(ua)) {
+    os = "Android";
+  } else if (/iPhone|iPad|iPod/i.test(ua)) {
+    os = "iOS";
+  } else if (/Linux/i.test(ua)) {
+    os = "Linux";
+  } else if (/CrOS/i.test(ua)) {
+    os = "ChromeOS";
+  }
+
+  return os ? `${browser} on ${os}` : browser;
+}
+
+/** Format an ISO timestamp as a relative time string (e.g. "2 hours ago"). */
+function relativeTime(iso?: string): string {
+  if (!iso) return "Never";
+  const now = Date.now();
+  const then = new Date(iso).getTime();
+  const seconds = Math.floor((now - then) / 1000);
+
+  if (seconds < 60) return "Just now";
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  if (days < 30) return `${days}d ago`;
+  const months = Math.floor(days / 30);
+  if (months < 12) return `${months}mo ago`;
+  return `${Math.floor(months / 12)}y ago`;
+}
+
+/** Format an ISO timestamp as a short date (e.g. "Jan 15, 2026"). */
+function formatDate(iso: string): string {
+  return new Date(iso).toLocaleDateString(undefined, {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+}
+
+/** Map device_type to a badge variant. */
+function typeVariant(
+  type: string
+): "default" | "secondary" | "outline" {
+  switch (type) {
+    case "web":
+      return "secondary";
+    case "ios":
+    case "android":
+      return "outline";
+    default:
+      return "default";
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Page component
+// ---------------------------------------------------------------------------
 
 export default function DevicesSettingsPage() {
+  const { devices, isLoading, error, fetch } = useMyDevices();
+  const { deviceId } = useWebSocket();
+
+  useEffect(() => {
+    fetch();
+  }, [fetch]);
+
   return (
     <div className="p-6 space-y-6 max-w-2xl">
       <h1 className="text-2xl font-semibold">Devices</h1>
@@ -17,13 +130,82 @@ export default function DevicesSettingsPage() {
         <CardHeader>
           <CardTitle>Your Devices</CardTitle>
           <CardDescription>
-            Manage the devices that are signed in to your account.
+            Devices that are currently registered to your account.
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <p className="text-sm text-muted-foreground">
-            Device management coming soon.
-          </p>
+          {error && (
+            <p className="text-sm text-destructive mb-4">{error}</p>
+          )}
+
+          {isLoading ? (
+            <div className="space-y-2">
+              {Array.from({ length: 3 }).map((_, i) => {
+                const key = `skeleton-${i}`;
+                return <Skeleton key={key} className="h-12 w-full" />;
+              })}
+            </div>
+          ) : (
+            <div className="rounded-md border">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Device</TableHead>
+                    <TableHead>Type</TableHead>
+                    <TableHead>Last Active</TableHead>
+                    <TableHead>Registered</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {devices.map((device) => {
+                    const isCurrent = device.id === deviceId;
+                    return (
+                      <TableRow key={device.id}>
+                        <TableCell>
+                          <div className="flex flex-col gap-0.5">
+                            <span className="text-sm font-medium flex items-center gap-2">
+                              {device.name}
+                              {isCurrent && (
+                                <Badge variant="default" className="text-xs">
+                                  This device
+                                </Badge>
+                              )}
+                            </span>
+                            {device.user_agent && (
+                              <span className="text-xs text-muted-foreground">
+                                {parseBrowserName(device.user_agent)}
+                              </span>
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant={typeVariant(device.device_type)}>
+                            {device.device_type}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="whitespace-nowrap text-sm text-muted-foreground">
+                          {relativeTime(device.last_seen_at)}
+                        </TableCell>
+                        <TableCell className="whitespace-nowrap text-sm text-muted-foreground">
+                          {formatDate(device.created_at)}
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                  {devices.length === 0 && (
+                    <TableRow>
+                      <TableCell
+                        colSpan={4}
+                        className="text-center text-muted-foreground py-8"
+                      >
+                        No devices registered
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>

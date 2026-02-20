@@ -16,6 +16,7 @@ export interface Device {
   name: string;
   device_type: string;
   device_uid: string;
+  user_agent?: string;
   last_seen_at?: string;
   created_at: string;
   updated_at: string;
