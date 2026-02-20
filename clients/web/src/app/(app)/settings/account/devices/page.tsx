@@ -1,8 +1,10 @@
 "use client";
 
 import { useEffect } from "react";
-import { useMyDevices } from "@/lib/hooks/use-devices";
+import { toast } from "sonner";
+import { useMyDevices, useDeleteDevice } from "@/lib/hooks/use-devices";
 import { useWebSocket } from "@/lib/websocket-context";
+import { ApiError } from "@/lib/api";
 import {
   Card,
   CardContent,
@@ -19,6 +21,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 
 // ---------------------------------------------------------------------------
@@ -116,14 +119,29 @@ function typeVariant(
 
 export default function DevicesSettingsPage() {
   const { devices, isLoading, error, fetch } = useMyDevices();
+  const { deleteDevice } = useDeleteDevice();
   const { deviceId } = useWebSocket();
 
   useEffect(() => {
     fetch();
   }, [fetch]);
 
+  async function handleRemove(id: string, name: string) {
+    if (!confirm(`Remove device "${name}"? It will need to re-register on next login.`))
+      return;
+    try {
+      await deleteDevice(id);
+      toast.success(`Device "${name}" removed`);
+      fetch();
+    } catch (err) {
+      toast.error(
+        err instanceof ApiError ? err.message : "Failed to remove device"
+      );
+    }
+  }
+
   return (
-    <div className="p-6 space-y-6 max-w-2xl">
+    <div className="p-6 space-y-6">
       <h1 className="text-2xl font-semibold">Devices</h1>
 
       <Card>
@@ -154,6 +172,7 @@ export default function DevicesSettingsPage() {
                     <TableHead>Type</TableHead>
                     <TableHead>Last Active</TableHead>
                     <TableHead>Registered</TableHead>
+                    <TableHead className="w-[1%]" />
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -189,13 +208,24 @@ export default function DevicesSettingsPage() {
                         <TableCell className="whitespace-nowrap text-sm text-muted-foreground">
                           {formatDate(device.created_at)}
                         </TableCell>
+                        <TableCell>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="text-destructive hover:text-destructive"
+                            disabled={isCurrent}
+                            onClick={() => handleRemove(device.id, device.name)}
+                          >
+                            Remove
+                          </Button>
+                        </TableCell>
                       </TableRow>
                     );
                   })}
                   {devices.length === 0 && (
                     <TableRow>
                       <TableCell
-                        colSpan={4}
+                        colSpan={5}
                         className="text-center text-muted-foreground py-8"
                       >
                         No devices registered

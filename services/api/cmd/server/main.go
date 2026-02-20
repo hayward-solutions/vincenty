@@ -226,6 +226,8 @@ func main() {
 	// Devices - self (authenticated)
 	mux.Handle("GET /api/v1/users/me/devices", authMW.Authenticate(http.HandlerFunc(deviceHandler.List)))
 	mux.Handle("POST /api/v1/users/me/devices", authMW.Authenticate(http.HandlerFunc(deviceHandler.Create)))
+	mux.Handle("POST /api/v1/users/me/devices/resolve", authMW.Authenticate(http.HandlerFunc(deviceHandler.Resolve)))
+	mux.Handle("POST /api/v1/users/me/devices/{id}/claim", authMW.Authenticate(http.HandlerFunc(deviceHandler.Claim)))
 	mux.Handle("PUT /api/v1/devices/{id}", authMW.Authenticate(http.HandlerFunc(deviceHandler.Update)))
 	mux.Handle("DELETE /api/v1/devices/{id}", authMW.Authenticate(http.HandlerFunc(deviceHandler.Delete)))
 

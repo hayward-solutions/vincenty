@@ -76,6 +76,16 @@ func (r *CreateDeviceRequest) Validate() error {
 	return nil
 }
 
+// DeviceResolveResponse is returned by the resolve endpoint.
+// When Matched is true, Device contains the recognised device.
+// When Matched is false, ExistingDevices lists the user's registered devices
+// so the client can prompt the user to pick one or create a new device.
+type DeviceResolveResponse struct {
+	Matched         bool             `json:"matched"`
+	Device          *DeviceResponse  `json:"device,omitempty"`
+	ExistingDevices []DeviceResponse `json:"existing_devices,omitempty"`
+}
+
 // UpdateDeviceRequest is the expected body for updating a device.
 type UpdateDeviceRequest struct {
 	Name *string `json:"name"`

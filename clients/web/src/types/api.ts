@@ -22,6 +22,12 @@ export interface Device {
   updated_at: string;
 }
 
+export interface DeviceResolveResponse {
+  matched: boolean;
+  device?: Device;
+  existing_devices?: Device[];
+}
+
 export interface AuthResponse {
   access_token: string;
   refresh_token: string;

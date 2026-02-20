@@ -42,17 +42,121 @@ func (h *DeviceHandler) List(w http.ResponseWriter, r *http.Request) {
 	JSON(w, http.StatusOK, items)
 }
 
-// Create handles POST /api/v1/users/me/devices (authenticated).
+// Resolve handles POST /api/v1/users/me/devices/resolve (authenticated).
 //
-// This endpoint uses "create or reclaim" semantics. Before creating a brand-new
-// device record it attempts to recognise the caller as an existing device via
-// two fallback layers:
-//
+// It attempts to recognise the caller as an existing device via:
 //  1. Cookie – an HttpOnly "device_id" cookie set on a previous registration.
 //  2. User-Agent heuristic – if the user has exactly one existing device of
-//     the same type with the same User-Agent string, that device is reclaimed.
+//     the same type with the same User-Agent string.
 //
-// In all cases the response sets/refreshes the device_id cookie.
+// If a match is found the response contains matched=true and the device.
+// If no match is found the response contains matched=false and the list of
+// the user's existing devices so the client can prompt enrolment.
+func (h *DeviceHandler) Resolve(w http.ResponseWriter, r *http.Request) {
+	claims, ok := middleware.ClaimsFromContext(r.Context())
+	if !ok {
+		Error(w, http.StatusUnauthorized, "unauthorized", "missing auth context")
+		return
+	}
+
+	ua := r.UserAgent()
+	var uaPtr *string
+	if ua != "" {
+		uaPtr = &ua
+	}
+
+	// Layer 1: cookie
+	if cookie, err := r.Cookie("device_id"); err == nil && cookie.Value != "" {
+		if id, err := uuid.Parse(cookie.Value); err == nil {
+			if device, err := h.deviceRepo.GetByID(r.Context(), id); err == nil && device.UserID == claims.UserID {
+				_ = h.deviceRepo.TouchLastSeen(r.Context(), device.ID, uaPtr)
+				setDeviceCookie(w, device.ID)
+				slog.Info("device resolved via cookie", "device_id", device.ID, "user_id", claims.UserID)
+				resp := device.ToResponse()
+				JSON(w, http.StatusOK, model.DeviceResolveResponse{Matched: true, Device: &resp})
+				return
+			}
+		}
+	}
+
+	// Layer 2: user-agent heuristic (web devices only)
+	if ua != "" {
+		device, err := h.deviceRepo.FindSingleByUserAgent(r.Context(), claims.UserID, "web", ua)
+		if err != nil {
+			HandleError(w, err)
+			return
+		}
+		if device != nil {
+			_ = h.deviceRepo.TouchLastSeen(r.Context(), device.ID, uaPtr)
+			setDeviceCookie(w, device.ID)
+			slog.Info("device resolved via user-agent heuristic", "device_id", device.ID, "user_id", claims.UserID)
+			resp := device.ToResponse()
+			JSON(w, http.StatusOK, model.DeviceResolveResponse{Matched: true, Device: &resp})
+			return
+		}
+	}
+
+	// No match — return existing devices so the client can prompt.
+	devices, err := h.deviceRepo.ListByUserID(r.Context(), claims.UserID)
+	if err != nil {
+		HandleError(w, err)
+		return
+	}
+	items := make([]model.DeviceResponse, len(devices))
+	for i, d := range devices {
+		items[i] = d.ToResponse()
+	}
+
+	slog.Info("device not resolved, returning existing devices", "count", len(items), "user_id", claims.UserID)
+	JSON(w, http.StatusOK, model.DeviceResolveResponse{Matched: false, ExistingDevices: items})
+}
+
+// Claim handles POST /api/v1/users/me/devices/{id}/claim (authenticated).
+//
+// The user has chosen to re-use an existing device (e.g. after clearing
+// browser data). The endpoint verifies ownership, sets the cookie, and
+// updates last_seen_at / user_agent.
+func (h *DeviceHandler) Claim(w http.ResponseWriter, r *http.Request) {
+	claims, ok := middleware.ClaimsFromContext(r.Context())
+	if !ok {
+		Error(w, http.StatusUnauthorized, "unauthorized", "missing auth context")
+		return
+	}
+
+	id, err := uuid.Parse(r.PathValue("id"))
+	if err != nil {
+		Error(w, http.StatusBadRequest, "validation_error", "invalid device id")
+		return
+	}
+
+	device, err := h.deviceRepo.GetByID(r.Context(), id)
+	if err != nil {
+		HandleError(w, err)
+		return
+	}
+
+	if device.UserID != claims.UserID {
+		Error(w, http.StatusForbidden, "forbidden", "you can only claim your own devices")
+		return
+	}
+
+	ua := r.UserAgent()
+	var uaPtr *string
+	if ua != "" {
+		uaPtr = &ua
+	}
+
+	_ = h.deviceRepo.TouchLastSeen(r.Context(), device.ID, uaPtr)
+	setDeviceCookie(w, device.ID)
+	slog.Info("device claimed", "device_id", device.ID, "user_id", claims.UserID)
+	JSON(w, http.StatusOK, device.ToResponse())
+}
+
+// Create handles POST /api/v1/users/me/devices (authenticated).
+//
+// Creates a brand-new device record. This is called when the user explicitly
+// chooses to register a new device (or on first login when they have no
+// devices at all). The response sets the device_id cookie.
 func (h *DeviceHandler) Create(w http.ResponseWriter, r *http.Request) {
 	claims, ok := middleware.ClaimsFromContext(r.Context())
 	if !ok {
@@ -76,43 +180,6 @@ func (h *DeviceHandler) Create(w http.ResponseWriter, r *http.Request) {
 		uaPtr = &ua
 	}
 
-	// -----------------------------------------------------------------
-	// Layer 1: Try to reclaim via cookie
-	// -----------------------------------------------------------------
-	if cookie, err := r.Cookie("device_id"); err == nil && cookie.Value != "" {
-		if id, err := uuid.Parse(cookie.Value); err == nil {
-			if device, err := h.deviceRepo.GetByID(r.Context(), id); err == nil && device.UserID == claims.UserID {
-				// Cookie matched a valid device belonging to this user.
-				_ = h.deviceRepo.TouchLastSeen(r.Context(), device.ID, uaPtr)
-				setDeviceCookie(w, device.ID)
-				slog.Info("device reclaimed via cookie", "device_id", device.ID, "user_id", claims.UserID)
-				JSON(w, http.StatusOK, device.ToResponse())
-				return
-			}
-		}
-	}
-
-	// -----------------------------------------------------------------
-	// Layer 2: Try to reclaim via user-agent heuristic (single-match only)
-	// -----------------------------------------------------------------
-	if ua != "" {
-		device, err := h.deviceRepo.FindSingleByUserAgent(r.Context(), claims.UserID, req.DeviceType, ua)
-		if err != nil {
-			HandleError(w, err)
-			return
-		}
-		if device != nil {
-			_ = h.deviceRepo.TouchLastSeen(r.Context(), device.ID, uaPtr)
-			setDeviceCookie(w, device.ID)
-			slog.Info("device reclaimed via user-agent heuristic", "device_id", device.ID, "user_id", claims.UserID)
-			JSON(w, http.StatusOK, device.ToResponse())
-			return
-		}
-	}
-
-	// -----------------------------------------------------------------
-	// Layer 3: Create a new device
-	// -----------------------------------------------------------------
 	device := &model.Device{
 		UserID:     claims.UserID,
 		Name:       req.Name,
