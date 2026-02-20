@@ -13,6 +13,7 @@ type User struct {
 	Email        string    `json:"-"`
 	PasswordHash string    `json:"-"`
 	DisplayName  *string   `json:"-"`
+	AvatarURL    *string   `json:"-"`
 	IsAdmin      bool      `json:"-"`
 	IsActive     bool      `json:"-"`
 	CreatedAt    time.Time `json:"-"`
@@ -25,6 +26,7 @@ type UserResponse struct {
 	Username    string    `json:"username"`
 	Email       string    `json:"email"`
 	DisplayName string    `json:"display_name"`
+	AvatarURL   string    `json:"avatar_url"`
 	IsAdmin     bool      `json:"is_admin"`
 	IsActive    bool      `json:"is_active"`
 	CreatedAt   time.Time `json:"created_at"`
@@ -37,11 +39,16 @@ func (u *User) ToResponse() UserResponse {
 	if u.DisplayName != nil {
 		displayName = *u.DisplayName
 	}
+	avatarURL := ""
+	if u.AvatarURL != nil {
+		avatarURL = *u.AvatarURL
+	}
 	return UserResponse{
 		ID:          u.ID,
 		Username:    u.Username,
 		Email:       u.Email,
 		DisplayName: displayName,
+		AvatarURL:   avatarURL,
 		IsAdmin:     u.IsAdmin,
 		IsActive:    u.IsActive,
 		CreatedAt:   u.CreatedAt,
@@ -88,5 +95,24 @@ type UpdateUserRequest struct {
 type UpdateMeRequest struct {
 	Email       *string `json:"email"`
 	DisplayName *string `json:"display_name"`
-	Password    *string `json:"password"`
+}
+
+// ChangePasswordRequest is the expected body for changing own password.
+type ChangePasswordRequest struct {
+	CurrentPassword string `json:"current_password"`
+	NewPassword     string `json:"new_password"`
+}
+
+// Validate checks that required fields are present and valid.
+func (r *ChangePasswordRequest) Validate() error {
+	if r.CurrentPassword == "" {
+		return ErrValidation("current password is required")
+	}
+	if r.NewPassword == "" {
+		return ErrValidation("new password is required")
+	}
+	if len(r.NewPassword) < 8 {
+		return ErrValidation("new password must be at least 8 characters")
+	}
+	return nil
 }

@@ -16,7 +16,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
@@ -51,6 +51,10 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         .toUpperCase()
         .slice(0, 2)
     : user?.username?.slice(0, 2).toUpperCase() ?? "??";
+
+  const avatarSrc = user?.avatar_url
+    ? `/api/v1/users/${user.id}/avatar?token=${typeof window !== "undefined" ? localStorage.getItem("access_token") ?? "" : ""}`
+    : undefined;
 
   const navItems = [
     { href: "/dashboard", label: "Dashboard" },
@@ -118,6 +122,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                   className="relative h-8 w-8 rounded-full"
                 >
                   <Avatar className="h-8 w-8">
+                    {avatarSrc && <AvatarImage src={avatarSrc} alt="Avatar" />}
                     <AvatarFallback className="text-xs">
                       {initials}
                     </AvatarFallback>

@@ -111,7 +111,7 @@ func main() {
 	// -----------------------------------------------------------------------
 	jwtService := auth.NewJWTService(cfg.JWT)
 	authService := service.NewAuthService(userRepo, tokenRepo, jwtService)
-	userService := service.NewUserService(userRepo, tokenRepo)
+	userService := service.NewUserService(userRepo, tokenRepo, storageSvc)
 	groupService := service.NewGroupService(groupRepo, userRepo)
 	locationService := service.NewLocationService(locationRepo, groupRepo, ps, cfg.WS.LocationThrottle)
 	mapConfigService := service.NewMapConfigService(mapConfigRepo, cfg.Map)
@@ -131,7 +131,7 @@ func main() {
 	// Handlers
 	// -----------------------------------------------------------------------
 	authHandler := handler.NewAuthHandler(authService)
-	userHandler := handler.NewUserHandler(userService)
+	userHandler := handler.NewUserHandler(userService, storageSvc)
 	deviceHandler := handler.NewDeviceHandler(deviceRepo)
 	groupHandler := handler.NewGroupHandler(groupService)
 	mapConfigHandler := handler.NewMapConfigHandler(mapConfigService)
@@ -218,6 +218,10 @@ func main() {
 	// Users - self (authenticated)
 	mux.Handle("GET /api/v1/users/me", authMW.Authenticate(http.HandlerFunc(userHandler.GetMe)))
 	mux.Handle("PUT /api/v1/users/me", authMW.Authenticate(http.HandlerFunc(userHandler.UpdateMe)))
+	mux.Handle("PUT /api/v1/users/me/password", authMW.Authenticate(http.HandlerFunc(userHandler.ChangePassword)))
+	mux.Handle("PUT /api/v1/users/me/avatar", authMW.Authenticate(http.HandlerFunc(userHandler.UploadAvatar)))
+	mux.Handle("DELETE /api/v1/users/me/avatar", authMW.Authenticate(http.HandlerFunc(userHandler.DeleteAvatar)))
+	mux.Handle("GET /api/v1/users/{id}/avatar", authMW.AuthenticateWithQueryToken(http.HandlerFunc(userHandler.ServeAvatar)))
 
 	// Devices - self (authenticated)
 	mux.Handle("GET /api/v1/users/me/devices", authMW.Authenticate(http.HandlerFunc(deviceHandler.List)))

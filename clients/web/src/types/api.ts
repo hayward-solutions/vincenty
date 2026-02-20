@@ -3,6 +3,7 @@ export interface User {
   username: string;
   email: string;
   display_name: string;
+  avatar_url: string;
   is_admin: boolean;
   is_active: boolean;
   created_at: string;
@@ -54,6 +55,16 @@ export interface UpdateUserRequest {
   password?: string;
   is_admin?: boolean;
   is_active?: boolean;
+}
+
+export interface UpdateMeRequest {
+  email?: string;
+  display_name?: string;
+}
+
+export interface ChangePasswordRequest {
+  current_password: string;
+  new_password: string;
 }
 
 export interface Group {

@@ -13,6 +13,7 @@ type Device struct {
 	Name       string     `json:"-"`
 	DeviceType string     `json:"-"`
 	DeviceUID  *string    `json:"-"`
+	UserAgent  *string    `json:"-"`
 	LastSeenAt *time.Time `json:"-"`
 	CreatedAt  time.Time  `json:"-"`
 	UpdatedAt  time.Time  `json:"-"`
@@ -25,6 +26,7 @@ type DeviceResponse struct {
 	Name       string     `json:"name"`
 	DeviceType string     `json:"device_type"`
 	DeviceUID  string     `json:"device_uid,omitempty"`
+	UserAgent  string     `json:"user_agent,omitempty"`
 	LastSeenAt *time.Time `json:"last_seen_at,omitempty"`
 	CreatedAt  time.Time  `json:"created_at"`
 	UpdatedAt  time.Time  `json:"updated_at"`
@@ -36,12 +38,17 @@ func (d *Device) ToResponse() DeviceResponse {
 	if d.DeviceUID != nil {
 		uid = *d.DeviceUID
 	}
+	ua := ""
+	if d.UserAgent != nil {
+		ua = *d.UserAgent
+	}
 	return DeviceResponse{
 		ID:         d.ID,
 		UserID:     d.UserID,
 		Name:       d.Name,
 		DeviceType: d.DeviceType,
 		DeviceUID:  uid,
+		UserAgent:  ua,
 		LastSeenAt: d.LastSeenAt,
 		CreatedAt:  d.CreatedAt,
 		UpdatedAt:  d.UpdatedAt,

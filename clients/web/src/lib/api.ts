@@ -37,7 +37,7 @@ class ApiClient {
       }
     }
 
-    const response = await fetch(url, { ...init, headers });
+    const response = await fetch(url, { ...init, headers, credentials: "include" });
 
     // Auto-refresh on 401 (once)
     if (response.status === 401 && retry && typeof window !== "undefined") {
@@ -75,6 +75,7 @@ class ApiClient {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ refresh_token: refreshToken }),
+          credentials: "include",
         });
 
         if (!response.ok) {
@@ -128,6 +129,65 @@ class ApiClient {
 
   delete<T>(path: string, options?: RequestOptions): Promise<T> {
     return this.request<T>(path, { ...options, method: "DELETE" });
+  }
+
+  /** Upload a file via multipart/form-data (browser sets Content-Type + boundary automatically). */
+  async upload<T>(
+    path: string,
+    formData: FormData,
+    method: "POST" | "PUT" = "PUT"
+  ): Promise<T> {
+    let url = `${this.baseUrl}${path}`;
+
+    const headers: Record<string, string> = {};
+    // Do NOT set Content-Type — the browser will set it with the correct boundary
+    if (typeof window !== "undefined") {
+      const token = localStorage.getItem("access_token");
+      if (token) {
+        headers["Authorization"] = `Bearer ${token}`;
+      }
+    }
+
+    const response = await fetch(url, { method, headers, body: formData, credentials: "include" });
+
+    if (response.status === 401 && typeof window !== "undefined") {
+      const refreshed = await this.tryRefresh();
+      if (refreshed) {
+        const retryHeaders: Record<string, string> = {};
+        const token = localStorage.getItem("access_token");
+        if (token) retryHeaders["Authorization"] = `Bearer ${token}`;
+        const retryResponse = await fetch(url, {
+          method,
+          headers: retryHeaders,
+          body: formData,
+          credentials: "include",
+        });
+        if (!retryResponse.ok) {
+          const body = await retryResponse.json().catch(() => ({
+            error: { message: retryResponse.statusText },
+          }));
+          throw new ApiError(
+            retryResponse.status,
+            body?.error?.message || retryResponse.statusText
+          );
+        }
+        if (retryResponse.status === 204) return undefined as T;
+        return retryResponse.json();
+      }
+    }
+
+    if (!response.ok) {
+      const body = await response.json().catch(() => ({
+        error: { message: response.statusText },
+      }));
+      throw new ApiError(
+        response.status,
+        body?.error?.message || response.statusText
+      );
+    }
+
+    if (response.status === 204) return undefined as T;
+    return response.json();
   }
 }
 
