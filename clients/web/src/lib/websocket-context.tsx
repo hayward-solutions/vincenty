@@ -42,6 +42,8 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
   const reconnectTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const backoffRef = useRef(1000);
   const mountedRef = useRef(true);
+  // Guard: only attempt device re-registration once per connect cycle.
+  const retriedDeviceRef = useRef(false);
 
   // -----------------------------------------------------------------------
   // Device auto-registration
@@ -100,9 +102,12 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
         const socket = new WebSocket(url);
         wsRef.current = socket;
 
+        let didOpen = false;
+
         socket.onopen = () => {
           if (!mountedRef.current) return;
-          console.log("[WS] Connected to", url);
+          didOpen = true;
+          retriedDeviceRef.current = false; // reset guard on success
           setConnectionState("connected");
           backoffRef.current = 1000; // reset backoff on success
         };
@@ -120,6 +125,22 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
           if (!mountedRef.current) return;
           wsRef.current = null;
           setConnectionState("disconnected");
+
+          // If the server rejected the connection before it ever opened
+          // (e.g. stale device_id returning 400), clear the stored device
+          // and re-register once before falling back to normal backoff.
+          if (!didOpen && !retriedDeviceRef.current) {
+            retriedDeviceRef.current = true;
+            localStorage.removeItem("device_id");
+            console.warn("[WS] Connection rejected; re-registering device");
+            (async () => {
+              const newDevId = await ensureDevice();
+              if (newDevId && mountedRef.current) {
+                connect(newDevId);
+              }
+            })();
+            return;
+          }
 
           // Reconnect with backoff
           const delay = backoffRef.current;
@@ -139,7 +160,7 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
         setConnectionState("disconnected");
       }
     },
-    [dispatch]
+    [dispatch, ensureDevice]
   );
 
   // -----------------------------------------------------------------------
