@@ -90,6 +90,9 @@ export default function MapPage() {
   const [selectedUserIds, setSelectedUserIds] = useState<Set<string>>(
     new Set()
   );
+  const [selectedDeviceIds, setSelectedDeviceIds] = useState<Set<string>>(
+    new Set()
+  );
   const [groupMemberCache, setGroupMemberCache] = useState<
     Map<string, string[]>
   >(new Map());
@@ -162,6 +165,36 @@ export default function MapPage() {
     );
   }, [activeHistory]);
 
+  // Extract unique devices from active history for the device filter sidebar
+  const visibleDevices = useMemo(() => {
+    const map = new Map<
+      string,
+      {
+        device_id: string;
+        device_name: string;
+        user_id: string;
+        display_name: string;
+        username: string;
+      }
+    >();
+    for (const entry of activeHistory) {
+      if (entry.device_id && !map.has(entry.device_id)) {
+        map.set(entry.device_id, {
+          device_id: entry.device_id,
+          device_name: entry.device_name,
+          user_id: entry.user_id,
+          display_name: entry.display_name,
+          username: entry.username,
+        });
+      }
+    }
+    return Array.from(map.values()).sort((a, b) => {
+      const aLabel = `${a.device_name} (${a.display_name || a.username})`;
+      const bLabel = `${b.device_name} (${b.display_name || b.username})`;
+      return aLabel.localeCompare(bLabel);
+    });
+  }, [activeHistory]);
+
   // Fetch group members when a group is toggled in the filter sidebar
   const fetchGroupMembers = useCallback(
     async (groupId: string) => {
@@ -187,7 +220,11 @@ export default function MapPage() {
 
   // Compute filtered history based on client-side filter sidebar selections
   const filteredHistory = useMemo(() => {
-    if (selectedGroupIds.size === 0 && selectedUserIds.size === 0) {
+    if (
+      selectedGroupIds.size === 0 &&
+      selectedUserIds.size === 0 &&
+      selectedDeviceIds.size === 0
+    ) {
       return activeHistory;
     }
 
@@ -212,9 +249,21 @@ export default function MapPage() {
       if (selectedUserIds.size > 0 && !selectedUserIds.has(entry.user_id)) {
         return false;
       }
+      if (
+        selectedDeviceIds.size > 0 &&
+        !selectedDeviceIds.has(entry.device_id)
+      ) {
+        return false;
+      }
       return true;
     });
-  }, [activeHistory, selectedGroupIds, selectedUserIds, groupMemberCache]);
+  }, [
+    activeHistory,
+    selectedGroupIds,
+    selectedUserIds,
+    selectedDeviceIds,
+    groupMemberCache,
+  ]);
 
   // ---------------------------------------------------------------------------
   // Replay lifecycle
@@ -230,6 +279,7 @@ export default function MapPage() {
       // Reset client-side filters
       setSelectedGroupIds(new Set());
       setSelectedUserIds(new Set());
+      setSelectedDeviceIds(new Set());
       setPlaybackTime(undefined);
 
       // Store scope info
@@ -270,6 +320,7 @@ export default function MapPage() {
     setReplayRange(null);
     setSelectedGroupIds(new Set());
     setSelectedUserIds(new Set());
+    setSelectedDeviceIds(new Set());
     clearVisibleHistory();
     clearGroupHistory();
     clearUserHistory();
@@ -331,6 +382,18 @@ export default function MapPage() {
         next.delete(userId);
       } else {
         next.add(userId);
+      }
+      return next;
+    });
+  }
+
+  function toggleDevice(deviceId: string) {
+    setSelectedDeviceIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(deviceId)) {
+        next.delete(deviceId);
+      } else {
+        next.add(deviceId);
       }
       return next;
     });
@@ -438,7 +501,9 @@ export default function MapPage() {
         <>
           {/* Filter sidebar — show when there are tracks and something to filter */}
           {activeHistory.length > 0 &&
-            (showGroupFilter || visibleUsers.length > 1) && (
+            (showGroupFilter ||
+              visibleUsers.length > 1 ||
+              visibleDevices.length > 1) && (
               <div className="absolute top-3 left-3 z-10 bg-card/95 backdrop-blur-sm border rounded-lg p-3 shadow-lg w-56 max-h-[calc(100vh-8rem)] overflow-y-auto space-y-3">
                 <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
                   Filters
@@ -482,6 +547,30 @@ export default function MapPage() {
                         />
                         <span className="truncate">
                           {u.display_name || u.username}
+                        </span>
+                      </label>
+                    ))}
+                  </div>
+                )}
+
+                {/* Device filter */}
+                {visibleDevices.length > 1 && (
+                  <div className="space-y-1">
+                    <p className="text-xs font-medium">Devices</p>
+                    {visibleDevices.map((d) => (
+                      <label
+                        key={d.device_id}
+                        className="flex items-center gap-2 text-sm cursor-pointer"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={selectedDeviceIds.has(d.device_id)}
+                          onChange={() => toggleDevice(d.device_id)}
+                          className="h-3.5 w-3.5"
+                        />
+                        <span className="truncate">
+                          {d.device_name || "Unknown device"} (
+                          {d.display_name || d.username})
                         </span>
                       </label>
                     ))}

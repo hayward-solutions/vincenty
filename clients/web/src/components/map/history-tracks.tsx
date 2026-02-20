@@ -11,7 +11,7 @@ interface HistoryTracksProps {
   playbackTime?: Date;
 }
 
-// Track colors per user
+// Track colors per user-device pair
 const TRACK_COLORS = [
   "#60a5fa", // blue-400
   "#f87171", // red-400
@@ -23,9 +23,14 @@ const TRACK_COLORS = [
   "#fb923c", // orange-400
 ];
 
+/** Composite key for grouping history points by user+device. */
+function trackKey(entry: LocationHistoryEntry): string {
+  return `${entry.user_id}:${entry.device_id}`;
+}
+
 /**
  * HistoryTracks renders polyline tracks on the map from location history data.
- * Groups points by user and draws a line per user.
+ * Groups points by user+device so each device gets its own track line.
  */
 export function HistoryTracks({
   map,
@@ -48,26 +53,29 @@ export function HistoryTracks({
 
     if (history.length === 0) return;
 
-    // Group by user
-    const byUser = new Map<string, LocationHistoryEntry[]>();
+    // Group by user+device composite key
+    const byTrack = new Map<string, LocationHistoryEntry[]>();
     for (const entry of history) {
       // Filter by playback time if set
       if (playbackTime && new Date(entry.recorded_at) > playbackTime) {
         continue;
       }
 
-      if (!byUser.has(entry.user_id)) {
-        byUser.set(entry.user_id, []);
+      const key = trackKey(entry);
+      if (!byTrack.has(key)) {
+        byTrack.set(key, []);
       }
-      byUser.get(entry.user_id)!.push(entry);
+      byTrack.get(key)!.push(entry);
     }
 
     let colorIdx = 0;
-    byUser.forEach((points, userId) => {
+    byTrack.forEach((points, key) => {
       if (points.length < 2) return;
 
-      const sourceId = `track-source-${userId}`;
-      const layerId = `track-layer-${userId}`;
+      // Use composite key in source/layer IDs to avoid collisions
+      const safeId = key.replace(/:/g, "-");
+      const sourceId = `track-source-${safeId}`;
+      const layerId = `track-layer-${safeId}`;
       const color = TRACK_COLORS[colorIdx % TRACK_COLORS.length];
       colorIdx++;
 
@@ -77,7 +85,12 @@ export function HistoryTracks({
         type: "geojson",
         data: {
           type: "Feature",
-          properties: { user_id: userId, username: points[0].username },
+          properties: {
+            user_id: points[0].user_id,
+            device_id: points[0].device_id,
+            username: points[0].username,
+            device_name: points[0].device_name,
+          },
           geometry: {
             type: "LineString",
             coordinates,

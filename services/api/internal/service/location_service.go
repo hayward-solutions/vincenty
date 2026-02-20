@@ -148,6 +148,8 @@ func (s *LocationService) GetGroupSnapshot(ctx context.Context, groupID uuid.UUI
 // LocationHistoryEntry is a single point in a location track.
 type LocationHistoryEntry struct {
 	UserID      uuid.UUID `json:"user_id"`
+	DeviceID    uuid.UUID `json:"device_id"`
+	DeviceName  string    `json:"device_name"`
 	Username    string    `json:"username"`
 	DisplayName string    `json:"display_name"`
 	Lat         float64   `json:"lat"`
@@ -156,6 +158,31 @@ type LocationHistoryEntry struct {
 	Heading     *float64  `json:"heading,omitempty"`
 	Speed       *float64  `json:"speed,omitempty"`
 	RecordedAt  time.Time `json:"recorded_at"`
+}
+
+// toHistoryEntry maps a LocationRecord to a LocationHistoryEntry.
+func toHistoryEntry(rec repository.LocationRecord) LocationHistoryEntry {
+	dn := ""
+	if rec.DisplayName != nil {
+		dn = *rec.DisplayName
+	}
+	devName := ""
+	if rec.DeviceName != nil {
+		devName = *rec.DeviceName
+	}
+	return LocationHistoryEntry{
+		UserID:      rec.UserID,
+		DeviceID:    rec.DeviceID,
+		DeviceName:  devName,
+		Username:    rec.Username,
+		DisplayName: dn,
+		Lat:         rec.Lat,
+		Lng:         rec.Lng,
+		Altitude:    rec.Altitude,
+		Heading:     rec.Heading,
+		Speed:       rec.Speed,
+		RecordedAt:  rec.RecordedAt,
+	}
 }
 
 // GetGroupHistory returns location history for a group within a time range.
@@ -175,21 +202,7 @@ func (s *LocationService) GetGroupHistory(ctx context.Context, groupID, callerID
 
 	entries := make([]LocationHistoryEntry, len(records))
 	for i, rec := range records {
-		dn := ""
-		if rec.DisplayName != nil {
-			dn = *rec.DisplayName
-		}
-		entries[i] = LocationHistoryEntry{
-			UserID:      rec.UserID,
-			Username:    rec.Username,
-			DisplayName: dn,
-			Lat:         rec.Lat,
-			Lng:         rec.Lng,
-			Altitude:    rec.Altitude,
-			Heading:     rec.Heading,
-			Speed:       rec.Speed,
-			RecordedAt:  rec.RecordedAt,
-		}
+		entries[i] = toHistoryEntry(rec)
 	}
 
 	return entries, nil
@@ -204,21 +217,7 @@ func (s *LocationService) GetMyHistory(ctx context.Context, callerID uuid.UUID, 
 
 	entries := make([]LocationHistoryEntry, len(records))
 	for i, rec := range records {
-		dn := ""
-		if rec.DisplayName != nil {
-			dn = *rec.DisplayName
-		}
-		entries[i] = LocationHistoryEntry{
-			UserID:      rec.UserID,
-			Username:    rec.Username,
-			DisplayName: dn,
-			Lat:         rec.Lat,
-			Lng:         rec.Lng,
-			Altitude:    rec.Altitude,
-			Heading:     rec.Heading,
-			Speed:       rec.Speed,
-			RecordedAt:  rec.RecordedAt,
-		}
+		entries[i] = toHistoryEntry(rec)
 	}
 
 	return entries, nil
@@ -227,6 +226,8 @@ func (s *LocationService) GetMyHistory(ctx context.Context, callerID uuid.UUID, 
 // LatestLocationEntry is a single user's latest known position.
 type LatestLocationEntry struct {
 	UserID      uuid.UUID `json:"user_id"`
+	DeviceID    uuid.UUID `json:"device_id"`
+	DeviceName  string    `json:"device_name"`
 	Username    string    `json:"username"`
 	DisplayName string    `json:"display_name"`
 	Lat         float64   `json:"lat"`
@@ -250,8 +251,14 @@ func (s *LocationService) GetAllLatest(ctx context.Context) ([]LatestLocationEnt
 		if rec.DisplayName != nil {
 			dn = *rec.DisplayName
 		}
+		devName := ""
+		if rec.DeviceName != nil {
+			devName = *rec.DeviceName
+		}
 		entries[i] = LatestLocationEntry{
 			UserID:      rec.UserID,
+			DeviceID:    rec.DeviceID,
+			DeviceName:  devName,
 			Username:    rec.Username,
 			DisplayName: dn,
 			Lat:         rec.Lat,

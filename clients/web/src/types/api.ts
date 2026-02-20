@@ -226,6 +226,8 @@ export interface UpdateMapConfigRequest {
 
 export interface LocationHistoryEntry {
   user_id: string;
+  device_id: string;
+  device_name: string;
   username: string;
   display_name: string;
   lat: number;
@@ -238,6 +240,8 @@ export interface LocationHistoryEntry {
 
 export interface LatestLocationEntry {
   user_id: string;
+  device_id: string;
+  device_name: string;
   username: string;
   display_name: string;
   lat: number;
