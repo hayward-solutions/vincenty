@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { AuditFilters } from "@/types/api";
 
-export default function MyAuditLogsPage() {
+export default function ActivitySettingsPage() {
   const { data, total, isLoading, error, fetch } = useMyAuditLogs();
   const [page, setPage] = useState(1);
   const [filters, setFilters] = useState<AuditFilters>({});
@@ -43,7 +43,7 @@ export default function MyAuditLogsPage() {
   return (
     <div className="p-6 space-y-4">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold">My Activity Log</h1>
+        <h1 className="text-2xl font-semibold">Activity</h1>
         <div className="flex gap-2">
           <Button variant="outline" size="sm" onClick={() => handleExport("csv")}>
             Export CSV

@@ -12,7 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { AuditFilters } from "@/types/api";
 
-export default function AdminAuditLogsPage() {
+export default function AuditLogsSettingsPage() {
   const { data, total, isLoading, error, fetch } = useAllAuditLogs();
   const [page, setPage] = useState(1);
   const [filters, setFilters] = useState<AuditFilters>({});

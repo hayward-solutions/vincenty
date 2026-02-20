@@ -68,7 +68,7 @@ export default function GroupDetailPage() {
       <div className="p-6">
         <p className="text-muted-foreground">Group not found</p>
         <Button variant="outline" className="mt-4" asChild>
-          <Link href="/admin/groups">Back to Groups</Link>
+          <Link href="/settings/server/groups">Back to Groups</Link>
         </Button>
       </div>
     );
@@ -77,7 +77,7 @@ export default function GroupDetailPage() {
   return (
     <div className="p-6 space-y-6">
       <div className="flex items-center gap-4">
-        <Button variant="ghost" size="sm" onClick={() => router.push("/admin/groups")}>
+        <Button variant="ghost" size="sm" onClick={() => router.push("/settings/server/groups")}>
           &larr; Groups
         </Button>
       </div>

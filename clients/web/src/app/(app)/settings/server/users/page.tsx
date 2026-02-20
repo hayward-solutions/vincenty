@@ -32,7 +32,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import type { User } from "@/types/api";
 
-export default function UsersPage() {
+export default function UsersSettingsPage() {
   const [page, setPage] = useState(1);
   const { data, isLoading, refetch } = useUsers(page);
   const [createOpen, setCreateOpen] = useState(false);

@@ -37,7 +37,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import type { MapConfigResponse } from "@/types/api";
 
-export default function MapConfigsPage() {
+export default function MapSettingsPage() {
   const { configs, isLoading, refetch } = useMapConfigs();
   const [createOpen, setCreateOpen] = useState(false);
   const [editConfig, setEditConfig] = useState<MapConfigResponse | null>(null);

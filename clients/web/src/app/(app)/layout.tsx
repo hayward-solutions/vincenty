@@ -56,15 +56,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     { href: "/dashboard", label: "Dashboard" },
     { href: "/map", label: "Map" },
     { href: "/messages", label: "Messages" },
-    { href: "/audit-logs", label: "Activity" },
   ];
-
-  if (isAdmin) {
-    navItems.push({ href: "/admin/groups", label: "Groups" });
-    navItems.push({ href: "/admin/users", label: "Users" });
-    navItems.push({ href: "/admin/map-configs", label: "Map Configs" });
-    navItems.push({ href: "/admin/audit-logs", label: "Audit Logs" });
-  }
 
   async function handleLogout() {
     await logout();
@@ -141,6 +133,15 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                     </p>
                   </div>
                 </div>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem asChild>
+                  <Link href="/settings/account">Account Settings</Link>
+                </DropdownMenuItem>
+                {isAdmin && (
+                  <DropdownMenuItem asChild>
+                    <Link href="/settings/server">Server Settings</Link>
+                  </DropdownMenuItem>
+                )}
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={handleLogout}>
                   Sign out

@@ -37,7 +37,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import type { Group } from "@/types/api";
 
-export default function GroupsPage() {
+export default function GroupsSettingsPage() {
   const [page, setPage] = useState(1);
   const { data, isLoading, refetch } = useGroups(page);
   const [createOpen, setCreateOpen] = useState(false);
@@ -168,7 +168,7 @@ function GroupRow({
     <TableRow>
       <TableCell className="font-medium">
         <Link
-          href={`/admin/groups/${group.id}`}
+          href={`/settings/server/groups/${group.id}`}
           className="hover:underline text-primary"
         >
           {group.name}
@@ -190,7 +190,7 @@ function GroupRow({
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
             <DropdownMenuItem asChild>
-              <Link href={`/admin/groups/${group.id}`}>Manage Members</Link>
+              <Link href={`/settings/server/groups/${group.id}`}>Manage Members</Link>
             </DropdownMenuItem>
             <DropdownMenuItem onClick={onEdit}>Edit</DropdownMenuItem>
             <DropdownMenuItem
