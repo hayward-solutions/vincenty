@@ -1,0 +1,53 @@
+{
+  "serviceName": "sitaware-api",
+  "cluster": "sitaware",
+  "taskDefinition": "sitaware-api",
+  "desiredCount": 2,
+  "launchType": "FARGATE",
+  "platformVersion": "LATEST",
+  "networkConfiguration": {
+    "awsvpcConfiguration": {
+      "subnets": [
+        "subnet-PRIVATE_1",
+        "subnet-PRIVATE_2"
+      ],
+      "securityGroups": [
+        "sg-API_SG"
+      ],
+      "assignPublicIp": "DISABLED"
+    }
+  },
+  "loadBalancers": [
+    {
+      "targetGroupArn": "arn:aws:elasticloadbalancing:REGION:ACCOUNT_ID:targetgroup/sitaware-api/xxxx",
+      "containerName": "api",
+      "containerPort": 8080
+    }
+  ],
+  "healthCheckGracePeriodSeconds": 30,
+  "deploymentConfiguration": {
+    "minimumHealthyPercent": 50,
+    "maximumPercent": 200,
+    "deploymentCircuitBreaker": {
+      "enable": true,
+      "rollback": true
+    }
+  },
+  "serviceConnectConfiguration": {
+    "enabled": true,
+    "namespace": "sitaware.local",
+    "services": [
+      {
+        "portName": "api",
+        "discoveryName": "api",
+        "clientAliases": [
+          {
+            "port": 8080,
+            "dnsName": "api.sitaware.local"
+          }
+        ]
+      }
+    ]
+  },
+  "enableExecuteCommand": true
+}

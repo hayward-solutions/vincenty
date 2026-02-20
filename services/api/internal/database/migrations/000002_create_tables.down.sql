@@ -1,0 +1,9 @@
+DROP TABLE IF EXISTS audit_logs;
+DROP TABLE IF EXISTS map_configs;
+DROP TABLE IF EXISTS location_history;
+DROP TABLE IF EXISTS attachments;
+DROP TABLE IF EXISTS messages;
+DROP TABLE IF EXISTS group_members;
+DROP TABLE IF EXISTS groups;
+DROP TABLE IF EXISTS devices;
+DROP TABLE IF EXISTS users;

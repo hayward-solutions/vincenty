@@ -1,0 +1,37 @@
+{
+  "serviceName": "sitaware-web",
+  "cluster": "sitaware",
+  "taskDefinition": "sitaware-web",
+  "desiredCount": 2,
+  "launchType": "FARGATE",
+  "platformVersion": "LATEST",
+  "networkConfiguration": {
+    "awsvpcConfiguration": {
+      "subnets": [
+        "subnet-PRIVATE_1",
+        "subnet-PRIVATE_2"
+      ],
+      "securityGroups": [
+        "sg-WEB_SG"
+      ],
+      "assignPublicIp": "DISABLED"
+    }
+  },
+  "loadBalancers": [
+    {
+      "targetGroupArn": "arn:aws:elasticloadbalancing:REGION:ACCOUNT_ID:targetgroup/sitaware-web/xxxx",
+      "containerName": "web",
+      "containerPort": 3000
+    }
+  ],
+  "healthCheckGracePeriodSeconds": 30,
+  "deploymentConfiguration": {
+    "minimumHealthyPercent": 50,
+    "maximumPercent": 200,
+    "deploymentCircuitBreaker": {
+      "enable": true,
+      "rollback": true
+    }
+  },
+  "enableExecuteCommand": true
+}
