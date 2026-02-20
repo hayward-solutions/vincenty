@@ -1,0 +1,35 @@
+# Environment
+.env
+
+# Go
+services/api/bin/
+services/api/tmp/
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+
+# Node / Next.js
+node_modules/
+clients/web/.next/
+clients/web/out/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Docker volumes (local dev data)
+.docker-data/
+
+# Logs
+*.log
+
+# OS
+Thumbs.db

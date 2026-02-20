@@ -1,0 +1,282 @@
+# SitAware
+
+A modern, lightweight situational awareness platform. Built as an alternative to TAK Server for teams that need real-time location tracking, secure messaging, and map-based coordination — deployable to the cloud or fully air-gapped environments with zero internet dependency.
+
+## Why SitAware?
+
+TAK Server is powerful but heavy — complex to deploy, tightly coupled to specific clients, and difficult to run in constrained environments. SitAware takes a different approach:
+
+- **Lightweight** — Go API with minimal dependencies, distroless container images
+- **Air-gap ready** — No CDN calls, no external fonts, local tile serving. Works on an isolated network with `docker compose up`
+- **Modern web client** — Browser-based UI with real-time maps, chat, and admin tools. No desktop client required
+- **Cloud native** — Runs on Docker Compose, Kubernetes, or AWS ECS Fargate
+- **Simple operations** — All configuration via environment variables, automatic database migrations, admin bootstrap on first start
+
+## Quick Start
+
+Prerequisites: [Docker](https://docs.docker.com/get-docker/) and [Docker Compose](https://docs.docker.com/compose/install/)
+
+```bash
+git clone https://github.com/sitaware/sitaware.git
+cd sitaware
+make dev
+```
+
+This starts the full stack:
+
+| Service | URL | Purpose |
+|---|---|---|
+| Web Client | http://localhost:3000 | Browser UI |
+| API | http://localhost:8080 | REST + WebSocket API |
+| PostgreSQL | localhost:5432 | Database (PostGIS) |
+| Redis | localhost:6379 | Pub/sub messaging |
+| Minio Console | http://localhost:9001 | Object storage (dev only) |
+
+Default admin credentials: `admin` / `changeme`
+
+## Tech Stack
+
+| Component | Technology |
+|---|---|
+| API | Go (stdlib `net/http`), no framework |
+| Database | PostgreSQL 16 + PostGIS |
+| Pub/Sub | Redis (pluggable — interface supports Kafka, Apache Ignite) |
+| Object Storage | S3-compatible (Minio for dev, AWS S3 for production) |
+| Real-time | WebSocket ([nhooyr.io/websocket](https://github.com/nhooyr/websocket)) |
+| Auth | JWT access tokens + rotating opaque refresh tokens |
+| Web Client | Next.js (App Router, standalone output) |
+| UI | shadcn/ui, Tailwind CSS v4, Radix UI |
+| Maps | MapLibre GL JS |
+| Containers | Multi-stage Docker (distroless for API, node-slim for web) |
+
+## Repository Structure
+
+```
+sitaware/
+├── services/api/          # Go API service
+│   ├── cmd/server/        # Entrypoint, DI, route registration
+│   ├── internal/
+│   │   ├── auth/          # JWT + password hashing
+│   │   ├── config/        # Env-based configuration
+│   │   ├── database/      # Migration runner + embedded SQL
+│   │   ├── handler/       # HTTP handlers (one per domain)
+│   │   ├── middleware/     # CORS, auth, logging, rate limit, audit
+│   │   ├── model/         # Domain models + typed errors
+│   │   ├── pubsub/        # Pub/sub interface + Redis impl
+│   │   ├── repository/    # SQL queries (pgx)
+│   │   ├── service/       # Business logic
+│   │   ├── storage/       # Object storage interface + S3 impl
+│   │   └── ws/            # WebSocket hub + client management
+│   └── Dockerfile
+├── clients/web/           # Next.js web client
+│   ├── src/
+│   │   ├── app/           # App Router pages
+│   │   ├── components/    # UI, map, chat, audit components
+│   │   ├── lib/           # API client, auth context, hooks
+│   │   └── types/         # TypeScript definitions
+│   └── Dockerfile
+├── deploy/
+│   ├── caddy/             # Reverse proxy config (production)
+│   ├── k8s/               # Kubernetes manifests
+│   ├── helm/sitaware/     # Helm chart
+│   └── ecs/               # AWS ECS Fargate task definitions
+├── docker-compose.yml     # Development stack
+├── docker-compose.prod.yml # Production stack (Caddy + TLS)
+└── Makefile
+```
+
+## Make Targets
+
+```bash
+make dev          # Start full dev stack (Docker Compose)
+make down         # Stop all services
+make logs         # Tail all service logs
+make infra        # Start only postgres, redis, minio
+make restart s=api  # Rebuild and restart a single service
+make api-dev      # Run Go API locally (requires infra)
+make web-dev      # Run Next.js dev server locally
+make db-shell     # Open psql shell
+make api-build    # Build Go API binary
+make prod         # Start production stack (Caddy + TLS)
+make prod-down    # Stop production stack
+make prod-logs    # Tail production logs
+make clean        # Remove all containers and volumes
+```
+
+## API Endpoints
+
+All API routes are prefixed with `/api/v1/`.
+
+### Public
+
+| Method | Path | Description |
+|---|---|---|
+| GET | `/healthz` | Liveness check |
+| GET | `/readyz` | Readiness check (DB ping) |
+| POST | `/api/v1/auth/login` | Login (returns JWT + refresh token) |
+| POST | `/api/v1/auth/refresh` | Rotate tokens |
+
+### Authenticated
+
+| Method | Path | Description |
+|---|---|---|
+| POST | `/api/v1/auth/logout` | Revoke refresh token |
+| GET | `/api/v1/users/me` | Current user profile |
+| PUT | `/api/v1/users/me` | Update own profile |
+| GET | `/api/v1/users/me/devices` | List own devices |
+| POST | `/api/v1/users/me/devices` | Register a device |
+| PUT | `/api/v1/devices/{id}` | Update a device |
+| DELETE | `/api/v1/devices/{id}` | Delete a device |
+| GET | `/api/v1/users/me/groups` | List groups I belong to |
+| GET | `/api/v1/groups/{id}/members` | List group members |
+| POST | `/api/v1/groups/{id}/members` | Add member to group |
+| PUT | `/api/v1/groups/{id}/members/{userId}` | Update member permissions |
+| DELETE | `/api/v1/groups/{id}/members/{userId}` | Remove member |
+| GET | `/api/v1/groups/{id}/locations/history` | Group location history |
+| GET | `/api/v1/map/settings` | Map configuration |
+| POST | `/api/v1/messages` | Send message (group or direct) |
+| GET | `/api/v1/groups/{id}/messages` | Group message history |
+| GET | `/api/v1/messages/conversations` | List DM conversations |
+| GET | `/api/v1/messages/direct/{userId}` | Direct message history |
+| GET | `/api/v1/messages/{id}` | Get single message |
+| DELETE | `/api/v1/messages/{id}` | Delete a message |
+| GET | `/api/v1/attachments/{id}/download` | Download file attachment |
+| GET | `/api/v1/audit-logs/me` | Own audit logs |
+| GET | `/api/v1/audit-logs/me/export` | Export own audit logs |
+| GET | `/api/v1/groups/{id}/audit-logs` | Group audit logs |
+| GET | `/api/v1/users/me/locations/history` | Own location history |
+| GET | `/api/v1/users/me/locations/export` | Export location history (GPX) |
+| GET | `/api/v1/ws` | WebSocket connection |
+
+### Admin Only
+
+| Method | Path | Description |
+|---|---|---|
+| GET | `/api/v1/users` | List all users |
+| POST | `/api/v1/users` | Create user |
+| GET | `/api/v1/users/{id}` | Get user |
+| PUT | `/api/v1/users/{id}` | Update user |
+| DELETE | `/api/v1/users/{id}` | Delete user |
+| GET | `/api/v1/groups` | List all groups |
+| POST | `/api/v1/groups` | Create group |
+| GET | `/api/v1/groups/{id}` | Get group |
+| PUT | `/api/v1/groups/{id}` | Update group |
+| DELETE | `/api/v1/groups/{id}` | Delete group |
+| GET | `/api/v1/locations` | All latest locations |
+| GET | `/api/v1/map-configs` | List map configurations |
+| POST | `/api/v1/map-configs` | Create map configuration |
+| GET | `/api/v1/map-configs/{id}` | Get map configuration |
+| PUT | `/api/v1/map-configs/{id}` | Update map configuration |
+| DELETE | `/api/v1/map-configs/{id}` | Delete map configuration |
+| GET | `/api/v1/audit-logs` | All audit logs |
+| GET | `/api/v1/audit-logs/export` | Export all audit logs |
+
+## Configuration
+
+All configuration is via environment variables. Copy `.env.example` to `.env` and edit:
+
+```bash
+cp .env.example .env
+```
+
+| Variable | Default | Description |
+|---|---|---|
+| `ADMIN_USERNAME` | `admin` | Bootstrap admin username |
+| `ADMIN_PASSWORD` | `changeme` | Bootstrap admin password |
+| `ADMIN_EMAIL` | `admin@sitaware.local` | Bootstrap admin email |
+| `API_HOST` | `0.0.0.0` | API listen address |
+| `API_PORT` | `8080` | API listen port |
+| `API_LOG_LEVEL` | `debug` | Log level (debug, info, warn, error) |
+| `JWT_SECRET` | (insecure default) | HMAC-SHA256 signing key |
+| `JWT_ACCESS_TOKEN_TTL` | `15m` | Access token lifetime |
+| `JWT_REFRESH_TOKEN_TTL` | `168h` | Refresh token lifetime (7 days) |
+| `DB_HOST` | `localhost` | PostgreSQL host |
+| `DB_PORT` | `5432` | PostgreSQL port |
+| `DB_USER` | `sitaware` | PostgreSQL user |
+| `DB_PASSWORD` | `sitaware` | PostgreSQL password |
+| `DB_NAME` | `sitaware` | PostgreSQL database |
+| `DB_SSLMODE` | `disable` | PostgreSQL SSL mode |
+| `REDIS_HOST` | `localhost` | Redis host |
+| `REDIS_PORT` | `6379` | Redis port |
+| `REDIS_PASSWORD` | (empty) | Redis password |
+| `S3_ENDPOINT` | `http://localhost:9000` | S3/Minio endpoint |
+| `S3_ACCESS_KEY` | `sitaware` | S3 access key |
+| `S3_SECRET_KEY` | `sitaware123` | S3 secret key |
+| `S3_BUCKET` | `sitaware` | S3 bucket name |
+| `S3_REGION` | `us-east-1` | S3 region |
+| `S3_USE_PATH_STYLE` | `true` | Path-style S3 (true for Minio) |
+| `WS_LOCATION_THROTTLE` | `1s` | Min interval between location updates |
+| `NEXT_PUBLIC_WS_URL` | `ws://localhost:8080` | WebSocket URL (browser-facing) |
+| `CORS_ALLOWED_ORIGINS` | `*` | Comma-separated allowed origins |
+| `RATE_LIMIT_RPS` | `10` | Requests per second per IP |
+| `RATE_LIMIT_BURST` | `20` | Rate limit burst size |
+| `MAX_REQUEST_BODY_BYTES` | `10485760` | Max request body (10MB) |
+| `TOKEN_CLEANUP_INTERVAL` | `1h` | Expired token purge interval |
+| `MAP_DEFAULT_TILE_URL` | OSM tiles | Default map tile URL template |
+| `MAP_DEFAULT_CENTER_LAT` | `0` | Default map center latitude |
+| `MAP_DEFAULT_CENTER_LNG` | `0` | Default map center longitude |
+| `MAP_DEFAULT_ZOOM` | `2` | Default map zoom level |
+
+## Deployment
+
+SitAware supports multiple deployment targets. See the [Architecture Guide](ARCHITECTURE.md) for details.
+
+### Docker Compose (Production)
+
+Uses Caddy for TLS termination. Place your TLS certificate and key in `deploy/caddy/certs/`, configure the Caddyfile, then:
+
+```bash
+make prod
+```
+
+### Kubernetes
+
+Raw manifests in `deploy/k8s/`:
+
+```bash
+kubectl apply -f deploy/k8s/namespace.yaml
+kubectl apply -f deploy/k8s/
+```
+
+### Helm
+
+```bash
+helm install sitaware deploy/helm/sitaware/ \
+  --namespace sitaware \
+  --create-namespace \
+  -f my-values.yaml
+```
+
+### AWS ECS Fargate
+
+Task definitions and service configs in `deploy/ecs/`. See [`deploy/ecs/README.md`](deploy/ecs/README.md) for the full walkthrough.
+
+## Air-Gapped Deployment
+
+SitAware is designed to run with zero internet access:
+
+1. Pre-pull and export all container images
+2. Upload map tiles to the S3-compatible object store (Minio in Docker Compose, or any S3 endpoint)
+3. Configure `MAP_DEFAULT_TILE_URL` to point to the local tile source
+4. All UI assets are bundled — no CDN, no external fonts, no external scripts
+5. Deploy with `docker compose up`
+
+## Security
+
+- JWT access tokens (15min, HMAC-SHA256) with rotating opaque refresh tokens
+- Refresh tokens stored as SHA-256 hashes in the database
+- bcrypt password hashing (cost 12)
+- Per-IP rate limiting with token bucket algorithm
+- Configurable CORS with origin validation
+- Request body size limits
+- Automatic expired token cleanup
+- Distroless container images (API) with non-root execution
+- All secrets configurable via environment variables (SSM Parameter Store for ECS)
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup, code conventions, and the pull request process.
+
+## License
+
+TBD
