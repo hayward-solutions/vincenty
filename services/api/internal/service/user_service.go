@@ -2,22 +2,26 @@ package service
 
 import (
 	"context"
+	"fmt"
+	"io"
 
 	"github.com/google/uuid"
 	"github.com/sitaware/api/internal/auth"
 	"github.com/sitaware/api/internal/model"
 	"github.com/sitaware/api/internal/repository"
+	"github.com/sitaware/api/internal/storage"
 )
 
 // UserService handles user management business logic.
 type UserService struct {
-	userRepo  *repository.UserRepository
-	tokenRepo *repository.TokenRepository
+	userRepo   *repository.UserRepository
+	tokenRepo  *repository.TokenRepository
+	storageSvc *storage.StorageService
 }
 
 // NewUserService creates a new UserService.
-func NewUserService(userRepo *repository.UserRepository, tokenRepo *repository.TokenRepository) *UserService {
-	return &UserService{userRepo: userRepo, tokenRepo: tokenRepo}
+func NewUserService(userRepo *repository.UserRepository, tokenRepo *repository.TokenRepository, storageSvc *storage.StorageService) *UserService {
+	return &UserService{userRepo: userRepo, tokenRepo: tokenRepo, storageSvc: storageSvc}
 }
 
 // Create creates a new user.
@@ -144,23 +148,98 @@ func (s *UserService) UpdateMe(ctx context.Context, id uuid.UUID, req *model.Upd
 		user.DisplayName = req.DisplayName
 	}
 
-	if req.Password != nil {
-		if len(*req.Password) < 8 {
-			return nil, model.ErrValidation("password must be at least 8 characters")
-		}
-		hash, err := auth.HashPassword(*req.Password)
-		if err != nil {
-			return nil, err
-		}
-		user.PasswordHash = hash
-		_ = s.tokenRepo.DeleteAllForUser(ctx, id)
-	}
-
 	if err := s.userRepo.Update(ctx, user); err != nil {
 		return nil, err
 	}
 
 	return user, nil
+}
+
+// ChangePassword verifies the current password and sets a new one.
+func (s *UserService) ChangePassword(ctx context.Context, id uuid.UUID, req *model.ChangePasswordRequest) error {
+	user, err := s.userRepo.GetByID(ctx, id)
+	if err != nil {
+		return err
+	}
+
+	// Verify current password
+	if err := auth.CheckPassword(req.CurrentPassword, user.PasswordHash); err != nil {
+		return model.ErrValidation("current password is incorrect")
+	}
+
+	// Hash new password
+	hash, err := auth.HashPassword(req.NewPassword)
+	if err != nil {
+		return err
+	}
+	user.PasswordHash = hash
+
+	if err := s.userRepo.Update(ctx, user); err != nil {
+		return err
+	}
+
+	// Invalidate all refresh tokens so other sessions are logged out
+	_ = s.tokenRepo.DeleteAllForUser(ctx, id)
+
+	return nil
+}
+
+// UploadAvatar uploads an avatar image to storage and updates the user record.
+func (s *UserService) UploadAvatar(ctx context.Context, id uuid.UUID, file io.Reader, filename, contentType string, size int64) (*model.User, error) {
+	user, err := s.userRepo.GetByID(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+
+	// Delete existing avatar if present
+	if user.AvatarURL != nil && *user.AvatarURL != "" {
+		_ = s.storageSvc.Delete(ctx, *user.AvatarURL)
+	}
+
+	// Upload new avatar
+	key := fmt.Sprintf("avatars/%s/%s", id.String(), filename)
+	if err := s.storageSvc.Upload(ctx, key, file, contentType, size); err != nil {
+		return nil, fmt.Errorf("upload avatar: %w", err)
+	}
+
+	user.AvatarURL = &key
+	if err := s.userRepo.Update(ctx, user); err != nil {
+		return nil, err
+	}
+
+	return user, nil
+}
+
+// DeleteAvatar removes the user's avatar from storage and clears the record.
+func (s *UserService) DeleteAvatar(ctx context.Context, id uuid.UUID) (*model.User, error) {
+	user, err := s.userRepo.GetByID(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+
+	if user.AvatarURL != nil && *user.AvatarURL != "" {
+		_ = s.storageSvc.Delete(ctx, *user.AvatarURL)
+	}
+
+	user.AvatarURL = nil
+	if err := s.userRepo.Update(ctx, user); err != nil {
+		return nil, err
+	}
+
+	return user, nil
+}
+
+// GetAvatarKey returns the S3 object key for a user's avatar.
+// Returns empty string if the user has no avatar.
+func (s *UserService) GetAvatarKey(ctx context.Context, id uuid.UUID) (string, error) {
+	user, err := s.userRepo.GetByID(ctx, id)
+	if err != nil {
+		return "", err
+	}
+	if user.AvatarURL == nil {
+		return "", nil
+	}
+	return *user.AvatarURL, nil
 }
 
 // Delete removes a user. Prevents deleting the last admin.
@@ -178,6 +257,11 @@ func (s *UserService) Delete(ctx context.Context, id uuid.UUID) error {
 		if count <= 1 {
 			return model.ErrValidation("cannot delete the last admin user")
 		}
+	}
+
+	// Delete avatar from storage if present
+	if user.AvatarURL != nil && *user.AvatarURL != "" {
+		_ = s.storageSvc.Delete(ctx, *user.AvatarURL)
 	}
 
 	// Invalidate all refresh tokens

@@ -21,6 +21,7 @@ type LocationRecord struct {
 	RecordedAt  time.Time
 	Username    string  // populated by join queries
 	DisplayName *string // populated by join queries
+	DeviceName  *string // populated by join queries (from devices table)
 }
 
 // LocationRepository handles database operations for location data.
@@ -67,10 +68,12 @@ func (r *LocationRepository) GetLatestByGroup(ctx context.Context, groupID uuid.
 			ST_Y(lh.location) AS lat, ST_X(lh.location) AS lng,
 			lh.altitude, lh.heading, lh.speed, lh.accuracy,
 			lh.recorded_at,
-			u.username, u.display_name
+			u.username, u.display_name,
+			d.name AS device_name
 		FROM location_history lh
 		INNER JOIN group_members gm ON gm.user_id = lh.user_id AND gm.group_id = $1
 		INNER JOIN users u ON u.id = lh.user_id
+		LEFT JOIN devices d ON d.id = lh.device_id
 		WHERE lh.recorded_at > NOW() - INTERVAL '1 hour'
 		ORDER BY lh.user_id, lh.recorded_at DESC`
 
@@ -89,6 +92,7 @@ func (r *LocationRepository) GetLatestByGroup(ctx context.Context, groupID uuid.
 			&rec.Altitude, &rec.Heading, &rec.Speed, &rec.Accuracy,
 			&rec.RecordedAt,
 			&rec.Username, &rec.DisplayName,
+			&rec.DeviceName,
 		); err != nil {
 			return nil, err
 		}
@@ -105,10 +109,12 @@ func (r *LocationRepository) GetGroupHistory(ctx context.Context, groupID uuid.U
 		       ST_Y(lh.location) AS lat, ST_X(lh.location) AS lng,
 		       lh.altitude, lh.heading, lh.speed, lh.accuracy,
 		       lh.recorded_at,
-		       u.username, u.display_name
+		       u.username, u.display_name,
+		       d.name AS device_name
 		FROM location_history lh
 		INNER JOIN group_members gm ON gm.user_id = lh.user_id AND gm.group_id = $1
 		INNER JOIN users u ON u.id = lh.user_id
+		LEFT JOIN devices d ON d.id = lh.device_id
 		WHERE lh.recorded_at >= $2 AND lh.recorded_at <= $3
 		ORDER BY lh.user_id, lh.recorded_at ASC`
 
@@ -127,6 +133,7 @@ func (r *LocationRepository) GetGroupHistory(ctx context.Context, groupID uuid.U
 			&rec.Altitude, &rec.Heading, &rec.Speed, &rec.Accuracy,
 			&rec.RecordedAt,
 			&rec.Username, &rec.DisplayName,
+			&rec.DeviceName,
 		); err != nil {
 			return nil, err
 		}
@@ -142,9 +149,11 @@ func (r *LocationRepository) GetUserHistory(ctx context.Context, userID uuid.UUI
 		       ST_Y(lh.location) AS lat, ST_X(lh.location) AS lng,
 		       lh.altitude, lh.heading, lh.speed, lh.accuracy,
 		       lh.recorded_at,
-		       u.username, u.display_name
+		       u.username, u.display_name,
+		       d.name AS device_name
 		FROM location_history lh
 		INNER JOIN users u ON u.id = lh.user_id
+		LEFT JOIN devices d ON d.id = lh.device_id
 		WHERE lh.user_id = $1 AND lh.recorded_at >= $2 AND lh.recorded_at <= $3
 		ORDER BY lh.recorded_at ASC`
 
@@ -163,6 +172,7 @@ func (r *LocationRepository) GetUserHistory(ctx context.Context, userID uuid.UUI
 			&rec.Altitude, &rec.Heading, &rec.Speed, &rec.Accuracy,
 			&rec.RecordedAt,
 			&rec.Username, &rec.DisplayName,
+			&rec.DeviceName,
 		); err != nil {
 			return nil, err
 		}
@@ -180,9 +190,11 @@ func (r *LocationRepository) GetAllLatest(ctx context.Context) ([]LocationRecord
 			ST_Y(lh.location) AS lat, ST_X(lh.location) AS lng,
 			lh.altitude, lh.heading, lh.speed, lh.accuracy,
 			lh.recorded_at,
-			u.username, u.display_name
+			u.username, u.display_name,
+			d.name AS device_name
 		FROM location_history lh
 		INNER JOIN users u ON u.id = lh.user_id
+		LEFT JOIN devices d ON d.id = lh.device_id
 		WHERE lh.recorded_at > NOW() - INTERVAL '1 hour'
 		ORDER BY lh.user_id, lh.recorded_at DESC`
 
@@ -201,6 +213,7 @@ func (r *LocationRepository) GetAllLatest(ctx context.Context) ([]LocationRecord
 			&rec.Altitude, &rec.Heading, &rec.Speed, &rec.Accuracy,
 			&rec.RecordedAt,
 			&rec.Username, &rec.DisplayName,
+			&rec.DeviceName,
 		); err != nil {
 			return nil, err
 		}

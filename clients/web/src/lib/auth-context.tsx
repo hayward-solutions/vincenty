@@ -17,6 +17,7 @@ interface AuthContextType {
   isAdmin: boolean;
   login: (username: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
+  refreshUser: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -51,6 +52,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(data.user);
   }, []);
 
+  const refreshUser = useCallback(async () => {
+    try {
+      const updated = await api.get<User>("/api/v1/users/me");
+      setUser(updated);
+    } catch {
+      // Silently ignore — user state remains stale until next reload
+    }
+  }, []);
+
   const logout = useCallback(async () => {
     const refreshToken = localStorage.getItem("refresh_token");
     try {
@@ -77,6 +87,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         isAdmin: user?.is_admin ?? false,
         login,
         logout,
+        refreshUser,
       }}
     >
       {children}

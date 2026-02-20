@@ -13,6 +13,7 @@ type Device struct {
 	Name       string     `json:"-"`
 	DeviceType string     `json:"-"`
 	DeviceUID  *string    `json:"-"`
+	UserAgent  *string    `json:"-"`
 	LastSeenAt *time.Time `json:"-"`
 	CreatedAt  time.Time  `json:"-"`
 	UpdatedAt  time.Time  `json:"-"`
@@ -25,6 +26,7 @@ type DeviceResponse struct {
 	Name       string     `json:"name"`
 	DeviceType string     `json:"device_type"`
 	DeviceUID  string     `json:"device_uid,omitempty"`
+	UserAgent  string     `json:"user_agent,omitempty"`
 	LastSeenAt *time.Time `json:"last_seen_at,omitempty"`
 	CreatedAt  time.Time  `json:"created_at"`
 	UpdatedAt  time.Time  `json:"updated_at"`
@@ -36,12 +38,17 @@ func (d *Device) ToResponse() DeviceResponse {
 	if d.DeviceUID != nil {
 		uid = *d.DeviceUID
 	}
+	ua := ""
+	if d.UserAgent != nil {
+		ua = *d.UserAgent
+	}
 	return DeviceResponse{
 		ID:         d.ID,
 		UserID:     d.UserID,
 		Name:       d.Name,
 		DeviceType: d.DeviceType,
 		DeviceUID:  uid,
+		UserAgent:  ua,
 		LastSeenAt: d.LastSeenAt,
 		CreatedAt:  d.CreatedAt,
 		UpdatedAt:  d.UpdatedAt,
@@ -67,6 +74,16 @@ func (r *CreateDeviceRequest) Validate() error {
 		return ErrValidation("device_type must be web, ios, or android")
 	}
 	return nil
+}
+
+// DeviceResolveResponse is returned by the resolve endpoint.
+// When Matched is true, Device contains the recognised device.
+// When Matched is false, ExistingDevices lists the user's registered devices
+// so the client can prompt the user to pick one or create a new device.
+type DeviceResolveResponse struct {
+	Matched         bool             `json:"matched"`
+	Device          *DeviceResponse  `json:"device,omitempty"`
+	ExistingDevices []DeviceResponse `json:"existing_devices,omitempty"`
 }
 
 // UpdateDeviceRequest is the expected body for updating a device.

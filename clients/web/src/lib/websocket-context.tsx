@@ -10,7 +10,8 @@ import {
 } from "react";
 import { useAuth } from "@/lib/auth-context";
 import { api } from "@/lib/api";
-import type { Device, WSEnvelope } from "@/types/api";
+import { DeviceEnrolmentDialog } from "@/components/devices/device-enrolment-dialog";
+import type { Device, DeviceResolveResponse, WSEnvelope } from "@/types/api";
 
 const WS_URL = process.env.NEXT_PUBLIC_WS_URL || "ws://localhost:8080";
 
@@ -37,6 +38,11 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
     useState<ConnectionState>("disconnected");
   const [deviceId, setDeviceId] = useState<string | null>(null);
 
+  // Enrolment prompt state: when non-null the dialog is shown and WS is paused.
+  const [pendingEnrolment, setPendingEnrolment] = useState<Device[] | null>(
+    null
+  );
+
   const wsRef = useRef<WebSocket | null>(null);
   const handlersRef = useRef<Set<MessageHandler>>(new Set());
   const reconnectTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -46,30 +52,73 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
   const retriedDeviceRef = useRef(false);
 
   // -----------------------------------------------------------------------
-  // Device auto-registration
+  // Device resolution
   // -----------------------------------------------------------------------
+
+  /**
+   * Attempt to resolve the current browser to an existing device.
+   *
+   * Returns a device ID when the device is immediately available (localStorage,
+   * cookie/UA match, or first-login auto-create). Returns null when the user
+   * needs to make a choice via the enrolment dialog — in that case
+   * `pendingEnrolment` state is set and the caller should not connect the WS.
+   */
   const ensureDevice = useCallback(async (): Promise<string | null> => {
-    // Check localStorage first
+    // 1. localStorage (fast path)
     const stored = localStorage.getItem("device_id");
     if (stored) {
       setDeviceId(stored);
       return stored;
     }
 
-    // Register a new web device
+    // 2. Server-side resolve (cookie / UA heuristic)
     try {
-      const device = await api.post<Device>("/api/v1/users/me/devices", {
-        name: "Web Browser",
-        device_type: "web",
-      });
-      localStorage.setItem("device_id", device.id);
-      setDeviceId(device.id);
-      return device.id;
+      const result = await api.post<DeviceResolveResponse>(
+        "/api/v1/users/me/devices/resolve"
+      );
+
+      if (result.matched && result.device) {
+        // Cookie or UA matched — use it silently.
+        localStorage.setItem("device_id", result.device.id);
+        setDeviceId(result.device.id);
+        return result.device.id;
+      }
+
+      const existing = result.existing_devices ?? [];
+
+      if (existing.length === 0) {
+        // 3. First login — no devices at all, auto-create silently.
+        const device = await api.post<Device>("/api/v1/users/me/devices", {
+          name: "Web Browser",
+          device_type: "web",
+        });
+        localStorage.setItem("device_id", device.id);
+        setDeviceId(device.id);
+        return device.id;
+      }
+
+      // 4. User has existing devices but none matched — prompt.
+      setPendingEnrolment(existing);
+      return null;
     } catch {
-      console.error("Failed to register device");
+      console.error("Failed to resolve device");
       return null;
     }
   }, []);
+
+  /**
+   * Called by the enrolment dialog once the user has made a choice.
+   * Stores the device ID, clears the prompt, and triggers the WS connection.
+   */
+  const resolveEnrolment = useCallback(
+    (id: string) => {
+      localStorage.setItem("device_id", id);
+      setDeviceId(id);
+      setPendingEnrolment(null);
+      // The useEffect watching deviceId will trigger connect.
+    },
+    []
+  );
 
   // -----------------------------------------------------------------------
   // Message dispatch
@@ -128,11 +177,11 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
 
           // If the server rejected the connection before it ever opened
           // (e.g. stale device_id returning 400), clear the stored device
-          // and re-register once before falling back to normal backoff.
+          // and re-resolve once before falling back to normal backoff.
           if (!didOpen && !retriedDeviceRef.current) {
             retriedDeviceRef.current = true;
             localStorage.removeItem("device_id");
-            console.warn("[WS] Connection rejected; re-registering device");
+            console.warn("[WS] Connection rejected; re-resolving device");
             (async () => {
               const newDevId = await ensureDevice();
               if (newDevId && mountedRef.current) {
@@ -179,6 +228,7 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
         clearTimeout(reconnectTimer.current);
       }
       setConnectionState("disconnected");
+      setPendingEnrolment(null);
       return;
     }
 
@@ -188,6 +238,8 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
       if (devId && mountedRef.current) {
         connect(devId);
       }
+      // If devId is null the enrolment dialog is showing —
+      // connection will happen via resolveEnrolment → the effect below.
     })();
 
     return () => {
@@ -201,6 +253,19 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
       }
     };
   }, [isAuthenticated, user, ensureDevice, connect]);
+
+  // When the enrolment dialog resolves, deviceId changes — connect if needed.
+  useEffect(() => {
+    if (
+      deviceId &&
+      isAuthenticated &&
+      !wsRef.current &&
+      connectionState === "disconnected" &&
+      !pendingEnrolment
+    ) {
+      connect(deviceId);
+    }
+  }, [deviceId, isAuthenticated, connectionState, pendingEnrolment, connect]);
 
   // -----------------------------------------------------------------------
   // Public API
@@ -223,6 +288,12 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
       value={{ connectionState, deviceId, sendMessage, subscribe }}
     >
       {children}
+      {pendingEnrolment && (
+        <DeviceEnrolmentDialog
+          existingDevices={pendingEnrolment}
+          onResolved={resolveEnrolment}
+        />
+      )}
     </WebSocketContext.Provider>
   );
 }

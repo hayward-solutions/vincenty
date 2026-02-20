@@ -3,6 +3,7 @@ export interface User {
   username: string;
   email: string;
   display_name: string;
+  avatar_url: string;
   is_admin: boolean;
   is_active: boolean;
   created_at: string;
@@ -15,9 +16,16 @@ export interface Device {
   name: string;
   device_type: string;
   device_uid: string;
+  user_agent?: string;
   last_seen_at?: string;
   created_at: string;
   updated_at: string;
+}
+
+export interface DeviceResolveResponse {
+  matched: boolean;
+  device?: Device;
+  existing_devices?: Device[];
 }
 
 export interface AuthResponse {
@@ -54,6 +62,16 @@ export interface UpdateUserRequest {
   password?: string;
   is_admin?: boolean;
   is_active?: boolean;
+}
+
+export interface UpdateMeRequest {
+  email?: string;
+  display_name?: string;
+}
+
+export interface ChangePasswordRequest {
+  current_password: string;
+  new_password: string;
 }
 
 export interface Group {
@@ -208,6 +226,8 @@ export interface UpdateMapConfigRequest {
 
 export interface LocationHistoryEntry {
   user_id: string;
+  device_id: string;
+  device_name: string;
   username: string;
   display_name: string;
   lat: number;
@@ -220,6 +240,8 @@ export interface LocationHistoryEntry {
 
 export interface LatestLocationEntry {
   user_id: string;
+  device_id: string;
+  device_name: string;
   username: string;
   display_name: string;
   lat: number;
