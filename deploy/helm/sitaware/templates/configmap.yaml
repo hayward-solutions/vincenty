@@ -14,6 +14,7 @@ data:
   DB_SSLMODE: disable
   REDIS_HOST: {{ include "sitaware.redisHost" . | quote }}
   REDIS_PORT: {{ .Values.redis.external.port | default "6379" | quote }}
+  REDIS_TLS: {{ .Values.redis.tls | default false | quote }}
   S3_ENDPOINT: {{ .Values.s3.endpoint | quote }}
   S3_BUCKET: {{ .Values.s3.bucket | quote }}
   S3_REGION: {{ .Values.s3.region | quote }}

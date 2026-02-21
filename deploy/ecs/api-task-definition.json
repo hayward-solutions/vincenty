@@ -18,11 +18,11 @@
         }
       ],
       "healthCheck": {
-        "command": ["CMD-SHELL", "wget -qO- http://localhost:8080/healthz || exit 1"],
+        "command": ["CMD", "/server", "healthcheck"],
         "interval": 30,
         "timeout": 5,
         "retries": 3,
-        "startPeriod": 10
+        "startPeriod": 60
       },
       "secrets": [
         {

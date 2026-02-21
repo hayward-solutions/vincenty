@@ -77,6 +77,8 @@ postgresql:
 redis:
   # Set to false to use an external Redis (e.g., ElastiCache)
   internal: true
+  # Enable TLS for Redis connections (required for ElastiCache with transit encryption)
+  tls: false
   external:
     host: ""
     port: "6379"

@@ -28,7 +28,7 @@ Before deploying, you need the following AWS resources:
 | **ALB target group: `sitaware-api`** | Routes `/api/*`, `/healthz`, `/readyz`, `/ws` to API |
 | **ALB target group: `sitaware-web`** | Routes everything else to web |
 | **RDS PostgreSQL 16** with PostGIS | Database (enable `postgis` extension) |
-| **ElastiCache Redis** | Pub/sub messaging |
+| **ElastiCache Redis** | Pub/sub messaging (enable transit encryption) |
 | **S3 bucket** | File/tile storage |
 | **ECR repositories** | `sitaware/api` and `sitaware/web` |
 | **CloudWatch log groups** | `/ecs/sitaware-api` and `/ecs/sitaware-web` |
@@ -84,6 +84,8 @@ Before registering task definitions, replace placeholders in the JSON files:
 | `REGION` | Your AWS region (e.g., `us-east-1`) |
 | `sitaware-db.cluster-xxxx.REGION.rds.amazonaws.com` | Your RDS endpoint |
 | `sitaware-redis.xxxx.REGION.cache.amazonaws.com` | Your ElastiCache endpoint |
+
+> **Redis TLS**: The task definition sets `REDIS_TLS=true` because ElastiCache requires transit encryption. If your ElastiCache cluster has transit encryption disabled, set this to `false`.
 | `sitaware.example.com` | Your actual domain |
 | `subnet-PRIVATE_1`, `subnet-PRIVATE_2` | Your private subnet IDs |
 | `sg-API_SG`, `sg-WEB_SG` | Your security group IDs |

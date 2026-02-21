@@ -199,6 +199,7 @@ cp .env.example .env
 | `REDIS_HOST` | `localhost` | Redis host |
 | `REDIS_PORT` | `6379` | Redis port |
 | `REDIS_PASSWORD` | (empty) | Redis password |
+| `REDIS_TLS` | `false` | Enable TLS for Redis (required for ElastiCache with transit encryption) |
 | `S3_ENDPOINT` | `http://localhost:9000` | S3/Minio endpoint |
 | `S3_ACCESS_KEY` | `sitaware` | S3 access key |
 | `S3_SECRET_KEY` | `sitaware123` | S3 secret key |

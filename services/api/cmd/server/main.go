@@ -23,6 +23,11 @@ import (
 )
 
 func main() {
+	// Subcommand: healthcheck (used as container health probe in distroless images)
+	if len(os.Args) > 1 && os.Args[1] == "healthcheck" {
+		runHealthcheck()
+	}
+
 	// Load configuration
 	cfg, err := config.Load()
 	if err != nil {
