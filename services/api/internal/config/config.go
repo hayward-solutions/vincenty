@@ -90,6 +90,7 @@ type RedisConfig struct {
 	Host     string
 	Port     int
 	Password string
+	TLS      bool
 }
 
 // Addr returns host:port for Redis.
@@ -156,6 +157,7 @@ func Load() (*Config, error) {
 			Host:     envStr("REDIS_HOST", "localhost"),
 			Port:     envInt("REDIS_PORT", 6379),
 			Password: envStr("REDIS_PASSWORD", ""),
+			TLS:      envBool("REDIS_TLS", false),
 		},
 		WS: WSConfig{
 			LocationThrottle: envDuration("WS_LOCATION_THROTTLE", 1*time.Second),

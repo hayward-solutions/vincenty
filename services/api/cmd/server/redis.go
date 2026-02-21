@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"crypto/tls"
 	"fmt"
 	"log/slog"
 	"time"
@@ -12,11 +13,15 @@ import (
 
 // connectRedis establishes a connection to Redis with retry logic.
 func connectRedis(ctx context.Context, cfg config.RedisConfig) (*redis.Client, error) {
-	rdb := redis.NewClient(&redis.Options{
+	opts := &redis.Options{
 		Addr:     cfg.Addr(),
 		Password: cfg.Password,
 		DB:       0,
-	})
+	}
+	if cfg.TLS {
+		opts.TLSConfig = &tls.Config{}
+	}
+	rdb := redis.NewClient(opts)
 
 	maxRetries := 10
 	for i := range maxRetries {
