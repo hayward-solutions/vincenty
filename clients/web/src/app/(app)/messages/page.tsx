@@ -16,6 +16,7 @@ import { NewDmDialog } from "@/components/chat/new-dm-dialog";
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
 import type { Conversation, MessageResponse } from "@/types/api";
+import { useLocationSharing } from "@/lib/hooks/use-location-sharing";
 import {
   ArrowLeft,
   Hash,
@@ -26,6 +27,7 @@ import {
 export default function MessagesPage() {
   const { user } = useAuth();
   const { subscribe } = useWebSocket();
+  const { lastPosition } = useLocationSharing();
   const {
     conversations,
     isLoading: convLoading,
@@ -83,6 +85,8 @@ export default function MessagesPage() {
             activeConversation.type === "direct"
               ? activeConversation.id
               : undefined,
+          lat: lastPosition?.lat,
+          lng: lastPosition?.lng,
           files: files.length > 0 ? files : undefined,
         });
 
@@ -92,7 +96,7 @@ export default function MessagesPage() {
         console.error("Failed to send message:", err);
       }
     },
-    [activeConversation, user, sendMessage, activeMessages]
+    [activeConversation, user, sendMessage, activeMessages, lastPosition]
   );
 
   const handleSelectConversation = useCallback((conv: Conversation) => {

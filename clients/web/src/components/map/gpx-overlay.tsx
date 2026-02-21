@@ -24,7 +24,7 @@ export function GpxOverlay({ map, message }: GpxOverlayProps) {
   useEffect(() => {
     if (!map || !message?.metadata) return;
 
-    const geojson = message.metadata as GeoJSON.FeatureCollection;
+    const geojson = message.metadata as unknown as GeoJSON.FeatureCollection;
     if (!geojson || geojson.type !== "FeatureCollection") return;
 
     // Clean up any previous GPX overlay

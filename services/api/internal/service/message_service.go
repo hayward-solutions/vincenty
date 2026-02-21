@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/google/uuid"
+	imgexif "github.com/sitaware/api/internal/exif"
 	"github.com/sitaware/api/internal/gpx"
 	"github.com/sitaware/api/internal/model"
 	"github.com/sitaware/api/internal/pubsub"
@@ -122,6 +123,61 @@ func (s *MessageService) Send(ctx context.Context, req SendMessageRequest) (*mod
 			// Replace Body with a fresh reader so Upload still works
 			req.Files[i].Body = bytes.NewReader(buf)
 			break // only parse the first GPX
+		}
+	}
+
+	// Extract EXIF GPS from image attachments (only if we don't already have GPX metadata).
+	if metadata == nil {
+		type exifEntry struct {
+			AttachmentIdx int        `json:"attachment_id"` // index, replaced with real ID after creation
+			Lat           float64    `json:"lat"`
+			Lng           float64    `json:"lng"`
+			Altitude      *float64   `json:"altitude,omitempty"`
+			TakenAt       *string    `json:"taken_at,omitempty"`
+		}
+
+		var exifLocs []exifEntry
+		for i := range req.Files {
+			ct := strings.ToLower(req.Files[i].ContentType)
+			if !strings.HasPrefix(ct, "image/") {
+				continue
+			}
+
+			// Buffer the image so we can read EXIF and still upload afterward
+			buf, err := io.ReadAll(req.Files[i].Body)
+			if err != nil {
+				slog.Warn("failed to read image for EXIF", "error", err, "filename", req.Files[i].Filename)
+				continue
+			}
+
+			loc := imgexif.ExtractGPS(bytes.NewReader(buf))
+			if loc != nil {
+				entry := exifEntry{
+					AttachmentIdx: i,
+					Lat:           loc.Lat,
+					Lng:           loc.Lng,
+					Altitude:      loc.Altitude,
+				}
+				if loc.TakenAt != nil {
+					ts := loc.TakenAt.UTC().Format("2006-01-02T15:04:05Z")
+					entry.TakenAt = &ts
+				}
+				exifLocs = append(exifLocs, entry)
+			}
+
+			// Replace Body with fresh reader so upload still works
+			req.Files[i].Body = bytes.NewReader(buf)
+		}
+
+		if len(exifLocs) > 0 {
+			wrapper := struct {
+				ExifLocations []exifEntry `json:"exif_locations"`
+			}{ExifLocations: exifLocs}
+			raw, err := json.Marshal(wrapper)
+			if err == nil {
+				jrm := json.RawMessage(raw)
+				metadata = &jrm
+			}
 		}
 	}
 

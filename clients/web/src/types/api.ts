@@ -264,6 +264,23 @@ export interface Attachment {
   created_at: string;
 }
 
+/** EXIF GPS location extracted from an image attachment. */
+export interface ExifLocation {
+  attachment_id: string;
+  lat: number;
+  lng: number;
+  altitude?: number;
+  taken_at?: string;
+}
+
+/** Typed message metadata — shape depends on message_type. */
+export interface MessageMetadata {
+  /** EXIF GPS data extracted from image attachments. */
+  exif_locations?: ExifLocation[];
+  /** GPX data is stored as a GeoJSON FeatureCollection (untyped). */
+  [key: string]: unknown;
+}
+
 export interface MessageResponse {
   id: string;
   sender_id: string;
@@ -275,7 +292,7 @@ export interface MessageResponse {
   message_type: string;
   lat?: number;
   lng?: number;
-  metadata?: unknown;
+  metadata?: MessageMetadata;
   attachments: Attachment[];
   created_at: string;
 }
