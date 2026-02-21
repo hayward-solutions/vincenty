@@ -126,10 +126,9 @@ services:
       dockerfile: Dockerfile
       args:
         API_INTERNAL_URL: http://api:8080
-        NEXT_PUBLIC_WS_URL: ${NEXT_PUBLIC_WS_URL}
     environment:
       - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
-      - NEXT_PUBLIC_WS_URL=${NEXT_PUBLIC_WS_URL}
+      - WS_URL=${WS_URL}
       - API_INTERNAL_URL=http://api:8080
     healthcheck:
       test: ["CMD", "node", "healthcheck.js"]

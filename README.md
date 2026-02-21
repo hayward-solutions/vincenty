@@ -207,7 +207,7 @@ cp .env.example .env
 | `S3_REGION` | `us-east-1` | S3 region |
 | `S3_USE_PATH_STYLE` | `true` | Path-style S3 (true for Minio) |
 | `WS_LOCATION_THROTTLE` | `1s` | Min interval between location updates |
-| `NEXT_PUBLIC_WS_URL` | `ws://localhost:8080` | WebSocket URL (browser-facing) |
+| `WS_URL` | `ws://localhost:8080` | WebSocket URL (browser-facing, read at runtime by server) |
 | `CORS_ALLOWED_ORIGINS` | `*` | Comma-separated allowed origins |
 | `RATE_LIMIT_RPS` | `10` | Requests per second per IP |
 | `RATE_LIMIT_BURST` | `20` | Rate limit burst size |
