@@ -484,6 +484,8 @@ export default function MapPage() {
               map={mapRef.current}
               position={lastPosition}
               autoCenter={!gpxMessageId && !replayActive}
+              icon={user?.marker_icon}
+              color={user?.marker_color}
             />
             <LocationMarkers
               map={mapRef.current}

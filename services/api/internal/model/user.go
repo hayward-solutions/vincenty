@@ -14,6 +14,8 @@ type User struct {
 	PasswordHash string    `json:"-"`
 	DisplayName  *string   `json:"-"`
 	AvatarURL    *string   `json:"-"`
+	MarkerIcon   string    `json:"-"`
+	MarkerColor  string    `json:"-"`
 	IsAdmin      bool      `json:"-"`
 	IsActive     bool      `json:"-"`
 	CreatedAt    time.Time `json:"-"`
@@ -27,6 +29,8 @@ type UserResponse struct {
 	Email       string    `json:"email"`
 	DisplayName string    `json:"display_name"`
 	AvatarURL   string    `json:"avatar_url"`
+	MarkerIcon  string    `json:"marker_icon"`
+	MarkerColor string    `json:"marker_color"`
 	IsAdmin     bool      `json:"is_admin"`
 	IsActive    bool      `json:"is_active"`
 	CreatedAt   time.Time `json:"created_at"`
@@ -49,6 +53,8 @@ func (u *User) ToResponse() UserResponse {
 		Email:       u.Email,
 		DisplayName: displayName,
 		AvatarURL:   avatarURL,
+		MarkerIcon:  u.MarkerIcon,
+		MarkerColor: u.MarkerColor,
 		IsAdmin:     u.IsAdmin,
 		IsActive:    u.IsActive,
 		CreatedAt:   u.CreatedAt,
@@ -95,6 +101,8 @@ type UpdateUserRequest struct {
 type UpdateMeRequest struct {
 	Email       *string `json:"email"`
 	DisplayName *string `json:"display_name"`
+	MarkerIcon  *string `json:"marker_icon,omitempty"`
+	MarkerColor *string `json:"marker_color,omitempty"`
 }
 
 // ChangePasswordRequest is the expected body for changing own password.

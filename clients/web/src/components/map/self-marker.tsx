@@ -2,116 +2,100 @@
 
 import { useEffect, useRef } from "react";
 import maplibregl from "maplibre-gl";
+import { createMarkerSVG } from "./marker-shapes";
 
 interface SelfMarkerProps {
   map: maplibregl.Map;
   position: { lat: number; lng: number; heading: number | null } | null;
   /** If true, fly to the user's position on first fix (once). */
   autoCenter?: boolean;
+  /** Marker shape name (default: "circle") */
+  icon?: string;
+  /** Marker color as hex string (default: "#3b82f6") */
+  color?: string;
 }
 
-const SOURCE_ID = "self-location";
-const LAYER_DOT = "self-dot";
-const LAYER_PULSE = "self-pulse";
-
-const PULSE_DURATION = 2000;
-const PULSE_RADIUS_MIN = 10;
-const PULSE_RADIUS_MAX = 25;
-const PULSE_OPACITY_MAX = 0.25;
+// Inject the CSS pulse animation once (idempotent)
+let styleInjected = false;
+function injectPulseStyle() {
+  if (styleInjected || typeof document === "undefined") return;
+  const style = document.createElement("style");
+  style.textContent = `
+    @keyframes sa-self-pulse {
+      0%   { transform: translate(-50%,-50%) scale(1); opacity: 0.4; }
+      100% { transform: translate(-50%,-50%) scale(2.5); opacity: 0; }
+    }
+    .sa-self-pulse {
+      animation: sa-self-pulse 2s ease-out infinite;
+    }
+  `;
+  document.head.appendChild(style);
+  styleInjected = true;
+}
 
 /**
- * SelfMarker renders a blue pulsing dot for the current user's own position.
- * It uses a GeoJSON source + circle layers so the marker is rendered on the
- * WebGL canvas — keeping it perfectly in sync with the map during zoom/pan.
+ * SelfMarker renders the current user's position on the map using a
+ * DOM-based SVG marker with a CSS pulse animation ring behind it.
+ * The shape and color are configurable via props.
  */
-export function SelfMarker({ map, position, autoCenter = true }: SelfMarkerProps) {
-  const addedRef = useRef(false);
+export function SelfMarker({
+  map,
+  position,
+  autoCenter = true,
+  icon = "circle",
+  color = "#3b82f6",
+}: SelfMarkerProps) {
+  const markerRef = useRef<maplibregl.Marker | null>(null);
   const hasCenteredRef = useRef(false);
-  const animFrameRef = useRef(0);
-  const popupRef = useRef<maplibregl.Popup | null>(null);
+  // Track current style to detect prop changes
+  const styleKeyRef = useRef("");
 
-  // Add source, layers, event handlers, and start pulse animation
   useEffect(() => {
-    if (!position || addedRef.current) return;
+    if (!position) return;
 
-    const data = pointFeature(position.lng, position.lat);
+    injectPulseStyle();
 
-    map.addSource(SOURCE_ID, { type: "geojson", data });
+    const currentStyleKey = `${icon}:${color}`;
 
-    // Pulse ring (rendered below the dot)
-    map.addLayer({
-      id: LAYER_PULSE,
-      type: "circle",
-      source: SOURCE_ID,
-      paint: {
-        "circle-radius": PULSE_RADIUS_MIN,
-        "circle-color": "#3b82f6",
-        "circle-opacity": PULSE_OPACITY_MAX,
-      },
-    });
+    if (markerRef.current && styleKeyRef.current === currentStyleKey) {
+      // Same style — just update position
+      markerRef.current.setLngLat([position.lng, position.lat]);
+    } else {
+      // Style changed or first render — (re)create marker
+      if (markerRef.current) {
+        markerRef.current.remove();
+      }
 
-    // Solid dot
-    map.addLayer({
-      id: LAYER_DOT,
-      type: "circle",
-      source: SOURCE_ID,
-      paint: {
-        "circle-radius": 6,
-        "circle-color": "#3b82f6",
-        "circle-stroke-color": "#ffffff",
-        "circle-stroke-width": 2,
-      },
-    });
+      const el = createSelfMarkerElement(icon, color);
 
-    // Click → popup
-    map.on("click", LAYER_DOT, (e) => {
-      const coords = e.lngLat;
-      // Close any existing popup
-      popupRef.current?.remove();
-      popupRef.current = new maplibregl.Popup({
+      const popup = new maplibregl.Popup({
         offset: 12,
         closeButton: false,
         maxWidth: "180px",
+      }).setHTML(
+        `<div style="font-weight:600;color:${color};margin-bottom:2px">You</div>` +
+          `<div style="font-size:12px">${position.lat.toFixed(5)}, ${position.lng.toFixed(5)}</div>`
+      );
+
+      markerRef.current = new maplibregl.Marker({
+        element: el,
+        anchor: "center",
       })
-        .setLngLat(coords)
-        .setHTML(
-          `<div style="font-weight:600;color:#3b82f6;margin-bottom:2px">You</div>` +
-            `<div style="font-size:12px">${coords.lat.toFixed(5)}, ${coords.lng.toFixed(5)}</div>`,
-        )
+        .setLngLat([position.lng, position.lat])
+        .setPopup(popup)
         .addTo(map);
-    });
 
-    // Cursor affordance
-    map.on("mouseenter", LAYER_DOT, () => {
-      map.getCanvas().style.cursor = "pointer";
-    });
-    map.on("mouseleave", LAYER_DOT, () => {
-      map.getCanvas().style.cursor = "";
-    });
+      styleKeyRef.current = currentStyleKey;
+    }
 
-    // Pulse animation loop
-    const start = performance.now();
-    const animate = () => {
-      // Guard: stop if the map has been destroyed (style removed by map.remove())
-      if (!(map as any).style) return;
-      const t = ((performance.now() - start) % PULSE_DURATION) / PULSE_DURATION;
-      const radius = PULSE_RADIUS_MIN + t * (PULSE_RADIUS_MAX - PULSE_RADIUS_MIN);
-      const opacity = PULSE_OPACITY_MAX * (1 - t);
-      map.setPaintProperty(LAYER_PULSE, "circle-radius", radius);
-      map.setPaintProperty(LAYER_PULSE, "circle-opacity", opacity);
-      animFrameRef.current = requestAnimationFrame(animate);
-    };
-    animFrameRef.current = requestAnimationFrame(animate);
-
-    addedRef.current = true;
-  }, [map, position]);
-
-  // Update position whenever it changes
-  useEffect(() => {
-    if (!position || !addedRef.current) return;
-
-    const source = map.getSource(SOURCE_ID) as maplibregl.GeoJSONSource | undefined;
-    source?.setData(pointFeature(position.lng, position.lat));
+    // Update popup content with latest coordinates
+    const popup = markerRef.current?.getPopup();
+    if (popup) {
+      popup.setHTML(
+        `<div style="font-weight:600;color:${color};margin-bottom:2px">You</div>` +
+          `<div style="font-size:12px">${position.lat.toFixed(5)}, ${position.lng.toFixed(5)}</div>`
+      );
+    }
 
     // Auto-center on first fix
     if (autoCenter && !hasCenteredRef.current) {
@@ -122,30 +106,46 @@ export function SelfMarker({ map, position, autoCenter = true }: SelfMarkerProps
         duration: 1500,
       });
     }
-  }, [map, position, autoCenter]);
+  }, [map, position, autoCenter, icon, color]);
 
   // Cleanup on unmount
   useEffect(() => {
     return () => {
-      cancelAnimationFrame(animFrameRef.current);
-      popupRef.current?.remove();
-      try {
-        if (map.getLayer(LAYER_DOT)) map.removeLayer(LAYER_DOT);
-        if (map.getLayer(LAYER_PULSE)) map.removeLayer(LAYER_PULSE);
-        if (map.getSource(SOURCE_ID)) map.removeSource(SOURCE_ID);
-      } catch {
-        // Map already destroyed during navigation
-      }
+      markerRef.current?.remove();
+      markerRef.current = null;
     };
-  }, [map]);
+  }, []);
 
   return null;
 }
 
-function pointFeature(lng: number, lat: number): GeoJSON.Feature<GeoJSON.Point> {
-  return {
-    type: "Feature",
-    geometry: { type: "Point", coordinates: [lng, lat] },
-    properties: {},
-  };
+/**
+ * Creates a DOM element for the self-marker:
+ * - A pulse ring (CSS animated div) behind the icon
+ * - The SVG shape on top
+ */
+function createSelfMarkerElement(icon: string, color: string): HTMLElement {
+  const wrapper = document.createElement("div");
+  wrapper.style.cssText =
+    "position:relative;width:24px;height:24px;cursor:pointer;";
+
+  // Pulse ring — positioned behind the icon, centered
+  const pulse = document.createElement("div");
+  pulse.className = "sa-self-pulse";
+  pulse.style.cssText = `
+    position:absolute;top:50%;left:50%;
+    width:24px;height:24px;border-radius:50%;
+    background:${color};
+    transform:translate(-50%,-50%) scale(1);
+    pointer-events:none;
+  `;
+  wrapper.appendChild(pulse);
+
+  // SVG shape — centered in the wrapper
+  const svg = createMarkerSVG(icon, color, 22);
+  svg.style.cssText =
+    "position:absolute;top:1px;left:1px;filter:drop-shadow(0 1px 3px rgba(0,0,0,0.4));";
+  wrapper.appendChild(svg);
+
+  return wrapper;
 }

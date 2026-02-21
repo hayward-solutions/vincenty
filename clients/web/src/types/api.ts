@@ -4,6 +4,8 @@ export interface User {
   email: string;
   display_name: string;
   avatar_url: string;
+  marker_icon: string;
+  marker_color: string;
   is_admin: boolean;
   is_active: boolean;
   created_at: string;
@@ -67,6 +69,8 @@ export interface UpdateUserRequest {
 export interface UpdateMeRequest {
   email?: string;
   display_name?: string;
+  marker_icon?: string;
+  marker_color?: string;
 }
 
 export interface ChangePasswordRequest {

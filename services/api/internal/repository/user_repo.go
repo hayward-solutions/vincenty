@@ -23,31 +23,38 @@ func NewUserRepository(pool *pgxpool.Pool) *UserRepository {
 // Create inserts a new user into the database.
 func (r *UserRepository) Create(ctx context.Context, user *model.User) error {
 	query := `
-		INSERT INTO users (id, username, email, password_hash, display_name, avatar_url, is_admin, is_active)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+		INSERT INTO users (id, username, email, password_hash, display_name, avatar_url, marker_icon, marker_color, is_admin, is_active)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
 		RETURNING created_at, updated_at`
 
 	if user.ID == uuid.Nil {
 		user.ID = uuid.New()
 	}
+	if user.MarkerIcon == "" {
+		user.MarkerIcon = "circle"
+	}
+	if user.MarkerColor == "" {
+		user.MarkerColor = "#3b82f6"
+	}
 
 	return r.pool.QueryRow(ctx, query,
 		user.ID, user.Username, user.Email, user.PasswordHash,
-		user.DisplayName, user.AvatarURL, user.IsAdmin, user.IsActive,
+		user.DisplayName, user.AvatarURL, user.MarkerIcon, user.MarkerColor,
+		user.IsAdmin, user.IsActive,
 	).Scan(&user.CreatedAt, &user.UpdatedAt)
 }
 
 // GetByID retrieves a user by their ID.
 func (r *UserRepository) GetByID(ctx context.Context, id uuid.UUID) (*model.User, error) {
 	query := `
-		SELECT id, username, email, password_hash, display_name, avatar_url, is_admin, is_active, created_at, updated_at
+		SELECT id, username, email, password_hash, display_name, avatar_url, marker_icon, marker_color, is_admin, is_active, created_at, updated_at
 		FROM users WHERE id = $1`
 
 	user := &model.User{}
 	err := r.pool.QueryRow(ctx, query, id).Scan(
 		&user.ID, &user.Username, &user.Email, &user.PasswordHash,
-		&user.DisplayName, &user.AvatarURL, &user.IsAdmin, &user.IsActive,
-		&user.CreatedAt, &user.UpdatedAt,
+		&user.DisplayName, &user.AvatarURL, &user.MarkerIcon, &user.MarkerColor,
+		&user.IsAdmin, &user.IsActive, &user.CreatedAt, &user.UpdatedAt,
 	)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -61,14 +68,14 @@ func (r *UserRepository) GetByID(ctx context.Context, id uuid.UUID) (*model.User
 // GetByUsername retrieves a user by their username.
 func (r *UserRepository) GetByUsername(ctx context.Context, username string) (*model.User, error) {
 	query := `
-		SELECT id, username, email, password_hash, display_name, avatar_url, is_admin, is_active, created_at, updated_at
+		SELECT id, username, email, password_hash, display_name, avatar_url, marker_icon, marker_color, is_admin, is_active, created_at, updated_at
 		FROM users WHERE username = $1`
 
 	user := &model.User{}
 	err := r.pool.QueryRow(ctx, query, username).Scan(
 		&user.ID, &user.Username, &user.Email, &user.PasswordHash,
-		&user.DisplayName, &user.AvatarURL, &user.IsAdmin, &user.IsActive,
-		&user.CreatedAt, &user.UpdatedAt,
+		&user.DisplayName, &user.AvatarURL, &user.MarkerIcon, &user.MarkerColor,
+		&user.IsAdmin, &user.IsActive, &user.CreatedAt, &user.UpdatedAt,
 	)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -82,14 +89,14 @@ func (r *UserRepository) GetByUsername(ctx context.Context, username string) (*m
 // GetByEmail retrieves a user by their email.
 func (r *UserRepository) GetByEmail(ctx context.Context, email string) (*model.User, error) {
 	query := `
-		SELECT id, username, email, password_hash, display_name, avatar_url, is_admin, is_active, created_at, updated_at
+		SELECT id, username, email, password_hash, display_name, avatar_url, marker_icon, marker_color, is_admin, is_active, created_at, updated_at
 		FROM users WHERE email = $1`
 
 	user := &model.User{}
 	err := r.pool.QueryRow(ctx, query, email).Scan(
 		&user.ID, &user.Username, &user.Email, &user.PasswordHash,
-		&user.DisplayName, &user.AvatarURL, &user.IsAdmin, &user.IsActive,
-		&user.CreatedAt, &user.UpdatedAt,
+		&user.DisplayName, &user.AvatarURL, &user.MarkerIcon, &user.MarkerColor,
+		&user.IsAdmin, &user.IsActive, &user.CreatedAt, &user.UpdatedAt,
 	)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -112,7 +119,7 @@ func (r *UserRepository) List(ctx context.Context, page, pageSize int) ([]model.
 	// Fetch page
 	offset := (page - 1) * pageSize
 	query := `
-		SELECT id, username, email, password_hash, display_name, avatar_url, is_admin, is_active, created_at, updated_at
+		SELECT id, username, email, password_hash, display_name, avatar_url, marker_icon, marker_color, is_admin, is_active, created_at, updated_at
 		FROM users
 		ORDER BY created_at DESC
 		LIMIT $1 OFFSET $2`
@@ -128,8 +135,8 @@ func (r *UserRepository) List(ctx context.Context, page, pageSize int) ([]model.
 		var u model.User
 		if err := rows.Scan(
 			&u.ID, &u.Username, &u.Email, &u.PasswordHash,
-			&u.DisplayName, &u.AvatarURL, &u.IsAdmin, &u.IsActive,
-			&u.CreatedAt, &u.UpdatedAt,
+			&u.DisplayName, &u.AvatarURL, &u.MarkerIcon, &u.MarkerColor,
+			&u.IsAdmin, &u.IsActive, &u.CreatedAt, &u.UpdatedAt,
 		); err != nil {
 			return nil, 0, err
 		}
@@ -144,13 +151,15 @@ func (r *UserRepository) Update(ctx context.Context, user *model.User) error {
 	query := `
 		UPDATE users
 		SET username = $2, email = $3, password_hash = $4, display_name = $5,
-		    avatar_url = $6, is_admin = $7, is_active = $8, updated_at = NOW()
+		    avatar_url = $6, marker_icon = $7, marker_color = $8,
+		    is_admin = $9, is_active = $10, updated_at = NOW()
 		WHERE id = $1
 		RETURNING updated_at`
 
 	err := r.pool.QueryRow(ctx, query,
 		user.ID, user.Username, user.Email, user.PasswordHash,
-		user.DisplayName, user.AvatarURL, user.IsAdmin, user.IsActive,
+		user.DisplayName, user.AvatarURL, user.MarkerIcon, user.MarkerColor,
+		user.IsAdmin, user.IsActive,
 	).Scan(&user.UpdatedAt)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
