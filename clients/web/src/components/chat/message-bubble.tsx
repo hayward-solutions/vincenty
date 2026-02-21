@@ -34,6 +34,8 @@ export function MessageBubble({ message, isOwn }: MessageBubbleProps) {
     message.attachments != null && message.attachments.length > 0;
   const hasLocation = message.lat != null && message.lng != null;
   const isGpx = message.message_type === "gpx" && message.metadata != null;
+  const hasText = !!message.content;
+  const hasTrailingContent = isGpx;
 
   return (
     <div
@@ -52,20 +54,32 @@ export function MessageBubble({ message, isOwn }: MessageBubbleProps) {
       {/* Bubble */}
       <div
         className={cn(
-          "rounded-lg px-3 py-2 text-sm break-words",
+          "rounded-lg overflow-hidden text-sm break-words",
           isOwn
             ? "bg-primary text-primary-foreground"
             : "bg-muted text-foreground"
         )}
       >
         {/* Text content */}
-        {message.content && (
-          <p className="whitespace-pre-wrap">{message.content}</p>
+        {hasText && (
+          <p
+            className={cn(
+              "whitespace-pre-wrap px-3 pt-2",
+              hasAttachments || hasTrailingContent ? "pb-1" : "pb-2"
+            )}
+          >
+            {message.content}
+          </p>
         )}
 
         {/* Attachments */}
-        {hasAttachments ? (
-          <div className="mt-1 flex flex-col gap-1">
+        {hasAttachments && (
+          <div
+            className={cn(
+              "flex flex-col",
+              hasTrailingContent ? "" : "last:*:pb-0"
+            )}
+          >
             {message.attachments.map((att) => {
               const isImage = att.content_type.startsWith("image/");
               const downloadUrl = attachmentUrl(att.id);
@@ -83,7 +97,7 @@ export function MessageBubble({ message, isOwn }: MessageBubbleProps) {
                       <img
                         src={downloadUrl}
                         alt={att.filename}
-                        className="max-w-full max-h-48 rounded object-cover"
+                        className="max-w-full max-h-48 w-full object-cover"
                         loading="lazy"
                       />
                     </a>
@@ -93,10 +107,10 @@ export function MessageBubble({ message, isOwn }: MessageBubbleProps) {
                       target="_blank"
                       rel="noopener noreferrer"
                       className={cn(
-                        "flex items-center gap-2 rounded px-2 py-1 text-xs",
+                        "flex items-center gap-2 px-3 py-1.5 text-xs",
                         isOwn
-                          ? "bg-primary-foreground/20 hover:bg-primary-foreground/30"
-                          : "bg-background hover:bg-accent"
+                          ? "bg-primary-foreground/10 hover:bg-primary-foreground/20"
+                          : "bg-background/50 hover:bg-background/80"
                       )}
                     >
                       <Download className="h-3.5 w-3.5 shrink-0" />
@@ -110,14 +124,14 @@ export function MessageBubble({ message, isOwn }: MessageBubbleProps) {
               );
             })}
           </div>
-        ) : null}
+        )}
 
         {/* GPX "View on Map" link */}
         {isGpx && (
           <Link
             href={`/map?gpx=${message.id}`}
             className={cn(
-              "flex items-center gap-1.5 mt-1 text-xs font-medium",
+              "flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium",
               isOwn
                 ? "text-primary-foreground/80 hover:text-primary-foreground"
                 : "text-primary hover:underline"
