@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -34,6 +35,15 @@ func connectS3(ctx context.Context, cfg config.S3Config) (*s3.Client, error) {
 		o.BaseEndpoint = aws.String(cfg.Endpoint)
 		o.UsePathStyle = cfg.UsePathStyle
 	})
+
+	// Verify connectivity by listing zero objects.
+	_, err = client.ListObjectsV2(ctx, &s3.ListObjectsV2Input{
+		Bucket:  aws.String(cfg.Bucket),
+		MaxKeys: aws.Int32(0),
+	})
+	if err != nil {
+		return nil, fmt.Errorf("s3 bucket %q not accessible: %w", cfg.Bucket, err)
+	}
 
 	slog.Info("connected to object storage",
 		"endpoint", cfg.Endpoint,
