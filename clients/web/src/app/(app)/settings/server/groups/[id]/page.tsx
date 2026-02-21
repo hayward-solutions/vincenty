@@ -5,7 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { toast } from "sonner";
 import { ApiError } from "@/lib/api";
-import { useGroup } from "@/lib/hooks/use-groups";
+import { useGroup, useUpdateGroupMarker } from "@/lib/hooks/use-groups";
 import {
   useGroupMembers,
   useAddGroupMember,
@@ -15,6 +15,13 @@ import {
 import { useUsers } from "@/lib/hooks/use-users";
 import { useGroupAuditLogs } from "@/lib/hooks/use-audit-logs";
 import { AuditLogTable } from "@/components/audit/audit-log-table";
+import {
+  AVAILABLE_SHAPES,
+  MARKER_SHAPES,
+  PRESET_COLORS,
+  markerSVGString,
+  type MarkerShape,
+} from "@/components/map/marker-shapes";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -41,14 +48,14 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import type { GroupMember } from "@/types/api";
+import type { Group, GroupMember } from "@/types/api";
 
 export default function GroupDetailPage() {
   const params = useParams();
   const router = useRouter();
   const groupId = params.id as string;
 
-  const { group, isLoading: groupLoading } = useGroup(groupId);
+  const { group, isLoading: groupLoading, refetch: refetchGroup } = useGroup(groupId);
   const { members, isLoading: membersLoading, refetch } = useGroupMembers(groupId);
   const [addOpen, setAddOpen] = useState(false);
   const [editMember, setEditMember] = useState<GroupMember | null>(null);
@@ -88,6 +95,8 @@ export default function GroupDetailPage() {
           <p className="text-muted-foreground">{group.description}</p>
         )}
       </div>
+
+      <MarkerSettingsSection groupId={groupId} group={group} onUpdated={refetchGroup} />
 
       <div className="space-y-4">
         <div className="flex items-center justify-between">
@@ -564,5 +573,151 @@ function EditMemberDialog({
         </form>
       </DialogContent>
     </Dialog>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Marker Settings Section (inline on the admin group detail page)
+// ---------------------------------------------------------------------------
+
+function MarkerSettingsSection({
+  groupId,
+  group,
+  onUpdated,
+}: {
+  groupId: string;
+  group: Group;
+  onUpdated: () => void;
+}) {
+  const { updateMarker, isLoading } = useUpdateGroupMarker();
+  const [icon, setIcon] = useState<string>(group.marker_icon || "circle");
+  const [color, setColor] = useState<string>(group.marker_color || "#3b82f6");
+  const [customColor, setCustomColor] = useState<string>("");
+  const [dirty, setDirty] = useState(false);
+
+  // Reset state when group changes
+  useEffect(() => {
+    setIcon(group.marker_icon || "circle");
+    setColor(group.marker_color || "#3b82f6");
+    setCustomColor("");
+    setDirty(false);
+  }, [group.marker_icon, group.marker_color]);
+
+  function selectIcon(shape: string) {
+    setIcon(shape);
+    setDirty(true);
+  }
+
+  function selectColor(c: string) {
+    setColor(c);
+    setCustomColor("");
+    setDirty(true);
+  }
+
+  function handleCustomColorChange(value: string) {
+    setCustomColor(value);
+    if (/^#[0-9a-fA-F]{6}$/.test(value)) {
+      setColor(value);
+      setDirty(true);
+    }
+  }
+
+  async function handleSave() {
+    try {
+      await updateMarker(groupId, {
+        marker_icon: icon,
+        marker_color: color,
+      });
+      toast.success("Marker settings saved");
+      setDirty(false);
+      onUpdated();
+    } catch (err) {
+      toast.error(
+        err instanceof ApiError ? err.message : "Failed to update marker"
+      );
+    }
+  }
+
+  return (
+    <div className="space-y-4">
+      <h2 className="text-lg font-medium">Map Marker</h2>
+
+      <div className="flex items-start gap-6">
+        {/* Live preview */}
+        <div className="flex flex-col items-center gap-1 p-4 bg-muted/50 rounded-lg min-w-[80px]">
+          <span
+            dangerouslySetInnerHTML={{
+              __html: markerSVGString(icon, color, 32),
+            }}
+          />
+          <span className="text-xs text-muted-foreground">Preview</span>
+        </div>
+
+        <div className="space-y-4 flex-1">
+          {/* Shape picker */}
+          <div className="space-y-2">
+            <Label className="text-sm">Shape</Label>
+            <div className="flex flex-wrap gap-1.5">
+              {AVAILABLE_SHAPES.map((shape) => (
+                <button
+                  key={shape}
+                  type="button"
+                  onClick={() => selectIcon(shape)}
+                  className={`p-1.5 rounded border-2 transition-colors ${
+                    icon === shape
+                      ? "border-primary bg-primary/10"
+                      : "border-transparent hover:bg-muted"
+                  }`}
+                  title={MARKER_SHAPES[shape].label}
+                >
+                  <span
+                    dangerouslySetInnerHTML={{
+                      __html: markerSVGString(shape, color, 18),
+                    }}
+                  />
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Color picker */}
+          <div className="space-y-2">
+            <Label className="text-sm">Color</Label>
+            <div className="flex flex-wrap gap-1.5">
+              {PRESET_COLORS.map((c) => (
+                <button
+                  key={c}
+                  type="button"
+                  onClick={() => selectColor(c)}
+                  className={`w-6 h-6 rounded-full border-2 transition-all ${
+                    color === c && !customColor
+                      ? "border-foreground scale-110"
+                      : "border-transparent hover:scale-105"
+                  }`}
+                  style={{ backgroundColor: c }}
+                  title={c}
+                />
+              ))}
+            </div>
+            <div className="flex items-center gap-2">
+              <Label className="text-xs whitespace-nowrap">Custom:</Label>
+              <Input
+                value={customColor}
+                onChange={(e) => handleCustomColorChange(e.target.value)}
+                placeholder="#ff0000"
+                className="h-7 text-xs font-mono w-24"
+                maxLength={7}
+              />
+            </div>
+          </div>
+
+          {dirty && (
+            <Button size="sm" onClick={handleSave} disabled={isLoading}>
+              {isLoading ? "Saving..." : "Save Marker"}
+            </Button>
+          )}
+        </div>
+      </div>
+    </div>
   );
 }

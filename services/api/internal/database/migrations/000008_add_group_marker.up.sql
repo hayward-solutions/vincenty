@@ -1,0 +1,3 @@
+ALTER TABLE groups
+    ADD COLUMN marker_icon  VARCHAR(50) NOT NULL DEFAULT 'circle',
+    ADD COLUMN marker_color VARCHAR(7)  NOT NULL DEFAULT '#3b82f6';

@@ -78,6 +78,8 @@ export interface Group {
   id: string;
   name: string;
   description: string;
+  marker_icon: string;
+  marker_color: string;
   created_by?: string;
   member_count: number;
   created_at: string;
@@ -100,11 +102,20 @@ export interface GroupMember {
 export interface CreateGroupRequest {
   name: string;
   description?: string;
+  marker_icon?: string;
+  marker_color?: string;
 }
 
 export interface UpdateGroupRequest {
   name?: string;
   description?: string;
+  marker_icon?: string;
+  marker_color?: string;
+}
+
+export interface UpdateGroupMarkerRequest {
+  marker_icon?: string;
+  marker_color?: string;
 }
 
 export interface AddGroupMemberRequest {

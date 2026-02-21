@@ -3,16 +3,20 @@
 import { useEffect, useRef } from "react";
 import maplibregl from "maplibre-gl";
 import type { UserLocation } from "@/lib/hooks/use-locations";
+import type { Group } from "@/types/api";
+import { createMarkerSVG } from "./marker-shapes";
 
 interface LocationMarkersProps {
   map: maplibregl.Map;
   locations: Map<string, UserLocation>;
   /** Current user's ID — their marker is excluded */
   currentUserId?: string;
+  /** Group config lookup by group_id — provides marker_icon and marker_color */
+  groups?: Map<string, Group>;
 }
 
-// Marker colors by index (cycling for multiple users)
-const MARKER_COLORS = [
+// Fallback colors when no group config is available (cycling for multiple users)
+const FALLBACK_COLORS = [
   "#3b82f6", // blue
   "#ef4444", // red
   "#22c55e", // green
@@ -23,8 +27,8 @@ const MARKER_COLORS = [
   "#f97316", // orange
 ];
 
-function getColor(index: number): string {
-  return MARKER_COLORS[index % MARKER_COLORS.length];
+function getFallbackColor(index: number): string {
+  return FALLBACK_COLORS[index % FALLBACK_COLORS.length];
 }
 
 function formatAge(timestamp: string): string {
@@ -34,18 +38,42 @@ function formatAge(timestamp: string): string {
   return `${Math.floor(age / 3_600_000)}h ago`;
 }
 
+/** Resolve the icon shape and color for a location entry. */
+function resolveMarkerStyle(
+  loc: UserLocation,
+  groups: Map<string, Group> | undefined,
+  fallbackColorIndex: number
+): { icon: string; color: string } {
+  if (groups && loc.group_id) {
+    const group = groups.get(loc.group_id);
+    if (group) {
+      return {
+        icon: group.marker_icon || "circle",
+        color: group.marker_color || "#3b82f6",
+      };
+    }
+  }
+  return { icon: "circle", color: getFallbackColor(fallbackColorIndex) };
+}
+
 /**
  * LocationMarkers manages MapLibre markers for all tracked user locations.
  * It creates/updates/removes markers as the locations map changes.
+ *
+ * When a `groups` map is provided, markers are rendered using each group's
+ * configured icon shape and color. Otherwise, falls back to colored circles.
  */
 export function LocationMarkers({
   map,
   locations,
   currentUserId,
+  groups,
 }: LocationMarkersProps) {
   const markersRef = useRef<Map<string, maplibregl.Marker>>(new Map());
   const colorIndexRef = useRef<Map<string, number>>(new Map());
   const nextColorRef = useRef(0);
+  // Track per-marker style to detect when we need to recreate the element
+  const styleRef = useRef<Map<string, string>>(new Map());
 
   useEffect(() => {
     const existingIds = new Set(markersRef.current.keys());
@@ -56,31 +84,43 @@ export function LocationMarkers({
 
       existingIds.delete(userId);
 
-      // Assign a stable color index per user
+      // Assign a stable fallback color index per user
       if (!colorIndexRef.current.has(userId)) {
         colorIndexRef.current.set(userId, nextColorRef.current++);
       }
-      const color = getColor(colorIndexRef.current.get(userId)!);
+
+      const { icon, color } = resolveMarkerStyle(
+        loc,
+        groups,
+        colorIndexRef.current.get(userId)!
+      );
+      const styleKey = `${icon}:${color}`;
 
       const existing = markersRef.current.get(userId);
-      if (existing) {
-        // Update position
+      const prevStyle = styleRef.current.get(userId);
+
+      if (existing && prevStyle === styleKey) {
+        // Same style — just update position and popup
         existing.setLngLat([loc.lng, loc.lat]);
 
-        // Update popup content
         const popup = existing.getPopup();
         if (popup) {
           popup.setHTML(buildPopupHTML(loc, color));
         }
 
-        // Update rotation for heading
         if (loc.heading != null) {
           existing.setRotation(loc.heading);
         }
       } else {
-        // Create new marker
+        // Style changed or new marker — (re)create
+        if (existing) {
+          existing.remove();
+          markersRef.current.delete(userId);
+        }
+
         const el = createMarkerElement(
           loc.display_name || loc.username,
+          icon,
           color
         );
 
@@ -100,6 +140,7 @@ export function LocationMarkers({
         }
 
         markersRef.current.set(userId, marker);
+        styleRef.current.set(userId, styleKey);
       }
     }
 
@@ -109,9 +150,10 @@ export function LocationMarkers({
       if (marker) {
         marker.remove();
         markersRef.current.delete(userId);
+        styleRef.current.delete(userId);
       }
     }
-  }, [map, locations, currentUserId]);
+  }, [map, locations, currentUserId, groups]);
 
   // Cleanup on unmount
   useEffect(() => {
@@ -120,15 +162,21 @@ export function LocationMarkers({
         marker.remove();
       }
       markersRef.current.clear();
+      styleRef.current.clear();
     };
   }, []);
 
   return null; // markers are managed imperatively
 }
 
-function createMarkerElement(label: string, color: string): HTMLElement {
+function createMarkerElement(
+  label: string,
+  icon: string,
+  color: string
+): HTMLElement {
   const wrapper = document.createElement("div");
   wrapper.className = "sa-marker";
+<<<<<<< Updated upstream
   wrapper.style.cssText = "position:relative;width:18px;height:18px;cursor:pointer;";
 
   // Pin — centered in the wrapper, determines the anchor point
@@ -140,6 +188,15 @@ function createMarkerElement(label: string, color: string): HTMLElement {
     box-shadow:0 1px 4px rgba(0,0,0,0.4);
   `;
   wrapper.appendChild(pin);
+=======
+  wrapper.style.cssText =
+    "display:flex;flex-direction:column;align-items:center;cursor:pointer;";
+
+  // Shape icon
+  const svg = createMarkerSVG(icon, color, 18);
+  svg.style.filter = "drop-shadow(0 1px 3px rgba(0,0,0,0.4))";
+  wrapper.appendChild(svg);
+>>>>>>> Stashed changes
 
   // Label — absolutely positioned below the pin, outside the wrapper's layout
   const text = document.createElement("div");

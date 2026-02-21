@@ -28,11 +28,13 @@ import {
 } from "@/lib/hooks/use-location-history";
 import { useAuth } from "@/lib/auth-context";
 import { api } from "@/lib/api";
+import { markerSVGString } from "@/components/map/marker-shapes";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import type {
   MessageResponse,
   LocationHistoryEntry,
+  Group,
   GroupMember,
 } from "@/types/api";
 
@@ -97,6 +99,21 @@ export default function MapPage() {
   const [groupMemberCache, setGroupMemberCache] = useState<
     Map<string, string[]>
   >(new Map());
+
+  // Live map group filter state (empty = show all)
+  const [selectedLiveGroupIds, setSelectedLiveGroupIds] = useState<Set<string>>(
+    new Set()
+  );
+  const [liveGroupPanelOpen, setLiveGroupPanelOpen] = useState(false);
+
+  // Build a group config lookup map from the user's groups
+  const groupConfigMap = useMemo(() => {
+    const m = new Map<string, Group>();
+    for (const g of myGroups) {
+      m.set(g.id, g);
+    }
+    return m;
+  }, [myGroups]);
 
   useEffect(() => {
     if (!gpxMessageId) {
@@ -423,7 +440,7 @@ export default function MapPage() {
   }
 
   // Merge admin-fetched locations into the WS-provided locations.
-  const displayLocations = new Map(locations);
+  let displayLocations = new Map(locations);
   if (isAdmin && adminLocations.length > 0) {
     for (const loc of adminLocations) {
       if (!displayLocations.has(loc.user_id)) {
@@ -441,6 +458,17 @@ export default function MapPage() {
         });
       }
     }
+  }
+
+  // Apply live group filter — when groups are selected, only show their users
+  if (selectedLiveGroupIds.size > 0) {
+    const filtered = new Map(displayLocations);
+    for (const [userId, loc] of filtered) {
+      if (!loc.group_id || !selectedLiveGroupIds.has(loc.group_id)) {
+        filtered.delete(userId);
+      }
+    }
+    displayLocations = filtered;
   }
 
   // Show group checkboxes in the filter sidebar only for "all" scope
@@ -461,6 +489,7 @@ export default function MapPage() {
               map={mapRef.current}
               locations={displayLocations}
               currentUserId={user?.id}
+              groups={groupConfigMap}
             />
             <GpxOverlay map={mapRef.current} message={gpxMessage} />
             {replayActive && filteredHistory.length > 0 && (
@@ -474,16 +503,85 @@ export default function MapPage() {
         )}
       </MapView>
 
-      {/* Replay button (top-left overlay) */}
+      {/* Top-left controls: Replay button + Group filter (live map only) */}
       {!replayActive && !replayPanelOpen && (
-        <div className="absolute top-3 left-3 z-10">
-          <Button
-            size="sm"
-            variant="secondary"
-            onClick={() => setReplayPanelOpen(true)}
-          >
-            Replay
-          </Button>
+        <div className="absolute top-3 left-3 z-10 flex flex-col gap-2">
+          <div className="flex gap-2">
+            <Button
+              size="sm"
+              variant="secondary"
+              onClick={() => setReplayPanelOpen(true)}
+            >
+              Replay
+            </Button>
+            {myGroups.length > 1 && (
+              <Button
+                size="sm"
+                variant={selectedLiveGroupIds.size > 0 ? "default" : "secondary"}
+                onClick={() => setLiveGroupPanelOpen((v) => !v)}
+              >
+                Groups{selectedLiveGroupIds.size > 0 ? ` (${selectedLiveGroupIds.size})` : ""}
+              </Button>
+            )}
+          </div>
+
+          {/* Live group filter panel */}
+          {liveGroupPanelOpen && myGroups.length > 1 && (
+            <div className="bg-card/95 backdrop-blur-sm border rounded-lg p-3 shadow-lg sm:w-56 space-y-2">
+              <div className="flex items-center justify-between">
+                <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                  Filter by Group
+                </h4>
+                {selectedLiveGroupIds.size > 0 && (
+                  <button
+                    className="text-xs text-muted-foreground hover:text-foreground"
+                    onClick={() => setSelectedLiveGroupIds(new Set())}
+                  >
+                    Clear
+                  </button>
+                )}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Select groups to show only their members
+              </p>
+              <div className="space-y-1">
+                {myGroups.map((g) => (
+                  <label
+                    key={g.id}
+                    className="flex items-center gap-2 text-sm cursor-pointer"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={selectedLiveGroupIds.has(g.id)}
+                      onChange={() => {
+                        setSelectedLiveGroupIds((prev) => {
+                          const next = new Set(prev);
+                          if (next.has(g.id)) {
+                            next.delete(g.id);
+                          } else {
+                            next.add(g.id);
+                          }
+                          return next;
+                        });
+                      }}
+                      className="h-3.5 w-3.5"
+                    />
+                    <span
+                      className="flex-shrink-0"
+                      dangerouslySetInnerHTML={{
+                        __html: markerSVGString(
+                          g.marker_icon || "circle",
+                          g.marker_color || "#3b82f6",
+                          14
+                        ),
+                      }}
+                    />
+                    <span className="truncate">{g.name}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       )}
 
@@ -525,6 +623,16 @@ export default function MapPage() {
                           checked={selectedGroupIds.has(g.id)}
                           onChange={() => toggleGroup(g.id)}
                           className="h-3.5 w-3.5"
+                        />
+                        <span
+                          className="flex-shrink-0"
+                          dangerouslySetInnerHTML={{
+                            __html: markerSVGString(
+                              g.marker_icon || "circle",
+                              g.marker_color || "#3b82f6",
+                              14
+                            ),
+                          }}
                         />
                         <span className="truncate">{g.name}</span>
                       </label>

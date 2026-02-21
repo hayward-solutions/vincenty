@@ -8,6 +8,7 @@ import type {
   Group,
   GroupMember,
   ListResponse,
+  UpdateGroupMarkerRequest,
   UpdateGroupMemberRequest,
   UpdateGroupRequest,
 } from "@/types/api";
@@ -110,6 +111,24 @@ export function useDeleteGroup() {
   };
 
   return { deleteGroup, isLoading };
+}
+
+export function useUpdateGroupMarker() {
+  const [isLoading, setIsLoading] = useState(false);
+
+  const updateMarker = async (
+    groupId: string,
+    req: UpdateGroupMarkerRequest
+  ): Promise<Group> => {
+    setIsLoading(true);
+    try {
+      return await api.put<Group>(`/api/v1/groups/${groupId}/marker`, req);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return { updateMarker, isLoading };
 }
 
 // --------------------------------------------------------------------------

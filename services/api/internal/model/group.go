@@ -1,16 +1,36 @@
 package model
 
 import (
+	"regexp"
 	"time"
 
 	"github.com/google/uuid"
 )
+
+// AllowedMarkerIcons is the set of valid predefined marker icon names.
+var AllowedMarkerIcons = map[string]bool{
+	"circle":    true,
+	"square":    true,
+	"triangle":  true,
+	"diamond":   true,
+	"star":      true,
+	"crosshair": true,
+	"pentagon":  true,
+	"hexagon":   true,
+	"arrow":     true,
+	"plus":      true,
+}
+
+// HexColorRegex matches valid 6-digit hex color strings like #ff0000.
+var HexColorRegex = regexp.MustCompile(`^#[0-9a-fA-F]{6}$`)
 
 // Group represents a group in the system.
 type Group struct {
 	ID          uuid.UUID  `json:"-"`
 	Name        string     `json:"-"`
 	Description *string    `json:"-"`
+	MarkerIcon  string     `json:"-"`
+	MarkerColor string     `json:"-"`
 	CreatedBy   *uuid.UUID `json:"-"`
 	CreatedAt   time.Time  `json:"-"`
 	UpdatedAt   time.Time  `json:"-"`
@@ -21,6 +41,8 @@ type GroupResponse struct {
 	ID          uuid.UUID  `json:"id"`
 	Name        string     `json:"name"`
 	Description string     `json:"description"`
+	MarkerIcon  string     `json:"marker_icon"`
+	MarkerColor string     `json:"marker_color"`
 	CreatedBy   *uuid.UUID `json:"created_by,omitempty"`
 	MemberCount int        `json:"member_count"`
 	CreatedAt   time.Time  `json:"created_at"`
@@ -38,6 +60,8 @@ func (g *Group) ToResponse(memberCount int) GroupResponse {
 		ID:          g.ID,
 		Name:        g.Name,
 		Description: description,
+		MarkerIcon:  g.MarkerIcon,
+		MarkerColor: g.MarkerColor,
 		CreatedBy:   g.CreatedBy,
 		MemberCount: memberCount,
 		CreatedAt:   g.CreatedAt,
@@ -47,8 +71,10 @@ func (g *Group) ToResponse(memberCount int) GroupResponse {
 
 // CreateGroupRequest is the expected body for creating a new group.
 type CreateGroupRequest struct {
-	Name        string `json:"name"`
-	Description string `json:"description"`
+	Name        string  `json:"name"`
+	Description string  `json:"description"`
+	MarkerIcon  *string `json:"marker_icon,omitempty"`
+	MarkerColor *string `json:"marker_color,omitempty"`
 }
 
 // Validate checks that required fields are present.
@@ -59,6 +85,16 @@ func (r *CreateGroupRequest) Validate() error {
 	if len(r.Name) > 255 {
 		return ErrValidation("name must be 255 characters or less")
 	}
+	if r.MarkerIcon != nil {
+		if !AllowedMarkerIcons[*r.MarkerIcon] {
+			return ErrValidation("invalid marker_icon value")
+		}
+	}
+	if r.MarkerColor != nil {
+		if !HexColorRegex.MatchString(*r.MarkerColor) {
+			return ErrValidation("marker_color must be a valid hex color (e.g. #ff0000)")
+		}
+	}
 	return nil
 }
 
@@ -66,6 +102,33 @@ func (r *CreateGroupRequest) Validate() error {
 type UpdateGroupRequest struct {
 	Name        *string `json:"name"`
 	Description *string `json:"description"`
+	MarkerIcon  *string `json:"marker_icon,omitempty"`
+	MarkerColor *string `json:"marker_color,omitempty"`
+}
+
+// UpdateGroupMarkerRequest is the expected body for updating a group's map marker settings.
+// Accessible by group admins (not just server admins).
+type UpdateGroupMarkerRequest struct {
+	MarkerIcon  *string `json:"marker_icon"`
+	MarkerColor *string `json:"marker_color"`
+}
+
+// Validate checks that at least one field is set and values are valid.
+func (r *UpdateGroupMarkerRequest) Validate() error {
+	if r.MarkerIcon == nil && r.MarkerColor == nil {
+		return ErrValidation("at least one of marker_icon or marker_color is required")
+	}
+	if r.MarkerIcon != nil {
+		if !AllowedMarkerIcons[*r.MarkerIcon] {
+			return ErrValidation("invalid marker_icon value")
+		}
+	}
+	if r.MarkerColor != nil {
+		if !HexColorRegex.MatchString(*r.MarkerColor) {
+			return ErrValidation("marker_color must be a valid hex color (e.g. #ff0000)")
+		}
+	}
+	return nil
 }
 
 // GroupMember represents a user's membership in a group.

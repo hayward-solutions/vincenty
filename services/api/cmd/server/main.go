@@ -252,6 +252,9 @@ func main() {
 	mux.Handle("PUT /api/v1/groups/{id}/members/{userId}", authMW.Authenticate(http.HandlerFunc(groupHandler.UpdateMember)))
 	mux.Handle("DELETE /api/v1/groups/{id}/members/{userId}", authMW.Authenticate(http.HandlerFunc(groupHandler.RemoveMember)))
 
+	// Groups - marker settings (authenticated, permission checked in service: group admin or system admin)
+	mux.Handle("PUT /api/v1/groups/{id}/marker", authMW.Authenticate(http.HandlerFunc(groupHandler.UpdateMarker)))
+
 	// Groups - CRUD (admin)
 	mux.Handle("GET /api/v1/groups", authMW.RequireAdmin(http.HandlerFunc(groupHandler.List)))
 	mux.Handle("POST /api/v1/groups", authMW.RequireAdmin(http.HandlerFunc(groupHandler.Create)))
