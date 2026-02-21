@@ -48,6 +48,7 @@ export function MapView({ settings, onMapReady, children }: MapViewProps) {
             type: "raster",
             tiles: [settings.tile_url],
             tileSize: 256,
+            maxzoom: settings.max_zoom,
             attribution:
               '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
           },
@@ -58,7 +59,6 @@ export function MapView({ settings, onMapReady, children }: MapViewProps) {
             type: "raster",
             source: "raster-tiles",
             minzoom: settings.min_zoom,
-            maxzoom: settings.max_zoom,
           },
         ],
       };
