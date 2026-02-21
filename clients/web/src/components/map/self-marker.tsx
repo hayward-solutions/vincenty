@@ -10,45 +10,106 @@ interface SelfMarkerProps {
   autoCenter?: boolean;
 }
 
+const SOURCE_ID = "self-location";
+const LAYER_DOT = "self-dot";
+const LAYER_PULSE = "self-pulse";
+
+const PULSE_DURATION = 2000;
+const PULSE_RADIUS_MIN = 10;
+const PULSE_RADIUS_MAX = 25;
+const PULSE_OPACITY_MAX = 0.25;
+
 /**
  * SelfMarker renders a blue pulsing dot for the current user's own position.
- * It uses the browser Geolocation position (from useLocationSharing) rather
- * than server-echoed data.
+ * It uses a GeoJSON source + circle layers so the marker is rendered on the
+ * WebGL canvas — keeping it perfectly in sync with the map during zoom/pan.
  */
 export function SelfMarker({ map, position, autoCenter = true }: SelfMarkerProps) {
-  const markerRef = useRef<maplibregl.Marker | null>(null);
+  const addedRef = useRef(false);
   const hasCenteredRef = useRef(false);
+  const animFrameRef = useRef(0);
+  const popupRef = useRef<maplibregl.Popup | null>(null);
 
+  // Add source, layers, event handlers, and start pulse animation
   useEffect(() => {
-    if (!position) return;
+    if (!position || addedRef.current) return;
 
-    if (!markerRef.current) {
-      // Create the marker element
-      const el = createSelfElement();
+    const data = pointFeature(position.lng, position.lat);
 
-      const popup = new maplibregl.Popup({
-        offset: 20,
+    map.addSource(SOURCE_ID, { type: "geojson", data });
+
+    // Pulse ring (rendered below the dot)
+    map.addLayer({
+      id: LAYER_PULSE,
+      type: "circle",
+      source: SOURCE_ID,
+      paint: {
+        "circle-radius": PULSE_RADIUS_MIN,
+        "circle-color": "#3b82f6",
+        "circle-opacity": PULSE_OPACITY_MAX,
+      },
+    });
+
+    // Solid dot
+    map.addLayer({
+      id: LAYER_DOT,
+      type: "circle",
+      source: SOURCE_ID,
+      paint: {
+        "circle-radius": 6,
+        "circle-color": "#3b82f6",
+        "circle-stroke-color": "#ffffff",
+        "circle-stroke-width": 2,
+      },
+    });
+
+    // Click → popup
+    map.on("click", LAYER_DOT, (e) => {
+      const coords = e.lngLat;
+      // Close any existing popup
+      popupRef.current?.remove();
+      popupRef.current = new maplibregl.Popup({
+        offset: 12,
         closeButton: false,
         maxWidth: "180px",
-      });
-
-      markerRef.current = new maplibregl.Marker({ element: el, anchor: "center" })
-        .setLngLat([position.lng, position.lat])
-        .setPopup(popup)
+      })
+        .setLngLat(coords)
+        .setHTML(
+          `<div style="font-weight:600;color:#3b82f6;margin-bottom:2px">You</div>` +
+            `<div style="font-size:12px">${coords.lat.toFixed(5)}, ${coords.lng.toFixed(5)}</div>`,
+        )
         .addTo(map);
-    }
+    });
 
-    // Update position
-    markerRef.current.setLngLat([position.lng, position.lat]);
+    // Cursor affordance
+    map.on("mouseenter", LAYER_DOT, () => {
+      map.getCanvas().style.cursor = "pointer";
+    });
+    map.on("mouseleave", LAYER_DOT, () => {
+      map.getCanvas().style.cursor = "";
+    });
 
-    // Update popup content
-    const popup = markerRef.current.getPopup();
-    if (popup) {
-      popup.setHTML(
-        `<div style="font-weight:600;color:#3b82f6;margin-bottom:2px">You</div>` +
-        `<div style="font-size:12px">${position.lat.toFixed(5)}, ${position.lng.toFixed(5)}</div>`
-      );
-    }
+    // Pulse animation loop
+    const start = performance.now();
+    const animate = () => {
+      const t = ((performance.now() - start) % PULSE_DURATION) / PULSE_DURATION;
+      const radius = PULSE_RADIUS_MIN + t * (PULSE_RADIUS_MAX - PULSE_RADIUS_MIN);
+      const opacity = PULSE_OPACITY_MAX * (1 - t);
+      map.setPaintProperty(LAYER_PULSE, "circle-radius", radius);
+      map.setPaintProperty(LAYER_PULSE, "circle-opacity", opacity);
+      animFrameRef.current = requestAnimationFrame(animate);
+    };
+    animFrameRef.current = requestAnimationFrame(animate);
+
+    addedRef.current = true;
+  }, [map, position]);
+
+  // Update position whenever it changes
+  useEffect(() => {
+    if (!position || !addedRef.current) return;
+
+    const source = map.getSource(SOURCE_ID) as maplibregl.GeoJSONSource | undefined;
+    source?.setData(pointFeature(position.lng, position.lat));
 
     // Auto-center on first fix
     if (autoCenter && !hasCenteredRef.current) {
@@ -64,50 +125,21 @@ export function SelfMarker({ map, position, autoCenter = true }: SelfMarkerProps
   // Cleanup on unmount
   useEffect(() => {
     return () => {
-      if (markerRef.current) {
-        markerRef.current.remove();
-        markerRef.current = null;
-      }
+      cancelAnimationFrame(animFrameRef.current);
+      popupRef.current?.remove();
+      if (map.getLayer(LAYER_DOT)) map.removeLayer(LAYER_DOT);
+      if (map.getLayer(LAYER_PULSE)) map.removeLayer(LAYER_PULSE);
+      if (map.getSource(SOURCE_ID)) map.removeSource(SOURCE_ID);
     };
-  }, []);
+  }, [map]);
 
   return null;
 }
 
-function createSelfElement(): HTMLElement {
-  const wrapper = document.createElement("div");
-  wrapper.style.cssText = "position:relative;width:22px;height:22px;cursor:pointer;";
-
-  // Pulsing ring
-  const pulse = document.createElement("div");
-  pulse.style.cssText = `
-    position:absolute;inset:0;border-radius:50%;
-    background:rgba(59,130,246,0.25);
-    animation:sa-pulse 2s ease-out infinite;
-  `;
-  wrapper.appendChild(pulse);
-
-  // Inner dot
-  const dot = document.createElement("div");
-  dot.style.cssText = `
-    position:absolute;top:5px;left:5px;width:12px;height:12px;
-    border-radius:50%;background:#3b82f6;
-    border:2px solid white;box-shadow:0 1px 4px rgba(0,0,0,0.4);
-  `;
-  wrapper.appendChild(dot);
-
-  // Inject keyframes if not already present
-  if (!document.getElementById("sa-pulse-style")) {
-    const style = document.createElement("style");
-    style.id = "sa-pulse-style";
-    style.textContent = `
-      @keyframes sa-pulse {
-        0% { transform:scale(1); opacity:1; }
-        100% { transform:scale(2.5); opacity:0; }
-      }
-    `;
-    document.head.appendChild(style);
-  }
-
-  return wrapper;
+function pointFeature(lng: number, lat: number): GeoJSON.Feature<GeoJSON.Point> {
+  return {
+    type: "Feature",
+    geometry: { type: "Point", coordinates: [lng, lat] },
+    properties: {},
+  };
 }

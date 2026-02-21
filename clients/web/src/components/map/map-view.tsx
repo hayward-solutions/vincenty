@@ -75,13 +75,6 @@ export function MapView({ settings, onMapReady, children }: MapViewProps) {
 
     map.addControl(new maplibregl.NavigationControl({ visualizePitch: true }), "top-right");
     map.addControl(new maplibregl.GlobeControl(), "top-right");
-    map.addControl(
-      new maplibregl.GeolocateControl({
-        positionOptions: { enableHighAccuracy: true },
-        trackUserLocation: true,
-      }),
-      "top-right"
-    );
 
     map.on("load", () => {
       mapRef.current = map;

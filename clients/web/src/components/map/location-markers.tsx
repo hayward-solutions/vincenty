@@ -85,12 +85,12 @@ export function LocationMarkers({
         );
 
         const popup = new maplibregl.Popup({
-          offset: 25,
+          offset: 12,
           closeButton: false,
           maxWidth: "220px",
         }).setHTML(buildPopupHTML(loc, color));
 
-        const marker = new maplibregl.Marker({ element: el, anchor: "bottom" })
+        const marker = new maplibregl.Marker({ element: el, anchor: "center" })
           .setLngLat([loc.lng, loc.lat])
           .setPopup(popup)
           .addTo(map);
@@ -129,24 +129,26 @@ export function LocationMarkers({
 function createMarkerElement(label: string, color: string): HTMLElement {
   const wrapper = document.createElement("div");
   wrapper.className = "sa-marker";
-  wrapper.style.cssText = "display:flex;flex-direction:column;align-items:center;cursor:pointer;";
+  wrapper.style.cssText = "position:relative;width:18px;height:18px;cursor:pointer;";
 
-  // Pin
+  // Pin — centered in the wrapper, determines the anchor point
   const pin = document.createElement("div");
   pin.style.cssText = `
+    position:absolute;top:2px;left:2px;
     width:14px;height:14px;border-radius:50%;
     background:${color};border:2px solid white;
     box-shadow:0 1px 4px rgba(0,0,0,0.4);
   `;
   wrapper.appendChild(pin);
 
-  // Label
+  // Label — absolutely positioned below the pin, outside the wrapper's layout
   const text = document.createElement("div");
   text.textContent = label;
   text.style.cssText = `
+    position:absolute;top:20px;left:50%;transform:translateX(-50%);
     font-size:11px;font-weight:600;color:white;
     background:rgba(0,0,0,0.7);padding:1px 5px;
-    border-radius:3px;margin-top:2px;white-space:nowrap;
+    border-radius:3px;white-space:nowrap;
     max-width:120px;overflow:hidden;text-overflow:ellipsis;
   `;
   wrapper.appendChild(text);
