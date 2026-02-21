@@ -73,9 +73,6 @@ export function MapView({ settings, onMapReady, children }: MapViewProps) {
       maxZoom: settings.max_zoom,
     });
 
-    map.addControl(new maplibregl.NavigationControl({ visualizePitch: true }), "top-right");
-    map.addControl(new maplibregl.GlobeControl(), "top-right");
-
     map.on("load", () => {
       mapRef.current = map;
       setIsReady(true);

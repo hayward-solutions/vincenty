@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { MapView } from "@/components/map/map-view";
 import { LocationMarkers } from "@/components/map/location-markers";
 import { SelfMarker } from "@/components/map/self-marker";
+import { MapControls } from "@/components/map/map-controls";
 import { GpxOverlay } from "@/components/map/gpx-overlay";
 import { HistoryTracks } from "@/components/map/history-tracks";
 import { ReplayControls } from "@/components/map/replay-controls";
@@ -450,6 +451,7 @@ export default function MapPage() {
       <MapView settings={settings} onMapReady={handleMapReady}>
         {mapRef.current && (
           <>
+            <MapControls map={mapRef.current} />
             <SelfMarker
               map={mapRef.current}
               position={lastPosition}
