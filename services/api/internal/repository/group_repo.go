@@ -23,29 +23,37 @@ func NewGroupRepository(pool *pgxpool.Pool) *GroupRepository {
 // Create inserts a new group into the database.
 func (r *GroupRepository) Create(ctx context.Context, group *model.Group) error {
 	query := `
-		INSERT INTO groups (id, name, description, created_by)
-		VALUES ($1, $2, $3, $4)
+		INSERT INTO groups (id, name, description, marker_icon, marker_color, created_by)
+		VALUES ($1, $2, $3, $4, $5, $6)
 		RETURNING created_at, updated_at`
 
 	if group.ID == uuid.Nil {
 		group.ID = uuid.New()
 	}
+	if group.MarkerIcon == "" {
+		group.MarkerIcon = "circle"
+	}
+	if group.MarkerColor == "" {
+		group.MarkerColor = "#3b82f6"
+	}
 
 	return r.pool.QueryRow(ctx, query,
-		group.ID, group.Name, group.Description, group.CreatedBy,
+		group.ID, group.Name, group.Description,
+		group.MarkerIcon, group.MarkerColor, group.CreatedBy,
 	).Scan(&group.CreatedAt, &group.UpdatedAt)
 }
 
 // GetByID retrieves a group by its ID.
 func (r *GroupRepository) GetByID(ctx context.Context, id uuid.UUID) (*model.Group, error) {
 	query := `
-		SELECT id, name, description, created_by, created_at, updated_at
+		SELECT id, name, description, marker_icon, marker_color, created_by, created_at, updated_at
 		FROM groups WHERE id = $1`
 
 	g := &model.Group{}
 	err := r.pool.QueryRow(ctx, query, id).Scan(
-		&g.ID, &g.Name, &g.Description, &g.CreatedBy,
-		&g.CreatedAt, &g.UpdatedAt,
+		&g.ID, &g.Name, &g.Description,
+		&g.MarkerIcon, &g.MarkerColor,
+		&g.CreatedBy, &g.CreatedAt, &g.UpdatedAt,
 	)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -68,7 +76,8 @@ func (r *GroupRepository) List(ctx context.Context, page, pageSize int) ([]model
 	// Fetch page with member counts
 	offset := (page - 1) * pageSize
 	query := `
-		SELECT g.id, g.name, g.description, g.created_by, g.created_at, g.updated_at,
+		SELECT g.id, g.name, g.description, g.marker_icon, g.marker_color,
+		       g.created_by, g.created_at, g.updated_at,
 		       COALESCE(mc.cnt, 0) AS member_count
 		FROM groups g
 		LEFT JOIN (
@@ -89,8 +98,9 @@ func (r *GroupRepository) List(ctx context.Context, page, pageSize int) ([]model
 		var g model.Group
 		var count int
 		if err := rows.Scan(
-			&g.ID, &g.Name, &g.Description, &g.CreatedBy,
-			&g.CreatedAt, &g.UpdatedAt, &count,
+			&g.ID, &g.Name, &g.Description,
+			&g.MarkerIcon, &g.MarkerColor,
+			&g.CreatedBy, &g.CreatedAt, &g.UpdatedAt, &count,
 		); err != nil {
 			return nil, nil, 0, err
 		}
@@ -104,7 +114,8 @@ func (r *GroupRepository) List(ctx context.Context, page, pageSize int) ([]model
 // ListByUserID retrieves groups that a user is a member of.
 func (r *GroupRepository) ListByUserID(ctx context.Context, userID uuid.UUID) ([]model.Group, []int, error) {
 	query := `
-		SELECT g.id, g.name, g.description, g.created_by, g.created_at, g.updated_at,
+		SELECT g.id, g.name, g.description, g.marker_icon, g.marker_color,
+		       g.created_by, g.created_at, g.updated_at,
 		       COALESCE(mc.cnt, 0) AS member_count
 		FROM groups g
 		INNER JOIN group_members gm ON gm.group_id = g.id
@@ -126,8 +137,9 @@ func (r *GroupRepository) ListByUserID(ctx context.Context, userID uuid.UUID) ([
 		var g model.Group
 		var count int
 		if err := rows.Scan(
-			&g.ID, &g.Name, &g.Description, &g.CreatedBy,
-			&g.CreatedAt, &g.UpdatedAt, &count,
+			&g.ID, &g.Name, &g.Description,
+			&g.MarkerIcon, &g.MarkerColor,
+			&g.CreatedBy, &g.CreatedAt, &g.UpdatedAt, &count,
 		); err != nil {
 			return nil, nil, err
 		}
@@ -142,12 +154,13 @@ func (r *GroupRepository) ListByUserID(ctx context.Context, userID uuid.UUID) ([
 func (r *GroupRepository) Update(ctx context.Context, group *model.Group) error {
 	query := `
 		UPDATE groups
-		SET name = $2, description = $3, updated_at = NOW()
+		SET name = $2, description = $3, marker_icon = $4, marker_color = $5, updated_at = NOW()
 		WHERE id = $1
 		RETURNING updated_at`
 
 	err := r.pool.QueryRow(ctx, query,
 		group.ID, group.Name, group.Description,
+		group.MarkerIcon, group.MarkerColor,
 	).Scan(&group.UpdatedAt)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -156,6 +169,29 @@ func (r *GroupRepository) Update(ctx context.Context, group *model.Group) error 
 		return err
 	}
 	return nil
+}
+
+// UpdateMarker updates only the marker icon and color fields for a group.
+func (r *GroupRepository) UpdateMarker(ctx context.Context, id uuid.UUID, markerIcon, markerColor string) (*model.Group, error) {
+	query := `
+		UPDATE groups
+		SET marker_icon = $2, marker_color = $3, updated_at = NOW()
+		WHERE id = $1
+		RETURNING id, name, description, marker_icon, marker_color, created_by, created_at, updated_at`
+
+	g := &model.Group{}
+	err := r.pool.QueryRow(ctx, query, id, markerIcon, markerColor).Scan(
+		&g.ID, &g.Name, &g.Description,
+		&g.MarkerIcon, &g.MarkerColor,
+		&g.CreatedBy, &g.CreatedAt, &g.UpdatedAt,
+	)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, model.ErrNotFound("group")
+		}
+		return nil, err
+	}
+	return g, nil
 }
 
 // Delete removes a group by ID.

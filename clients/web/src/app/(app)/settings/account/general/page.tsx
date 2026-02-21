@@ -16,6 +16,12 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { ApiError } from "@/lib/api";
+import {
+  AVAILABLE_SHAPES,
+  MARKER_SHAPES,
+  PRESET_COLORS,
+  markerSVGString,
+} from "@/components/map/marker-shapes";
 
 export default function GeneralSettingsPage() {
   const { user, refreshUser } = useAuth();
@@ -25,6 +31,14 @@ export default function GeneralSettingsPage() {
 
   const [displayName, setDisplayName] = useState(user?.display_name ?? "");
   const [email, setEmail] = useState(user?.email ?? "");
+  const [markerIcon, setMarkerIcon] = useState(user?.marker_icon || "circle");
+  const [markerColor, setMarkerColor] = useState(user?.marker_color || "#3b82f6");
+  const [markerCustomColor, setMarkerCustomColor] = useState(
+    PRESET_COLORS.includes(user?.marker_color || "#3b82f6")
+      ? ""
+      : user?.marker_color || ""
+  );
+  const [isSavingMarker, setIsSavingMarker] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const initials = user?.display_name
@@ -51,6 +65,29 @@ export default function GeneralSettingsPage() {
       toast.success("Profile updated");
     } catch (err) {
       toast.error(err instanceof ApiError ? err.message : "Failed to update profile");
+    }
+  }
+
+  async function handleMarkerSave() {
+    setIsSavingMarker(true);
+    try {
+      await updateMe({
+        marker_icon: markerIcon,
+        marker_color: markerColor,
+      });
+      await refreshUser();
+      toast.success("Map marker updated");
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : "Failed to update marker");
+    } finally {
+      setIsSavingMarker(false);
+    }
+  }
+
+  function handleMarkerCustomColorChange(value: string) {
+    setMarkerCustomColor(value);
+    if (/^#[0-9a-fA-F]{6}$/.test(value)) {
+      setMarkerColor(value);
     }
   }
 
@@ -139,6 +176,111 @@ export default function GeneralSettingsPage() {
               )}
             </div>
           </div>
+        </CardContent>
+      </Card>
+
+      {/* Map Marker Card */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Map Marker</CardTitle>
+          <CardDescription>
+            Customize how your position appears on the map. Choose a shape and
+            color for your &ldquo;You&rdquo; marker.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-5">
+          {/* Live preview */}
+          <div className="flex items-center justify-center p-4 bg-muted/50 rounded-lg">
+            <div className="flex flex-col items-center gap-1">
+              <span
+                dangerouslySetInnerHTML={{
+                  __html: markerSVGString(markerIcon, markerColor, 36),
+                }}
+              />
+              <span className="text-xs text-muted-foreground mt-1">
+                Preview
+              </span>
+            </div>
+          </div>
+
+          {/* Shape picker */}
+          <div className="space-y-2">
+            <Label>Shape</Label>
+            <div className="grid grid-cols-5 gap-2">
+              {AVAILABLE_SHAPES.map((shape) => (
+                <button
+                  key={shape}
+                  type="button"
+                  onClick={() => setMarkerIcon(shape)}
+                  className={`flex flex-col items-center gap-1 p-2 rounded-md border-2 transition-colors ${
+                    markerIcon === shape
+                      ? "border-primary bg-primary/10"
+                      : "border-transparent hover:bg-muted"
+                  }`}
+                >
+                  <span
+                    dangerouslySetInnerHTML={{
+                      __html: markerSVGString(shape, markerColor, 20),
+                    }}
+                  />
+                  <span className="text-[10px] text-muted-foreground">
+                    {MARKER_SHAPES[shape].label}
+                  </span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Color picker */}
+          <div className="space-y-2">
+            <Label>Color</Label>
+            <div className="flex flex-wrap gap-2">
+              {PRESET_COLORS.map((c) => (
+                <button
+                  key={c}
+                  type="button"
+                  onClick={() => {
+                    setMarkerColor(c);
+                    setMarkerCustomColor("");
+                  }}
+                  className={`w-7 h-7 rounded-full border-2 transition-all ${
+                    markerColor === c && !markerCustomColor
+                      ? "border-foreground scale-110"
+                      : "border-transparent hover:scale-105"
+                  }`}
+                  style={{ backgroundColor: c }}
+                  title={c}
+                />
+              ))}
+            </div>
+            <div className="flex items-center gap-2 mt-2">
+              <Label htmlFor="marker-custom-color" className="text-xs whitespace-nowrap">
+                Custom hex:
+              </Label>
+              <Input
+                id="marker-custom-color"
+                value={markerCustomColor}
+                onChange={(e) => handleMarkerCustomColorChange(e.target.value)}
+                placeholder="#ff0000"
+                className="h-8 text-sm font-mono w-28"
+                maxLength={7}
+              />
+              {markerCustomColor && /^#[0-9a-fA-F]{6}$/.test(markerCustomColor) && (
+                <div
+                  className="w-6 h-6 rounded-full border"
+                  style={{ backgroundColor: markerCustomColor }}
+                />
+              )}
+            </div>
+          </div>
+
+          <Button
+            type="button"
+            onClick={handleMarkerSave}
+            disabled={isSavingMarker}
+          >
+            {isSavingMarker ? "Saving..." : "Save Marker"}
+          </Button>
         </CardContent>
       </Card>
 

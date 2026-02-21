@@ -10,6 +10,7 @@ import {
   useDeleteGroup,
   useUpdateGroup,
 } from "@/lib/hooks/use-groups";
+import { markerSVGString } from "@/components/map/marker-shapes";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -169,8 +170,18 @@ function GroupRow({
       <TableCell className="font-medium">
         <Link
           href={`/settings/server/groups/${group.id}`}
-          className="hover:underline text-primary"
+          className="hover:underline text-primary flex items-center gap-2"
         >
+          <span
+            className="flex-shrink-0"
+            dangerouslySetInnerHTML={{
+              __html: markerSVGString(
+                group.marker_icon || "circle",
+                group.marker_color || "#3b82f6",
+                16
+              ),
+            }}
+          />
           {group.name}
         </Link>
       </TableCell>

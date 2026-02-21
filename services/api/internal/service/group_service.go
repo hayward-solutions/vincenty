@@ -36,6 +36,13 @@ func (s *GroupService) Create(ctx context.Context, req *model.CreateGroupRequest
 		CreatedBy:   &createdBy,
 	}
 
+	if req.MarkerIcon != nil {
+		group.MarkerIcon = *req.MarkerIcon
+	}
+	if req.MarkerColor != nil {
+		group.MarkerColor = *req.MarkerColor
+	}
+
 	if err := s.groupRepo.Create(ctx, group); err != nil {
 		return nil, 0, err
 	}
@@ -89,6 +96,20 @@ func (s *GroupService) Update(ctx context.Context, id uuid.UUID, req *model.Upda
 		group.Description = req.Description
 	}
 
+	if req.MarkerIcon != nil {
+		if !model.AllowedMarkerIcons[*req.MarkerIcon] {
+			return nil, 0, model.ErrValidation("invalid marker_icon value")
+		}
+		group.MarkerIcon = *req.MarkerIcon
+	}
+
+	if req.MarkerColor != nil {
+		if !model.HexColorRegex.MatchString(*req.MarkerColor) {
+			return nil, 0, model.ErrValidation("marker_color must be a valid hex color (e.g. #ff0000)")
+		}
+		group.MarkerColor = *req.MarkerColor
+	}
+
 	if err := s.groupRepo.Update(ctx, group); err != nil {
 		return nil, 0, err
 	}
@@ -99,6 +120,45 @@ func (s *GroupService) Update(ctx context.Context, id uuid.UUID, req *model.Upda
 	}
 
 	return group, count, nil
+}
+
+// UpdateMarker updates a group's marker icon and color.
+// Accessible by group admins and system admins.
+func (s *GroupService) UpdateMarker(ctx context.Context, groupID uuid.UUID, req *model.UpdateGroupMarkerRequest, callerID uuid.UUID, callerIsAdmin bool) (*model.Group, int, error) {
+	// Verify the group exists
+	group, err := s.groupRepo.GetByID(ctx, groupID)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	// Check permission: must be system admin or group admin
+	if !callerIsAdmin {
+		if err := s.requireGroupAdmin(ctx, groupID, callerID); err != nil {
+			return nil, 0, err
+		}
+	}
+
+	// Apply changes
+	icon := group.MarkerIcon
+	color := group.MarkerColor
+	if req.MarkerIcon != nil {
+		icon = *req.MarkerIcon
+	}
+	if req.MarkerColor != nil {
+		color = *req.MarkerColor
+	}
+
+	updated, err := s.groupRepo.UpdateMarker(ctx, groupID, icon, color)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	count, err := s.groupRepo.MemberCount(ctx, groupID)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	return updated, count, nil
 }
 
 // Delete removes a group (admin only).

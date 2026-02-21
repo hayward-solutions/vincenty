@@ -42,12 +42,16 @@ export function HistoryTracks({
 
   useEffect(() => {
     // Clean up previous layers and sources
-    layerIdsRef.current.forEach((id) => {
-      if (map.getLayer(id)) map.removeLayer(id);
-    });
-    sourceIdsRef.current.forEach((id) => {
-      if (map.getSource(id)) map.removeSource(id);
-    });
+    try {
+      layerIdsRef.current.forEach((id) => {
+        if (map.getLayer(id)) map.removeLayer(id);
+      });
+      sourceIdsRef.current.forEach((id) => {
+        if (map.getSource(id)) map.removeSource(id);
+      });
+    } catch {
+      // Map already destroyed during navigation
+    }
     layerIdsRef.current = [];
     sourceIdsRef.current = [];
 
@@ -119,12 +123,16 @@ export function HistoryTracks({
 
     // Cleanup
     return () => {
-      layerIdsRef.current.forEach((id) => {
-        if (map.getLayer(id)) map.removeLayer(id);
-      });
-      sourceIdsRef.current.forEach((id) => {
-        if (map.getSource(id)) map.removeSource(id);
-      });
+      try {
+        layerIdsRef.current.forEach((id) => {
+          if (map.getLayer(id)) map.removeLayer(id);
+        });
+        sourceIdsRef.current.forEach((id) => {
+          if (map.getSource(id)) map.removeSource(id);
+        });
+      } catch {
+        // Map already destroyed during navigation
+      }
       layerIdsRef.current = [];
       sourceIdsRef.current = [];
     };

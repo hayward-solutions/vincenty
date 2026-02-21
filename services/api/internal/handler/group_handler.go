@@ -129,6 +129,39 @@ func (h *GroupHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
+// UpdateMarker handles PUT /api/v1/groups/{id}/marker (group admin or system admin)
+func (h *GroupHandler) UpdateMarker(w http.ResponseWriter, r *http.Request) {
+	claims, ok := middleware.ClaimsFromContext(r.Context())
+	if !ok {
+		Error(w, http.StatusUnauthorized, "unauthorized", "missing auth context")
+		return
+	}
+
+	id, err := uuid.Parse(r.PathValue("id"))
+	if err != nil {
+		Error(w, http.StatusBadRequest, "validation_error", "invalid group id")
+		return
+	}
+
+	req, err := Decode[model.UpdateGroupMarkerRequest](r)
+	if err != nil {
+		HandleError(w, err)
+		return
+	}
+	if err := req.Validate(); err != nil {
+		HandleError(w, err)
+		return
+	}
+
+	group, count, err := h.groupService.UpdateMarker(r.Context(), id, &req, claims.UserID, claims.IsAdmin)
+	if err != nil {
+		HandleError(w, err)
+		return
+	}
+
+	JSON(w, http.StatusOK, group.ToResponse(count))
+}
+
 // --------------------------------------------------------------------------
 // My Groups (authenticated user)
 // --------------------------------------------------------------------------

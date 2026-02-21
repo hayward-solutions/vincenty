@@ -148,6 +148,20 @@ func (s *UserService) UpdateMe(ctx context.Context, id uuid.UUID, req *model.Upd
 		user.DisplayName = req.DisplayName
 	}
 
+	if req.MarkerIcon != nil {
+		if !model.AllowedMarkerIcons[*req.MarkerIcon] {
+			return nil, model.ErrValidation("invalid marker_icon value")
+		}
+		user.MarkerIcon = *req.MarkerIcon
+	}
+
+	if req.MarkerColor != nil {
+		if !model.HexColorRegex.MatchString(*req.MarkerColor) {
+			return nil, model.ErrValidation("marker_color must be a valid hex color (e.g. #ff0000)")
+		}
+		user.MarkerColor = *req.MarkerColor
+	}
+
 	if err := s.userRepo.Update(ctx, user); err != nil {
 		return nil, err
 	}
