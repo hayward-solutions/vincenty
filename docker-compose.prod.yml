@@ -131,6 +131,12 @@ services:
       - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
       - NEXT_PUBLIC_WS_URL=${NEXT_PUBLIC_WS_URL}
       - API_INTERNAL_URL=http://api:8080
+    healthcheck:
+      test: ["CMD", "node", "healthcheck.js"]
+      interval: 10s
+      timeout: 5s
+      start_period: 15s
+      retries: 3
     depends_on:
       - api
     restart: unless-stopped
