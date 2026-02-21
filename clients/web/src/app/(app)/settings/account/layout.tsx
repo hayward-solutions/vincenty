@@ -15,7 +15,7 @@ export default function AccountSettingsLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="flex h-[calc(100vh-3.5rem)]">
+    <div className="flex flex-col md:flex-row h-[calc(100vh-3.5rem)]">
       <SettingsSidebar title="Account Settings" items={accountItems} />
       <div className="flex-1 overflow-auto">{children}</div>
     </div>

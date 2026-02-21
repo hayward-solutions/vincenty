@@ -55,7 +55,7 @@ export default function GroupDetailPage() {
 
   if (groupLoading) {
     return (
-      <div className="p-6 space-y-4">
+      <div className="p-4 md:p-6 space-y-4">
         <Skeleton className="h-8 w-64" />
         <Skeleton className="h-12 w-full" />
         <Skeleton className="h-12 w-full" />
@@ -65,7 +65,7 @@ export default function GroupDetailPage() {
 
   if (!group) {
     return (
-      <div className="p-6">
+      <div className="p-4 md:p-6">
         <p className="text-muted-foreground">Group not found</p>
         <Button variant="outline" className="mt-4" asChild>
           <Link href="/settings/server/groups">Back to Groups</Link>
@@ -75,7 +75,7 @@ export default function GroupDetailPage() {
   }
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-4 md:p-6 space-y-6">
       <div className="flex items-center gap-4">
         <Button variant="ghost" size="sm" onClick={() => router.push("/settings/server/groups")}>
           &larr; Groups
@@ -103,7 +103,7 @@ export default function GroupDetailPage() {
             <Skeleton className="h-12 w-full" />
           </div>
         ) : (
-          <div className="rounded-md border">
+          <div className="rounded-md border overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow>

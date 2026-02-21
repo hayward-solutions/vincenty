@@ -98,7 +98,7 @@ export function AuditFilterBar({ onApply }: AuditFilterBarProps) {
           type="datetime-local"
           value={from}
           onChange={(e) => setFrom(e.target.value)}
-          className="h-9 w-48"
+          className="h-9 w-full sm:w-48"
         />
       </div>
       <div className="space-y-1">
@@ -107,7 +107,7 @@ export function AuditFilterBar({ onApply }: AuditFilterBarProps) {
           type="datetime-local"
           value={to}
           onChange={(e) => setTo(e.target.value)}
-          className="h-9 w-48"
+          className="h-9 w-full sm:w-48"
         />
       </div>
       <Button size="sm" onClick={handleApply}>

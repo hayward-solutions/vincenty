@@ -101,7 +101,7 @@ export function ReplayControls({
   const currentTime = new Date(from.getTime() + (progress / 100) * totalMs);
 
   return (
-    <div className="absolute bottom-4 left-4 right-4 z-10 flex items-center gap-3 bg-card/90 backdrop-blur-sm border rounded-lg px-4 py-3 shadow-lg">
+    <div className="absolute bottom-4 left-4 right-4 z-10 flex flex-wrap items-center gap-2 sm:gap-3 bg-card/90 backdrop-blur-sm border rounded-lg px-3 py-2 sm:px-4 sm:py-3 shadow-lg">
       <Button
         variant="ghost"
         size="sm"
@@ -130,7 +130,7 @@ export function ReplayControls({
         className="flex-1 h-1.5 accent-primary cursor-pointer"
       />
 
-      <span className="text-xs text-muted-foreground shrink-0 w-32 text-right font-mono">
+      <span className="text-xs text-muted-foreground shrink-0 w-20 sm:w-32 text-right font-mono">
         {formatTime(currentTime)}
       </span>
 

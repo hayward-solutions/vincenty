@@ -43,7 +43,7 @@ export default function MapSettingsPage() {
   const [editConfig, setEditConfig] = useState<MapConfigResponse | null>(null);
 
   return (
-    <div className="p-6 space-y-4">
+    <div className="p-4 md:p-6 space-y-4">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-semibold">Map Configs</h1>
         <Button onClick={() => setCreateOpen(true)}>Create Config</Button>
@@ -55,7 +55,7 @@ export default function MapSettingsPage() {
           <Skeleton className="h-12 w-full" />
         </div>
       ) : (
-        <div className="rounded-md border">
+        <div className="rounded-md border overflow-x-auto">
           <Table>
             <TableHeader>
               <TableRow>
@@ -261,7 +261,7 @@ function CreateConfigDialog({
               placeholder="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
             />
           </div>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="cmc-min">Min Zoom</Label>
               <Input
@@ -403,7 +403,7 @@ function EditConfigDialog({
               onChange={(e) => setForm({ ...form, tile_url: e.target.value })}
             />
           </div>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="emc-min">Min Zoom</Label>
               <Input

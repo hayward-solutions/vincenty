@@ -141,7 +141,7 @@ export function ReplayPanel({
     "flex h-8 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring";
 
   return (
-    <div className="absolute top-3 left-3 z-10 bg-card/95 backdrop-blur-sm border rounded-lg p-4 shadow-lg space-y-3 w-72">
+    <div className="absolute top-3 left-3 right-3 sm:right-auto z-10 bg-card/95 backdrop-blur-sm border rounded-lg p-4 shadow-lg space-y-3 sm:w-72">
       <h3 className="text-sm font-medium">Replay Tracks</h3>
 
       {isAdmin && (

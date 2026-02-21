@@ -14,8 +14,14 @@ import { MessageThread } from "@/components/chat/message-thread";
 import { MessageInput } from "@/components/chat/message-input";
 import { NewDmDialog } from "@/components/chat/new-dm-dialog";
 import { Separator } from "@/components/ui/separator";
+import { Button } from "@/components/ui/button";
 import type { Conversation, MessageResponse } from "@/types/api";
-import { Hash, MessageSquare, User as UserIcon } from "lucide-react";
+import {
+  ArrowLeft,
+  Hash,
+  MessageSquare,
+  User as UserIcon,
+} from "lucide-react";
 
 export default function MessagesPage() {
   const { user } = useAuth();
@@ -93,6 +99,11 @@ export default function MessagesPage() {
     setActiveConversation(conv);
   }, []);
 
+  // Mobile back: clear active conversation to show the list
+  const handleBack = useCallback(() => {
+    setActiveConversation(null);
+  }, []);
+
   // When a user is picked from the New DM dialog
   const handleNewDmSelect = useCallback(
     (userId: string, displayName: string) => {
@@ -105,7 +116,12 @@ export default function MessagesPage() {
   return (
     <div className="flex h-[calc(100vh-3.5rem)]">
       {/* Left panel: conversation list */}
-      <div className="w-64 shrink-0 border-r flex flex-col">
+      {/* Mobile: hidden when a conversation is selected */}
+      <div
+        className={`w-full md:w-64 shrink-0 border-r flex flex-col ${
+          activeConversation ? "hidden md:flex" : "flex"
+        }`}
+      >
         <div className="p-3 border-b">
           <h2 className="text-sm font-semibold flex items-center gap-1.5">
             <MessageSquare className="h-4 w-4" />
@@ -126,14 +142,29 @@ export default function MessagesPage() {
         )}
       </div>
 
-      <Separator orientation="vertical" />
+      <Separator orientation="vertical" className="hidden md:block" />
 
       {/* Right panel: message thread + input */}
-      <div className="flex-1 flex flex-col min-w-0">
+      {/* Mobile: hidden when no conversation is selected */}
+      <div
+        className={`flex-1 flex flex-col min-w-0 ${
+          activeConversation ? "flex" : "hidden md:flex"
+        }`}
+      >
         {activeConversation ? (
           <>
             {/* Thread header */}
             <div className="p-3 border-b flex items-center gap-2">
+              {/* Mobile back button */}
+              <Button
+                variant="ghost"
+                size="sm"
+                className="md:hidden h-8 w-8 p-0 shrink-0"
+                onClick={handleBack}
+              >
+                <ArrowLeft className="h-4 w-4" />
+                <span className="sr-only">Back to conversations</span>
+              </Button>
               {activeConversation.type === "group" ? (
                 <Hash className="h-4 w-4 text-muted-foreground" />
               ) : (

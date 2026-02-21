@@ -24,6 +24,7 @@ clients/web/out/
 *.swo
 *~
 .DS_Store
+TODO.md
 
 # Docker volumes (local dev data)
 .docker-data/

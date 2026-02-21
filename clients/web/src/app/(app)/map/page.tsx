@@ -504,7 +504,7 @@ export default function MapPage() {
             (showGroupFilter ||
               visibleUsers.length > 1 ||
               visibleDevices.length > 1) && (
-              <div className="absolute top-3 left-3 z-10 bg-card/95 backdrop-blur-sm border rounded-lg p-3 shadow-lg w-56 max-h-[calc(100vh-8rem)] overflow-y-auto space-y-3">
+              <div className="absolute top-3 left-3 right-3 sm:right-auto z-10 bg-card/95 backdrop-blur-sm border rounded-lg p-3 shadow-lg sm:w-56 max-h-[calc(100vh-8rem)] overflow-y-auto space-y-3">
                 <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
                   Filters
                 </h4>

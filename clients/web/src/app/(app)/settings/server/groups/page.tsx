@@ -44,7 +44,7 @@ export default function GroupsSettingsPage() {
   const [editGroup, setEditGroup] = useState<Group | null>(null);
 
   return (
-    <div className="p-6 space-y-4">
+    <div className="p-4 md:p-6 space-y-4">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-semibold">Groups</h1>
         <Button onClick={() => setCreateOpen(true)}>Create Group</Button>
@@ -58,7 +58,7 @@ export default function GroupsSettingsPage() {
         </div>
       ) : (
         <>
-          <div className="rounded-md border">
+          <div className="rounded-md border overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow>

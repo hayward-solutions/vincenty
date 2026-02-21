@@ -141,7 +141,7 @@ export default function DevicesSettingsPage() {
   }
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-4 md:p-6 space-y-6">
       <h1 className="text-2xl font-semibold">Devices</h1>
 
       <Card>
@@ -164,7 +164,7 @@ export default function DevicesSettingsPage() {
               })}
             </div>
           ) : (
-            <div className="rounded-md border">
+            <div className="rounded-md border overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
