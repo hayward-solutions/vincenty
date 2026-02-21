@@ -13,8 +13,6 @@ import { api } from "@/lib/api";
 import { DeviceEnrolmentDialog } from "@/components/devices/device-enrolment-dialog";
 import type { Device, DeviceResolveResponse, WSEnvelope } from "@/types/api";
 
-const WS_URL = process.env.NEXT_PUBLIC_WS_URL || "ws://localhost:8080";
-
 type ConnectionState = "connecting" | "connected" | "disconnected";
 type MessageHandler = (type: string, payload: unknown) => void;
 
@@ -25,6 +23,11 @@ interface WebSocketContextType {
   subscribe: (handler: MessageHandler) => () => void;
 }
 
+interface WebSocketProviderProps {
+  wsUrl?: string;
+  children: React.ReactNode;
+}
+
 const WebSocketContext = createContext<WebSocketContextType | undefined>(
   undefined
 );
@@ -32,7 +35,10 @@ const WebSocketContext = createContext<WebSocketContextType | undefined>(
 // Maximum reconnect backoff in ms.
 const MAX_BACKOFF = 30_000;
 
-export function WebSocketProvider({ children }: { children: React.ReactNode }) {
+export function WebSocketProvider({
+  wsUrl = "ws://localhost:8080",
+  children,
+}: WebSocketProviderProps) {
   const { user, isAuthenticated } = useAuth();
   const [connectionState, setConnectionState] =
     useState<ConnectionState>("disconnected");
@@ -145,7 +151,7 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
 
       setConnectionState("connecting");
 
-      const url = `${WS_URL}/api/v1/ws?token=${encodeURIComponent(token)}&device_id=${encodeURIComponent(devId)}`;
+      const url = `${wsUrl}/api/v1/ws?token=${encodeURIComponent(token)}&device_id=${encodeURIComponent(devId)}`;
 
       try {
         const socket = new WebSocket(url);
@@ -209,7 +215,7 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
         setConnectionState("disconnected");
       }
     },
-    [dispatch, ensureDevice]
+    [dispatch, ensureDevice, wsUrl]
   );
 
   // -----------------------------------------------------------------------

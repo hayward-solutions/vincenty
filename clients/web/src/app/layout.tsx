@@ -31,7 +31,7 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         <AuthProvider>
-          <WebSocketProvider>
+           <WebSocketProvider wsUrl={process.env.NEXT_PUBLIC_WS_URL}>
             {children}
             <Toaster />
           </WebSocketProvider>
