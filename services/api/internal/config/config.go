@@ -162,14 +162,17 @@ func Load() (*Config, error) {
 		WS: WSConfig{
 			LocationThrottle: envDuration("WS_LOCATION_THROTTLE", 1*time.Second),
 		},
-		S3: S3Config{
-			Endpoint:     envStr("S3_ENDPOINT", "http://localhost:9000"),
-			AccessKey:    envStr("S3_ACCESS_KEY", "sitaware"),
-			SecretKey:    envStr("S3_SECRET_KEY", "sitaware123"),
-			Bucket:       envStr("S3_BUCKET", "sitaware"),
-			Region:       envStr("S3_REGION", "us-east-1"),
-			UsePathStyle: envBool("S3_USE_PATH_STYLE", true),
-		},
+		S3: func() S3Config {
+			region := envStr("S3_REGION", "us-east-1")
+			return S3Config{
+				Endpoint:     envStr("S3_ENDPOINT", fmt.Sprintf("https://s3.%s.amazonaws.com", region)),
+				AccessKey:    envStr("S3_ACCESS_KEY", ""),
+				SecretKey:    envStr("S3_SECRET_KEY", ""),
+				Bucket:       envStr("S3_BUCKET", "sitaware"),
+				Region:       region,
+				UsePathStyle: envBool("S3_USE_PATH_STYLE", false),
+			}
+		}(),
 		Map: MapConfig{
 			DefaultTileURL:   envStr("MAP_DEFAULT_TILE_URL", "https://tile.openstreetmap.org/{z}/{x}/{y}.png"),
 			DefaultCenterLat: envFloat("MAP_DEFAULT_CENTER_LAT", 0),

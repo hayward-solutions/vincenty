@@ -12,13 +12,20 @@ import (
 )
 
 // connectS3 creates an S3 client configured for either AWS S3 or Minio.
+// When S3_ACCESS_KEY and S3_SECRET_KEY are set, static credentials are used
+// (for Minio / local development). When they are empty, the default credential
+// chain is used, which picks up the ECS task role on Fargate automatically.
 func connectS3(ctx context.Context, cfg config.S3Config) (*s3.Client, error) {
-	awsCfg, err := awsconfig.LoadDefaultConfig(ctx,
+	opts := []func(*awsconfig.LoadOptions) error{
 		awsconfig.WithRegion(cfg.Region),
-		awsconfig.WithCredentialsProvider(
+	}
+	if cfg.AccessKey != "" && cfg.SecretKey != "" {
+		opts = append(opts, awsconfig.WithCredentialsProvider(
 			credentials.NewStaticCredentialsProvider(cfg.AccessKey, cfg.SecretKey, ""),
-		),
-	)
+		))
+	}
+
+	awsCfg, err := awsconfig.LoadDefaultConfig(ctx, opts...)
 	if err != nil {
 		return nil, err
 	}
