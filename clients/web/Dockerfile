@@ -16,11 +16,9 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
-# Build-time environment variables
+# Build-time environment variables (NEXT_PUBLIC_* are inlined at build time by Next.js)
 ARG NEXT_PUBLIC_API_URL
-ARG API_INTERNAL_URL=http://localhost:8080
 ENV NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
-ENV API_INTERNAL_URL=${API_INTERNAL_URL}
 
 RUN npm run build
 

@@ -3,7 +3,7 @@
 
 const http = require("http");
 
-const req = http.get("http://localhost:3000/", (res) => {
+const req = http.get("http://localhost:3000/api/healthz", (res) => {
   process.exit(res.statusCode === 200 ? 0 : 1);
 });
 
