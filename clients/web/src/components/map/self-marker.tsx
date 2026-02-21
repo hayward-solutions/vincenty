@@ -92,6 +92,8 @@ export function SelfMarker({ map, position, autoCenter = true }: SelfMarkerProps
     // Pulse animation loop
     const start = performance.now();
     const animate = () => {
+      // Guard: stop if the map has been destroyed (style removed by map.remove())
+      if (!(map as any).style) return;
       const t = ((performance.now() - start) % PULSE_DURATION) / PULSE_DURATION;
       const radius = PULSE_RADIUS_MIN + t * (PULSE_RADIUS_MAX - PULSE_RADIUS_MIN);
       const opacity = PULSE_OPACITY_MAX * (1 - t);
@@ -127,9 +129,13 @@ export function SelfMarker({ map, position, autoCenter = true }: SelfMarkerProps
     return () => {
       cancelAnimationFrame(animFrameRef.current);
       popupRef.current?.remove();
-      if (map.getLayer(LAYER_DOT)) map.removeLayer(LAYER_DOT);
-      if (map.getLayer(LAYER_PULSE)) map.removeLayer(LAYER_PULSE);
-      if (map.getSource(SOURCE_ID)) map.removeSource(SOURCE_ID);
+      try {
+        if (map.getLayer(LAYER_DOT)) map.removeLayer(LAYER_DOT);
+        if (map.getLayer(LAYER_PULSE)) map.removeLayer(LAYER_PULSE);
+        if (map.getSource(SOURCE_ID)) map.removeSource(SOURCE_ID);
+      } catch {
+        // Map already destroyed during navigation
+      }
     };
   }, [map]);
 

@@ -176,27 +176,13 @@ function createMarkerElement(
 ): HTMLElement {
   const wrapper = document.createElement("div");
   wrapper.className = "sa-marker";
-<<<<<<< Updated upstream
   wrapper.style.cssText = "position:relative;width:18px;height:18px;cursor:pointer;";
 
-  // Pin — centered in the wrapper, determines the anchor point
-  const pin = document.createElement("div");
-  pin.style.cssText = `
-    position:absolute;top:2px;left:2px;
-    width:14px;height:14px;border-radius:50%;
-    background:${color};border:2px solid white;
-    box-shadow:0 1px 4px rgba(0,0,0,0.4);
-  `;
-  wrapper.appendChild(pin);
-=======
-  wrapper.style.cssText =
-    "display:flex;flex-direction:column;align-items:center;cursor:pointer;";
-
-  // Shape icon
+  // Shape icon — centered in the wrapper, determines the anchor point
   const svg = createMarkerSVG(icon, color, 18);
+  svg.style.cssText = "position:absolute;top:0;left:0;";
   svg.style.filter = "drop-shadow(0 1px 3px rgba(0,0,0,0.4))";
   wrapper.appendChild(svg);
->>>>>>> Stashed changes
 
   // Label — absolutely positioned below the pin, outside the wrapper's layout
   const text = document.createElement("div");
