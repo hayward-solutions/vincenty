@@ -18,6 +18,7 @@ type User struct {
 	MarkerColor  string    `json:"-"`
 	IsAdmin      bool      `json:"-"`
 	IsActive     bool      `json:"-"`
+	MFAEnabled   bool      `json:"-"`
 	CreatedAt    time.Time `json:"-"`
 	UpdatedAt    time.Time `json:"-"`
 }
@@ -33,6 +34,7 @@ type UserResponse struct {
 	MarkerColor string    `json:"marker_color"`
 	IsAdmin     bool      `json:"is_admin"`
 	IsActive    bool      `json:"is_active"`
+	MFAEnabled  bool      `json:"mfa_enabled"`
 	CreatedAt   time.Time `json:"created_at"`
 	UpdatedAt   time.Time `json:"updated_at"`
 }
@@ -57,6 +59,7 @@ func (u *User) ToResponse() UserResponse {
 		MarkerColor: u.MarkerColor,
 		IsAdmin:     u.IsAdmin,
 		IsActive:    u.IsActive,
+		MFAEnabled:  u.MFAEnabled,
 		CreatedAt:   u.CreatedAt,
 		UpdatedAt:   u.UpdatedAt,
 	}

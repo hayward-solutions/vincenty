@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/google/uuid"
 	"github.com/sitaware/api/internal/auth"
 )
 
@@ -104,6 +105,48 @@ func (a *Auth) RequireAdmin(next http.Handler) http.Handler {
 func ClaimsFromContext(ctx context.Context) (*auth.Claims, bool) {
 	claims, ok := ctx.Value(claimsKey).(*auth.Claims)
 	return claims, ok
+}
+
+// MFASetupChecker provides MFA enforcement state. Implemented by ServerSettingsRepository.
+type MFASetupChecker interface {
+	IsMFARequired(ctx context.Context) bool
+}
+
+// RequireMFASetup returns middleware that blocks access if the server-wide
+// MFA requirement is enabled and the authenticated user hasn't configured MFA.
+// Requests to MFA setup endpoints are always allowed through.
+func (a *Auth) RequireMFASetup(checker MFASetupChecker, getUserMFAEnabled func(ctx context.Context, userID uuid.UUID) (bool, error)) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			// Allow MFA setup endpoints through unconditionally
+			path := r.URL.Path
+			if strings.HasPrefix(path, "/api/v1/users/me/mfa/") ||
+				path == "/api/v1/users/me" ||
+				path == "/api/v1/server/settings" {
+				next.ServeHTTP(w, r)
+				return
+			}
+
+			if !checker.IsMFARequired(r.Context()) {
+				next.ServeHTTP(w, r)
+				return
+			}
+
+			claims, ok := ClaimsFromContext(r.Context())
+			if !ok {
+				next.ServeHTTP(w, r)
+				return
+			}
+
+			mfaEnabled, err := getUserMFAEnabled(r.Context(), claims.UserID)
+			if err != nil || !mfaEnabled {
+				writeError(w, http.StatusForbidden, "mfa_setup_required", "MFA must be configured before accessing this resource")
+				return
+			}
+
+			next.ServeHTTP(w, r)
+		})
+	}
 }
 
 // writeError writes a JSON error response without importing the handler package.

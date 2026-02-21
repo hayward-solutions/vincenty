@@ -40,6 +40,12 @@ type Config struct {
 	// Rate limiting
 	RateLimit RateLimitConfig
 
+	// MFA
+	MFA MFAConfig
+
+	// WebAuthn / FIDO2
+	WebAuthn WebAuthnConfig
+
 	// Security
 	Security SecurityConfig
 
@@ -123,6 +129,21 @@ type RateLimitConfig struct {
 	Burst int
 }
 
+type MFAConfig struct {
+	// KMSKeyARN enables AWS KMS encryption for TOTP secrets.
+	// When empty, secrets are encrypted locally using a key derived from JWT_SECRET.
+	KMSKeyARN string
+}
+
+type WebAuthnConfig struct {
+	// RPID is the Relying Party identifier (typically the domain name, e.g. "example.com").
+	RPID string
+	// RPDisplayName is shown to the user during WebAuthn ceremonies.
+	RPDisplayName string
+	// RPOrigins is a comma-separated list of allowed origins (e.g. "https://example.com").
+	RPOrigins []string
+}
+
 type SecurityConfig struct {
 	MaxRequestBodyBytes int64
 }
@@ -178,6 +199,14 @@ func Load() (*Config, error) {
 			DefaultCenterLat: envFloat("MAP_DEFAULT_CENTER_LAT", 0),
 			DefaultCenterLng: envFloat("MAP_DEFAULT_CENTER_LNG", 0),
 			DefaultZoom:      envInt("MAP_DEFAULT_ZOOM", 2),
+		},
+		MFA: MFAConfig{
+			KMSKeyARN: envStr("MFA_KMS_KEY_ARN", ""),
+		},
+		WebAuthn: WebAuthnConfig{
+			RPID:          envStr("WEBAUTHN_RP_ID", "localhost"),
+			RPDisplayName: envStr("WEBAUTHN_RP_DISPLAY_NAME", "SitAware"),
+			RPOrigins:     envStrSlice("WEBAUTHN_RP_ORIGINS", []string{"http://localhost:3000"}),
 		},
 		CORS: CORSConfig{
 			AllowedOrigins: envStrSlice("CORS_ALLOWED_ORIGINS", []string{"*"}),

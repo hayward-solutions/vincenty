@@ -4,6 +4,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { ApiError } from "@/lib/api";
 import { useUsers, useCreateUser, useDeleteUser, useUpdateUser } from "@/lib/hooks/use-users";
+import { useAdminResetMFA } from "@/lib/hooks/use-mfa";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -63,6 +64,7 @@ export default function UsersSettingsPage() {
                   <TableHead>Email</TableHead>
                   <TableHead>Display Name</TableHead>
                   <TableHead>Role</TableHead>
+                  <TableHead>MFA</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead className="w-12" />
                 </TableRow>
@@ -78,7 +80,7 @@ export default function UsersSettingsPage() {
                 ))}
                 {data?.data.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
+                    <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
                       No users found
                     </TableCell>
                   </TableRow>
@@ -144,6 +146,7 @@ function UserRow({
   onDeleted: () => void;
 }) {
   const { deleteUser } = useDeleteUser();
+  const { resetMFA } = useAdminResetMFA();
 
   async function handleDelete() {
     if (!confirm(`Delete user "${user.username}"?`)) return;
@@ -153,6 +156,17 @@ function UserRow({
       onDeleted();
     } catch (err) {
       toast.error(err instanceof ApiError ? err.message : "Failed to delete user");
+    }
+  }
+
+  async function handleResetMFA() {
+    if (!confirm(`Reset MFA for "${user.username}"? They will need to set it up again.`)) return;
+    try {
+      await resetMFA(user.id);
+      toast.success(`MFA reset for "${user.username}"`);
+      onDeleted();
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : "Failed to reset MFA");
     }
   }
 
@@ -166,6 +180,13 @@ function UserRow({
           <Badge variant="default">Admin</Badge>
         ) : (
           <Badge variant="secondary">User</Badge>
+        )}
+      </TableCell>
+      <TableCell>
+        {user.mfa_enabled ? (
+          <Badge variant="outline" className="border-green-500 text-green-500">Enabled</Badge>
+        ) : (
+          <Badge variant="outline" className="text-muted-foreground">Off</Badge>
         )}
       </TableCell>
       <TableCell>
@@ -184,6 +205,11 @@ function UserRow({
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
             <DropdownMenuItem onClick={onEdit}>Edit</DropdownMenuItem>
+            {user.mfa_enabled && (
+              <DropdownMenuItem onClick={handleResetMFA}>
+                Reset MFA
+              </DropdownMenuItem>
+            )}
             <DropdownMenuItem
               onClick={handleDelete}
               className="text-destructive"
