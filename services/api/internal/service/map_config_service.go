@@ -26,6 +26,10 @@ func (s *MapConfigService) Create(ctx context.Context, req *model.CreateMapConfi
 	if req.TileURL != "" {
 		tileURL = &req.TileURL
 	}
+	var terrainURL *string
+	if req.TerrainURL != "" {
+		terrainURL = &req.TerrainURL
+	}
 
 	minZoom := 0
 	if req.MinZoom != nil {
@@ -48,14 +52,16 @@ func (s *MapConfigService) Create(ctx context.Context, req *model.CreateMapConfi
 	}
 
 	mc := &model.MapConfig{
-		Name:       req.Name,
-		SourceType: req.SourceType,
-		TileURL:    tileURL,
-		StyleJSON:  req.StyleJSON,
-		MinZoom:    minZoom,
-		MaxZoom:    maxZoom,
-		IsDefault:  isDefault,
-		CreatedBy:  &createdBy,
+		Name:            req.Name,
+		SourceType:      req.SourceType,
+		TileURL:         tileURL,
+		StyleJSON:       req.StyleJSON,
+		MinZoom:         minZoom,
+		MaxZoom:         maxZoom,
+		TerrainURL:      terrainURL,
+		TerrainEncoding: req.TerrainEncoding,
+		IsDefault:       isDefault,
+		CreatedBy:       &createdBy,
 	}
 
 	if err := s.repo.Create(ctx, mc); err != nil {
@@ -85,13 +91,15 @@ func (s *MapConfigService) GetSettings(ctx context.Context) (*model.MapSettingsR
 
 	// Start with environment defaults
 	resp := &model.MapSettingsResponse{
-		TileURL:   s.mapDefaults.DefaultTileURL,
-		CenterLat: s.mapDefaults.DefaultCenterLat,
-		CenterLng: s.mapDefaults.DefaultCenterLng,
-		Zoom:      s.mapDefaults.DefaultZoom,
-		MinZoom:   0,
-		MaxZoom:   18,
-		Configs:   make([]model.MapConfigResponse, 0, len(configs)),
+		TileURL:         s.mapDefaults.DefaultTileURL,
+		CenterLat:       s.mapDefaults.DefaultCenterLat,
+		CenterLng:       s.mapDefaults.DefaultCenterLng,
+		Zoom:            s.mapDefaults.DefaultZoom,
+		MinZoom:         0,
+		MaxZoom:         18,
+		TerrainURL:      s.mapDefaults.DefaultTerrainURL,
+		TerrainEncoding: "terrarium",
+		Configs:         make([]model.MapConfigResponse, 0, len(configs)),
 	}
 
 	// Override with default DB config if one exists
@@ -104,6 +112,12 @@ func (s *MapConfigService) GetSettings(ctx context.Context) (*model.MapSettingsR
 			resp.StyleJSON = mc.StyleJSON
 			resp.MinZoom = mc.MinZoom
 			resp.MaxZoom = mc.MaxZoom
+			if mc.TerrainURL != nil {
+				resp.TerrainURL = *mc.TerrainURL
+			}
+			if mc.TerrainEncoding != "" {
+				resp.TerrainEncoding = mc.TerrainEncoding
+			}
 		}
 	}
 
@@ -143,6 +157,15 @@ func (s *MapConfigService) Update(ctx context.Context, id uuid.UUID, req *model.
 	}
 	if req.MaxZoom != nil {
 		mc.MaxZoom = *req.MaxZoom
+	}
+	if req.TerrainURL != nil {
+		mc.TerrainURL = req.TerrainURL
+	}
+	if req.TerrainEncoding != nil {
+		if *req.TerrainEncoding != "terrarium" && *req.TerrainEncoding != "mapbox" {
+			return nil, model.ErrValidation("terrain_encoding must be 'terrarium' or 'mapbox'")
+		}
+		mc.TerrainEncoding = *req.TerrainEncoding
 	}
 	if req.IsDefault != nil && *req.IsDefault != mc.IsDefault {
 		if *req.IsDefault {

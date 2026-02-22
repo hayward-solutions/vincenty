@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback, useRef } from "react";
 import type maplibregl from "maplibre-gl";
-import { Plus, Minus, Compass, Globe } from "lucide-react";
+import { Plus, Minus, Compass, Globe, Mountain } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Tooltip,
@@ -14,13 +14,14 @@ import { Separator } from "@/components/ui/separator";
 
 interface MapControlsProps {
   map: maplibregl.Map;
+  terrainAvailable?: boolean;
 }
 
 /**
  * Custom map navigation controls replacing MapLibre's built-in
  * NavigationControl and GlobeControl with buttons matching our design system.
  */
-export function MapControls({ map }: MapControlsProps) {
+export function MapControls({ map, terrainAvailable }: MapControlsProps) {
   // Track whether the component is still mounted so map event handlers
   // don't trigger React state updates after the map has been destroyed.
   // Without this guard, navigating away from the map page causes a cascade:
@@ -43,6 +44,7 @@ export function MapControls({ map }: MapControlsProps) {
       return false;
     }
   });
+  const [isTerrain, setIsTerrain] = useState(false);
 
   useEffect(() => {
     const onRotate = () => {
@@ -76,11 +78,37 @@ export function MapControls({ map }: MapControlsProps) {
 
   const handleToggleGlobe = useCallback(() => {
     try {
-      const next = isGlobe ? "mercator" : "globe";
-      map.setProjection({ type: next } as maplibregl.ProjectionSpecification);
-      setIsGlobe(!isGlobe);
+      if (!isGlobe) {
+        // Switching to globe — disable terrain first (incompatible)
+        if (isTerrain) {
+          map.setTerrain(null);
+          setIsTerrain(false);
+        }
+        map.setProjection({ type: "globe" } as maplibregl.ProjectionSpecification);
+        setIsGlobe(true);
+      } else {
+        map.setProjection({ type: "mercator" } as maplibregl.ProjectionSpecification);
+        setIsGlobe(false);
+      }
     } catch { /* map destroyed */ }
-  }, [map, isGlobe]);
+  }, [map, isGlobe, isTerrain]);
+
+  const handleToggleTerrain = useCallback(() => {
+    try {
+      if (isTerrain) {
+        map.setTerrain(null);
+        setIsTerrain(false);
+      } else {
+        // Enabling terrain — switch away from globe first (incompatible)
+        if (isGlobe) {
+          map.setProjection({ type: "mercator" } as maplibregl.ProjectionSpecification);
+          setIsGlobe(false);
+        }
+        map.setTerrain({ source: "terrain-dem", exaggeration: 1.0 });
+        setIsTerrain(true);
+      }
+    } catch { /* map destroyed */ }
+  }, [map, isTerrain, isGlobe]);
 
   const isRotated = bearing !== 0 || pitch !== 0;
 
@@ -155,6 +183,29 @@ export function MapControls({ map }: MapControlsProps) {
             {isGlobe ? "Switch to flat map" : "Switch to globe"}
           </TooltipContent>
         </Tooltip>
+
+        {terrainAvailable && (
+          <>
+            <Separator />
+
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  onClick={handleToggleTerrain}
+                  aria-label="Toggle terrain"
+                  className={isTerrain ? "text-foreground" : "text-muted-foreground"}
+                >
+                  <Mountain className="size-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="left">
+                {isTerrain ? "Disable 3D terrain" : "Enable 3D terrain"}
+              </TooltipContent>
+            </Tooltip>
+          </>
+        )}
       </div>
     </TooltipProvider>
   );

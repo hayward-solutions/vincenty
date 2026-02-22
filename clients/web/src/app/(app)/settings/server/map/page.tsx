@@ -188,6 +188,8 @@ function CreateConfigDialog({
     tile_url: "",
     min_zoom: 0,
     max_zoom: 18,
+    terrain_url: "",
+    terrain_encoding: "terrarium",
     is_default: false,
   });
 
@@ -200,6 +202,8 @@ function CreateConfigDialog({
         tile_url: form.tile_url,
         min_zoom: form.min_zoom,
         max_zoom: form.max_zoom,
+        terrain_url: form.terrain_url || undefined,
+        terrain_encoding: form.terrain_encoding,
         is_default: form.is_default,
       });
       toast.success(`Map config "${form.name}" created`);
@@ -209,6 +213,8 @@ function CreateConfigDialog({
         tile_url: "",
         min_zoom: 0,
         max_zoom: 18,
+        terrain_url: "",
+        terrain_encoding: "terrarium",
         is_default: false,
       });
       onOpenChange(false);
@@ -260,6 +266,34 @@ function CreateConfigDialog({
               onChange={(e) => setForm({ ...form, tile_url: e.target.value })}
               placeholder="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
             />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="cmc-terrain-url">Terrain URL</Label>
+            <Input
+              id="cmc-terrain-url"
+              value={form.terrain_url}
+              onChange={(e) =>
+                setForm({ ...form, terrain_url: e.target.value })
+              }
+              placeholder="https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png"
+            />
+            <p className="text-xs text-muted-foreground">
+              DEM tile URL for 3D terrain. Leave empty to disable terrain.
+            </p>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="cmc-terrain-enc">Terrain Encoding</Label>
+            <select
+              id="cmc-terrain-enc"
+              className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs"
+              value={form.terrain_encoding}
+              onChange={(e) =>
+                setForm({ ...form, terrain_encoding: e.target.value })
+              }
+            >
+              <option value="terrarium">Terrarium (AWS/Mapzen)</option>
+              <option value="mapbox">Mapbox (MapTiler)</option>
+            </select>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-2">
@@ -340,6 +374,8 @@ function EditConfigDialog({
     tile_url: config.tile_url,
     min_zoom: config.min_zoom,
     max_zoom: config.max_zoom,
+    terrain_url: config.terrain_url || "",
+    terrain_encoding: config.terrain_encoding || "terrarium",
     is_default: config.is_default,
   });
 
@@ -352,6 +388,8 @@ function EditConfigDialog({
         tile_url: form.tile_url,
         min_zoom: form.min_zoom,
         max_zoom: form.max_zoom,
+        terrain_url: form.terrain_url || undefined,
+        terrain_encoding: form.terrain_encoding,
         is_default: form.is_default,
       });
       toast.success(`Map config "${form.name}" updated`);
@@ -402,6 +440,34 @@ function EditConfigDialog({
               value={form.tile_url}
               onChange={(e) => setForm({ ...form, tile_url: e.target.value })}
             />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="emc-terrain-url">Terrain URL</Label>
+            <Input
+              id="emc-terrain-url"
+              value={form.terrain_url}
+              onChange={(e) =>
+                setForm({ ...form, terrain_url: e.target.value })
+              }
+              placeholder="https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png"
+            />
+            <p className="text-xs text-muted-foreground">
+              DEM tile URL for 3D terrain. Leave empty to disable terrain.
+            </p>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="emc-terrain-enc">Terrain Encoding</Label>
+            <select
+              id="emc-terrain-enc"
+              className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs"
+              value={form.terrain_encoding}
+              onChange={(e) =>
+                setForm({ ...form, terrain_encoding: e.target.value })
+              }
+            >
+              <option value="terrarium">Terrarium (AWS/Mapzen)</option>
+              <option value="mapbox">Mapbox (MapTiler)</option>
+            </select>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-2">
