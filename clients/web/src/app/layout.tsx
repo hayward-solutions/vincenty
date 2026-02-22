@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import { Toaster } from "@/components/ui/sonner";
 import { AuthProvider } from "@/lib/auth-context";
 import { WebSocketProvider } from "@/lib/websocket-context";
+import { ServiceWorkerRegistration } from "@/components/service-worker-registration";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -38,6 +39,7 @@ export default function RootLayout({
             <Toaster />
           </WebSocketProvider>
         </AuthProvider>
+        <ServiceWorkerRegistration />
       </body>
     </html>
   );
