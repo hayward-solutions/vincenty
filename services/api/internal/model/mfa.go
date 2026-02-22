@@ -94,7 +94,9 @@ type MFAChallengeResponse struct {
 
 // ServerSettingsResponse is the JSON representation of server settings.
 type ServerSettingsResponse struct {
-	MFARequired bool `json:"mfa_required"`
+	MFARequired       bool   `json:"mfa_required"`
+	MapboxAccessToken string `json:"mapbox_access_token"`
+	GoogleMapsApiKey  string `json:"google_maps_api_key"`
 }
 
 // ---------------------------------------------------------------------------
@@ -207,7 +209,9 @@ type PasskeyToggleRequest struct {
 
 // UpdateServerSettingsRequest is the expected body for updating server settings.
 type UpdateServerSettingsRequest struct {
-	MFARequired *bool `json:"mfa_required"`
+	MFARequired       *bool   `json:"mfa_required"`
+	MapboxAccessToken *string `json:"mapbox_access_token"`
+	GoogleMapsApiKey  *string `json:"google_maps_api_key"`
 }
 
 // ---------------------------------------------------------------------------

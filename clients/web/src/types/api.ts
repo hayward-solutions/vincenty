@@ -94,6 +94,8 @@ export interface PasskeyBeginResponse {
 /** Server-level settings. */
 export interface ServerSettings {
   mfa_required: boolean;
+  mapbox_access_token: string;
+  google_maps_api_key: string;
 }
 
 /** Helper: login may return either auth tokens or an MFA challenge. */
@@ -284,9 +286,9 @@ export interface MapConfigResponse {
   style_json?: Record<string, unknown>;
   min_zoom: number;
   max_zoom: number;
-  terrain_url: string;
-  terrain_encoding: string;
   is_default: boolean;
+  is_builtin: boolean;
+  is_enabled: boolean;
   created_by?: string;
   created_at: string;
   updated_at: string;
@@ -302,6 +304,8 @@ export interface MapSettings {
   max_zoom: number;
   terrain_url: string;
   terrain_encoding: string;
+  mapbox_access_token?: string;
+  google_maps_api_key?: string;
   configs: MapConfigResponse[];
 }
 
@@ -312,8 +316,6 @@ export interface CreateMapConfigRequest {
   style_json?: Record<string, unknown>;
   min_zoom?: number;
   max_zoom?: number;
-  terrain_url?: string;
-  terrain_encoding?: string;
   is_default?: boolean;
 }
 
@@ -324,9 +326,43 @@ export interface UpdateMapConfigRequest {
   style_json?: Record<string, unknown>;
   min_zoom?: number;
   max_zoom?: number;
+  is_default?: boolean;
+  is_enabled?: boolean;
+}
+
+// ---------------------------------------------------------------------------
+// Terrain configs
+// ---------------------------------------------------------------------------
+
+export interface TerrainConfigResponse {
+  id: string;
+  name: string;
+  source_type: string;
+  terrain_url: string;
+  terrain_encoding: string;
+  is_default: boolean;
+  is_builtin: boolean;
+  is_enabled: boolean;
+  created_by?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CreateTerrainConfigRequest {
+  name: string;
+  source_type?: string;
+  terrain_url: string;
+  terrain_encoding?: string;
+  is_default?: boolean;
+}
+
+export interface UpdateTerrainConfigRequest {
+  name?: string;
+  source_type?: string;
   terrain_url?: string;
   terrain_encoding?: string;
   is_default?: boolean;
+  is_enabled?: boolean;
 }
 
 // ---------------------------------------------------------------------------

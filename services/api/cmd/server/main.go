@@ -103,6 +103,7 @@ func main() {
 	groupRepo := repository.NewGroupRepository(db)
 	locationRepo := repository.NewLocationRepository(db)
 	mapConfigRepo := repository.NewMapConfigRepository(db)
+	terrainConfigRepo := repository.NewTerrainConfigRepository(db)
 	messageRepo := repository.NewMessageRepository(db)
 	auditRepo := repository.NewAuditRepository(db)
 	cotRepo := repository.NewCotRepository(db)
@@ -160,7 +161,8 @@ func main() {
 	userService := service.NewUserService(userRepo, tokenRepo, storageSvc)
 	groupService := service.NewGroupService(groupRepo, userRepo)
 	locationService := service.NewLocationService(locationRepo, groupRepo, ps, cfg.WS.LocationThrottle)
-	mapConfigService := service.NewMapConfigService(mapConfigRepo, cfg.Map)
+	mapConfigService := service.NewMapConfigService(mapConfigRepo, terrainConfigRepo, serverSettingsRepo, cfg.Map)
+	terrainConfigService := service.NewTerrainConfigService(terrainConfigRepo, cfg.Map)
 	messageService := service.NewMessageService(messageRepo, groupRepo, storageSvc, ps)
 	auditService := service.NewAuditService(auditRepo, groupRepo)
 	cotService := service.NewCotService(cotRepo, deviceRepo, userRepo, groupRepo, locationService)
@@ -174,6 +176,18 @@ func main() {
 	}
 
 	// -----------------------------------------------------------------------
+	// Bootstrap built-in map and terrain configs
+	// -----------------------------------------------------------------------
+	if err := mapConfigService.BootstrapMapConfigs(context.Background()); err != nil {
+		slog.Error("failed to bootstrap map configs", "error", err)
+		os.Exit(1)
+	}
+	if err := terrainConfigService.BootstrapTerrainConfigs(context.Background()); err != nil {
+		slog.Error("failed to bootstrap terrain configs", "error", err)
+		os.Exit(1)
+	}
+
+	// -----------------------------------------------------------------------
 	// Handlers
 	// -----------------------------------------------------------------------
 	authHandler := handler.NewAuthHandler(authService)
@@ -181,6 +195,7 @@ func main() {
 	deviceHandler := handler.NewDeviceHandler(deviceRepo)
 	groupHandler := handler.NewGroupHandler(groupService)
 	mapConfigHandler := handler.NewMapConfigHandler(mapConfigService)
+	terrainConfigHandler := handler.NewTerrainConfigHandler(terrainConfigService)
 	locationHandler := handler.NewLocationHandler(locationService)
 	messageHandler := handler.NewMessageHandler(messageService)
 	auditHandler := handler.NewAuditHandler(auditService)
@@ -344,6 +359,13 @@ func main() {
 	mux.Handle("GET /api/v1/map-configs/{id}", authMW.RequireAdmin(http.HandlerFunc(mapConfigHandler.Get)))
 	mux.Handle("PUT /api/v1/map-configs/{id}", authMW.RequireAdmin(http.HandlerFunc(mapConfigHandler.Update)))
 	mux.Handle("DELETE /api/v1/map-configs/{id}", authMW.RequireAdmin(http.HandlerFunc(mapConfigHandler.Delete)))
+
+	// Terrain configs - CRUD (admin)
+	mux.Handle("GET /api/v1/terrain-configs", authMW.RequireAdmin(http.HandlerFunc(terrainConfigHandler.List)))
+	mux.Handle("POST /api/v1/terrain-configs", authMW.RequireAdmin(http.HandlerFunc(terrainConfigHandler.Create)))
+	mux.Handle("GET /api/v1/terrain-configs/{id}", authMW.RequireAdmin(http.HandlerFunc(terrainConfigHandler.Get)))
+	mux.Handle("PUT /api/v1/terrain-configs/{id}", authMW.RequireAdmin(http.HandlerFunc(terrainConfigHandler.Update)))
+	mux.Handle("DELETE /api/v1/terrain-configs/{id}", authMW.RequireAdmin(http.HandlerFunc(terrainConfigHandler.Delete)))
 
 	// Messages (authenticated, permission checked in service)
 	mux.Handle("POST /api/v1/messages", authMW.Authenticate(http.HandlerFunc(messageHandler.Send)))

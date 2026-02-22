@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import { Toaster } from "@/components/ui/sonner";
 import { AuthProvider } from "@/lib/auth-context";
 import { WebSocketProvider } from "@/lib/websocket-context";
+import { LocationProvider } from "@/lib/hooks/use-location-sharing";
 import { ServiceWorkerRegistration } from "@/components/service-worker-registration";
 import "./globals.css";
 
@@ -35,8 +36,10 @@ export default function RootLayout({
       >
         <AuthProvider>
            <WebSocketProvider wsUrl={process.env.WS_URL}>
-            {children}
-            <Toaster />
+            <LocationProvider>
+              {children}
+              <Toaster />
+            </LocationProvider>
           </WebSocketProvider>
         </AuthProvider>
         <ServiceWorkerRegistration />

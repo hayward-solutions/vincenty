@@ -47,7 +47,7 @@ export function MapView({ settings, onMapReady, children }: MapViewProps) {
           "raster-tiles": {
             type: "raster",
             tiles: [settings.tile_url],
-            tileSize: 256,
+          tileSize: (settings.terrain_encoding === "mapbox") ? 512 : 256,
             maxzoom: settings.max_zoom,
             attribution:
               '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
@@ -64,6 +64,9 @@ export function MapView({ settings, onMapReady, children }: MapViewProps) {
       };
     }
 
+    const mapboxToken = settings.mapbox_access_token || "";
+    const googleKey = settings.google_maps_api_key || "";
+
     const map = new maplibregl.Map({
       container: containerRef.current,
       style,
@@ -71,6 +74,19 @@ export function MapView({ settings, onMapReady, children }: MapViewProps) {
       zoom: settings.zoom,
       minZoom: settings.min_zoom,
       maxZoom: settings.max_zoom,
+      transformRequest: (url: string) => {
+        // Inject MapBox access token for MapBox-domain URLs
+        if (mapboxToken && (url.includes("mapbox.com") || url.includes("tiles.mapbox.com"))) {
+          const separator = url.includes("?") ? "&" : "?";
+          return { url: `${url}${separator}access_token=${mapboxToken}` };
+        }
+        // Inject Google Maps API key for Google-domain URLs
+        if (googleKey && url.includes("googleapis.com")) {
+          const separator = url.includes("?") ? "&" : "?";
+          return { url: `${url}${separator}key=${googleKey}` };
+        }
+        return { url };
+      },
     });
 
     map.on("load", () => {
