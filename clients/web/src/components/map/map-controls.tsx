@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback, useRef } from "react";
 import type maplibregl from "maplibre-gl";
-import { Plus, Minus, Compass, Globe, Mountain } from "lucide-react";
+import { Plus, Minus, Compass, Globe, Mountain, Locate, LocateFixed } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Tooltip,
@@ -15,13 +15,14 @@ import { Separator } from "@/components/ui/separator";
 interface MapControlsProps {
   map: maplibregl.Map;
   terrainAvailable?: boolean;
+  position?: { lat: number; lng: number; heading: number | null } | null;
 }
 
 /**
  * Custom map navigation controls replacing MapLibre's built-in
  * NavigationControl and GlobeControl with buttons matching our design system.
  */
-export function MapControls({ map, terrainAvailable }: MapControlsProps) {
+export function MapControls({ map, terrainAvailable, position }: MapControlsProps) {
   // Track whether the component is still mounted so map event handlers
   // don't trigger React state updates after the map has been destroyed.
   // Without this guard, navigating away from the map page causes a cascade:
@@ -45,6 +46,27 @@ export function MapControls({ map, terrainAvailable }: MapControlsProps) {
     }
   });
   const [isTerrain, setIsTerrain] = useState(false);
+  const [isTracking, setIsTracking] = useState(false);
+
+  // Deactivate tracking when the user manually pans/drags the map
+  useEffect(() => {
+    const onDragStart = () => {
+      if (!mountedRef.current) return;
+      setIsTracking(false);
+    };
+    map.on("dragstart", onDragStart);
+    return () => {
+      map.off("dragstart", onDragStart);
+    };
+  }, [map]);
+
+  // Follow the user's position when tracking is active
+  useEffect(() => {
+    if (!isTracking || !position) return;
+    try {
+      map.easeTo({ center: [position.lng, position.lat], duration: 300 });
+    } catch { /* map destroyed */ }
+  }, [map, isTracking, position]);
 
   useEffect(() => {
     const onRotate = () => {
@@ -109,6 +131,22 @@ export function MapControls({ map, terrainAvailable }: MapControlsProps) {
       }
     } catch { /* map destroyed */ }
   }, [map, isTerrain, isGlobe]);
+
+  const handleToggleTracking = useCallback(() => {
+    if (!position) return;
+    try {
+      if (!isTracking) {
+        map.flyTo({
+          center: [position.lng, position.lat],
+          zoom: Math.max(map.getZoom(), 14),
+          duration: 1000,
+        });
+        setIsTracking(true);
+      } else {
+        setIsTracking(false);
+      }
+    } catch { /* map destroyed */ }
+  }, [map, position, isTracking]);
 
   const isRotated = bearing !== 0 || pitch !== 0;
 
@@ -206,6 +244,26 @@ export function MapControls({ map, terrainAvailable }: MapControlsProps) {
             </Tooltip>
           </>
         )}
+
+        <Separator />
+
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              onClick={handleToggleTracking}
+              disabled={!position}
+              aria-label="Track my location"
+              className={isTracking ? "text-foreground" : "text-muted-foreground"}
+            >
+              {isTracking ? <LocateFixed className="size-4" /> : <Locate className="size-4" />}
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent side="left">
+            {isTracking ? "Stop tracking" : "Track my location"}
+          </TooltipContent>
+        </Tooltip>
       </div>
     </TooltipProvider>
   );
