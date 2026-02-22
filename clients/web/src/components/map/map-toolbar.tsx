@@ -15,6 +15,8 @@ interface MapToolbarProps {
   replayActive: boolean;
   filterActive: boolean;
   onFilterClick: () => void;
+  measureActive: boolean;
+  onMeasureClick: () => void;
 }
 
 /**
@@ -27,6 +29,8 @@ export function MapToolbar({
   replayActive,
   filterActive,
   onFilterClick,
+  measureActive,
+  onMeasureClick,
 }: MapToolbarProps) {
   return (
     <TooltipProvider>
@@ -74,8 +78,11 @@ export function MapToolbar({
             <Button
               variant="ghost"
               size="icon-sm"
+              onClick={onMeasureClick}
               aria-label="Measure"
-              className="text-muted-foreground"
+              className={
+                measureActive ? "text-foreground" : "text-muted-foreground"
+              }
             >
               <Ruler className="size-4" />
             </Button>

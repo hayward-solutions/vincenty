@@ -18,6 +18,8 @@ import {
 } from "@/components/map/replay-panel";
 import { MapToolbar } from "@/components/map/map-toolbar";
 import { FilterPanel } from "@/components/map/filter-panel";
+import { MeasureTool, type MeasureResult } from "@/components/map/measure-tool";
+import { MeasurePanel } from "@/components/map/measure-panel";
 import { useMapSettings } from "@/lib/hooks/use-map-settings";
 import { useLocations } from "@/lib/hooks/use-locations";
 import { useLocationSharing } from "@/lib/hooks/use-location-sharing";
@@ -101,6 +103,15 @@ export default function MapPage() {
   );
   const [showSelf, setShowSelf] = useState(true);
   const [filterPanelOpen, setFilterPanelOpen] = useState(false);
+
+  // Measure tool state
+  const [measureActive, setMeasureActive] = useState(false);
+  const [measureMode, setMeasureMode] = useState<"line" | "circle">("line");
+  const [measureResult, setMeasureResult] = useState<MeasureResult>({
+    segments: [],
+    total: 0,
+  });
+  const measureResetRef = useRef(0);
 
   // Build a group config lookup map from the user's groups
   const groupConfigMap = useMemo(() => {
@@ -417,6 +428,13 @@ export default function MapPage() {
                 playbackTime={playbackTime}
               />
             )}
+            <MeasureTool
+              map={mapRef.current}
+              active={measureActive}
+              mode={measureMode}
+              resetKey={measureResetRef.current}
+              onMeasurementsChange={setMeasureResult}
+            />
           </>
         )}
       </MapView>
@@ -427,17 +445,25 @@ export default function MapPage() {
           onReplayClick={() => {
             setReplayPanelOpen((v) => !v);
             setFilterPanelOpen(false);
+            setMeasureActive(false);
           }}
           replayActive={replayActive}
           filterActive={filterActive}
           onFilterClick={() => {
             setFilterPanelOpen((v) => !v);
             setReplayPanelOpen(false);
+            setMeasureActive(false);
+          }}
+          measureActive={measureActive}
+          onMeasureClick={() => {
+            setMeasureActive((v) => !v);
+            setFilterPanelOpen(false);
+            setReplayPanelOpen(false);
           }}
         />
 
-        {/* Replay setup panel (below toolbar, mutually exclusive with filter) */}
-        {replayPanelOpen && !replayActive && (
+        {/* Replay setup panel */}
+        {replayPanelOpen && !replayActive && !measureActive && (
           <ReplayPanel
             isLoading={activeHistoryLoading}
             onStart={handleReplayStart}
@@ -446,8 +472,8 @@ export default function MapPage() {
           />
         )}
 
-        {/* Filter panel (below toolbar, mutually exclusive with replay) */}
-        {filterPanelOpen && !replayPanelOpen && (
+        {/* Filter panel */}
+        {filterPanelOpen && !replayPanelOpen && !measureActive && (
           <FilterPanel
             showSelf={showSelf}
             onShowSelfChange={setShowSelf}
@@ -480,6 +506,24 @@ export default function MapPage() {
               });
             }}
             onUsersClear={() => setSelectedLiveUserIds(new Set())}
+          />
+        )}
+
+        {/* Measure panel */}
+        {measureActive && (
+          <MeasurePanel
+            mode={measureMode}
+            onModeChange={(m) => {
+              setMeasureMode(m);
+              measureResetRef.current += 1;
+              setMeasureResult({ segments: [], total: 0 });
+            }}
+            measurements={measureResult}
+            onClear={() => {
+              measureResetRef.current += 1;
+              setMeasureResult({ segments: [], total: 0 });
+            }}
+            onClose={() => setMeasureActive(false)}
           />
         )}
       </div>
