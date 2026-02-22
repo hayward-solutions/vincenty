@@ -115,6 +115,12 @@ All API routes are prefixed with `/api/v1/`.
 | GET | `/readyz` | Readiness check (DB ping) |
 | POST | `/api/v1/auth/login` | Login (returns JWT + refresh token) |
 | POST | `/api/v1/auth/refresh` | Rotate tokens |
+| POST | `/api/v1/auth/mfa/totp` | Verify TOTP code (MFA challenge) |
+| POST | `/api/v1/auth/mfa/webauthn/begin` | Begin WebAuthn assertion (MFA challenge) |
+| POST | `/api/v1/auth/mfa/webauthn/finish` | Finish WebAuthn assertion (MFA challenge) |
+| POST | `/api/v1/auth/mfa/recovery` | Verify recovery code (MFA challenge) |
+| POST | `/api/v1/auth/passkey/begin` | Begin passkey login (passwordless) |
+| POST | `/api/v1/auth/passkey/finish` | Finish passkey login (passwordless) |
 
 ### Authenticated
 
@@ -147,6 +153,15 @@ All API routes are prefixed with `/api/v1/`.
 | GET | `/api/v1/users/me/locations/history` | Own location history |
 | GET | `/api/v1/users/me/locations/export` | Export location history (GPX) |
 | GET | `/api/v1/ws` | WebSocket connection |
+| GET | `/api/v1/mfa/status` | Get own MFA status and methods |
+| POST | `/api/v1/mfa/totp/setup` | Begin TOTP setup (returns QR code) |
+| POST | `/api/v1/mfa/totp/verify` | Verify TOTP code to activate |
+| DELETE | `/api/v1/mfa/totp` | Remove TOTP method |
+| POST | `/api/v1/mfa/webauthn/register/begin` | Begin WebAuthn credential registration |
+| POST | `/api/v1/mfa/webauthn/register/finish` | Finish WebAuthn credential registration |
+| DELETE | `/api/v1/mfa/webauthn/{id}` | Remove a WebAuthn credential |
+| PATCH | `/api/v1/mfa/webauthn/{id}` | Update credential (name, passwordless flag) |
+| POST | `/api/v1/mfa/recovery/regenerate` | Regenerate recovery codes |
 
 ### Admin Only
 
@@ -170,6 +185,9 @@ All API routes are prefixed with `/api/v1/`.
 | DELETE | `/api/v1/map-configs/{id}` | Delete map configuration |
 | GET | `/api/v1/audit-logs` | All audit logs |
 | GET | `/api/v1/audit-logs/export` | Export all audit logs |
+| DELETE | `/api/v1/users/{id}/mfa` | Reset a user's MFA |
+| GET | `/api/v1/server-settings` | Get server settings |
+| PUT | `/api/v1/server-settings` | Update server settings (e.g. `mfa_required`) |
 
 ## Configuration
 
@@ -213,6 +231,10 @@ cp .env.example .env
 | `RATE_LIMIT_BURST` | `20` | Rate limit burst size |
 | `MAX_REQUEST_BODY_BYTES` | `10485760` | Max request body (10MB) |
 | `TOKEN_CLEANUP_INTERVAL` | `1h` | Expired token purge interval |
+| `WEBAUTHN_RP_ID` | `localhost` | WebAuthn Relying Party ID (your domain, no port) |
+| `WEBAUTHN_RP_DISPLAY_NAME` | `SitAware` | Display name shown in browser credential prompts |
+| `WEBAUTHN_RP_ORIGINS` | `http://localhost:3000` | Comma-separated allowed WebAuthn origins |
+| `MFA_KMS_KEY_ARN` | (empty) | AWS KMS key ARN for TOTP secret encryption. When empty, uses AES-256-GCM derived from `JWT_SECRET` via HKDF |
 | `MAP_DEFAULT_TILE_URL` | OSM tiles | Default map tile URL template |
 | `MAP_DEFAULT_CENTER_LAT` | `0` | Default map center latitude |
 | `MAP_DEFAULT_CENTER_LNG` | `0` | Default map center longitude |
@@ -267,6 +289,11 @@ SitAware is designed to run with zero internet access:
 - JWT access tokens (15min, HMAC-SHA256) with rotating opaque refresh tokens
 - Refresh tokens stored as SHA-256 hashes in the database
 - bcrypt password hashing (cost 12)
+- **Multi-Factor Authentication (MFA)**: TOTP (authenticator apps) and WebAuthn/FIDO2 (security keys, passkeys)
+- **Passkey login**: Passwordless authentication via WebAuthn discoverable credentials
+- **Recovery codes**: 8 one-time backup codes (bcrypt-hashed) generated when MFA is first enabled
+- **Admin MFA enforcement**: Server-wide `mfa_required` setting blocks users without MFA from all routes except MFA setup
+- **TOTP secret encryption**: AES-256-GCM with HKDF-derived key from `JWT_SECRET` (default), or AWS KMS when `MFA_KMS_KEY_ARN` is set
 - Per-IP rate limiting with token bucket algorithm
 - Configurable CORS with origin validation
 - Request body size limits

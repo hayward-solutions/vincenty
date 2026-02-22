@@ -48,7 +48,12 @@ aws ssm put-parameter --name /sitaware/admin-password --type SecureString --valu
 aws ssm put-parameter --name /sitaware/jwt-secret      --type SecureString --value "YOUR_JWT_SECRET"
 aws ssm put-parameter --name /sitaware/db-password      --type SecureString --value "YOUR_DB_PASSWORD"
 aws ssm put-parameter --name /sitaware/redis-password   --type SecureString --value "YOUR_REDIS_PASSWORD"
+
+# Optional: KMS key ARN for encrypting TOTP secrets (omit to use HKDF from JWT_SECRET)
+# aws ssm put-parameter --name /sitaware/mfa-kms-key-arn --type SecureString --value "arn:aws:kms:REGION:ACCOUNT_ID:key/YOUR_KEY_ID"
 ```
+
+> **WebAuthn configuration**: The API task definition includes `WEBAUTHN_RP_ID` and `WEBAUTHN_RP_ORIGINS` which must match your production domain. Update `sitaware.example.com` to your actual domain in the task definition before deploying.
 
 ## Step 2: Create S3 Bucket and IAM Roles
 
@@ -120,6 +125,7 @@ Before registering task definitions, replace placeholders in the JSON files:
 | `REGION` | Your AWS region (e.g., `us-east-1`) |
 | `sitaware-db.cluster-xxxx.REGION.rds.amazonaws.com` | Your RDS endpoint |
 | `sitaware-redis.xxxx.REGION.cache.amazonaws.com` | Your ElastiCache endpoint |
+| `sitaware.example.com` (in `WEBAUTHN_RP_ID` and `WEBAUTHN_RP_ORIGINS`) | Your actual domain |
 
 > **Redis TLS**: The task definition sets `REDIS_TLS=true` because ElastiCache requires transit encryption. If your ElastiCache cluster has transit encryption disabled, set this to `false`.
 | `sitaware.example.com` | Your actual domain |
