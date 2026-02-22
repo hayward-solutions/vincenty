@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
+import { Eye, EyeOff } from "lucide-react";
 import { ApiError } from "@/lib/api";
 import {
   useMapConfigs,
@@ -13,6 +14,7 @@ import {
   useDeleteTerrainConfig,
   useUpdateTerrainConfig,
 } from "@/lib/hooks/use-map-settings";
+import { useServerSettings } from "@/lib/hooks/use-mfa";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -61,6 +63,11 @@ export default function MapSettingsPage() {
 
   return (
     <div className="p-4 md:p-6 space-y-8">
+      {/* --------------------------------------------------------------- */}
+      {/* API Keys                                                         */}
+      {/* --------------------------------------------------------------- */}
+      <ApiKeysSection />
+
       {/* --------------------------------------------------------------- */}
       {/* Tile Configs                                                     */}
       {/* --------------------------------------------------------------- */}
@@ -978,5 +985,121 @@ function EditTerrainConfigDialog({
         </form>
       </DialogContent>
     </Dialog>
+  );
+}
+
+// ===========================================================================
+// API Keys section
+// ===========================================================================
+
+function ApiKeysSection() {
+  const { settings, isLoading, update } = useServerSettings();
+  const [mapboxToken, setMapboxToken] = useState("");
+  const [googleKey, setGoogleKey] = useState("");
+  const [showMapbox, setShowMapbox] = useState(false);
+  const [showGoogle, setShowGoogle] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  // Sync form state when settings load
+  useEffect(() => {
+    if (settings) {
+      setMapboxToken(settings.mapbox_access_token || "");
+      setGoogleKey(settings.google_maps_api_key || "");
+    }
+  }, [settings]);
+
+  async function handleSave() {
+    setSaving(true);
+    try {
+      await update({
+        mapbox_access_token: mapboxToken,
+        google_maps_api_key: googleKey,
+      });
+      toast.success("API keys saved");
+    } catch (err) {
+      toast.error(
+        err instanceof ApiError ? err.message : "Failed to save API keys"
+      );
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  if (isLoading) {
+    return (
+      <section className="space-y-4">
+        <h2 className="text-2xl font-semibold">API Keys</h2>
+        <Skeleton className="h-24 w-full" />
+      </section>
+    );
+  }
+
+  return (
+    <section className="space-y-4">
+      <div>
+        <h2 className="text-2xl font-semibold">API Keys</h2>
+        <p className="text-sm text-muted-foreground mt-1">
+          Enter provider API keys to use MapBox or Google Maps tile sources.
+        </p>
+      </div>
+
+      <div className="rounded-md border p-4 space-y-4 max-w-xl">
+        <div className="space-y-2">
+          <Label htmlFor="ak-mapbox">MapBox Access Token</Label>
+          <div className="relative">
+            <Input
+              id="ak-mapbox"
+              type={showMapbox ? "text" : "password"}
+              value={mapboxToken}
+              onChange={(e) => setMapboxToken(e.target.value)}
+              placeholder="pk.eyJ1Ijoi..."
+              className="pr-10"
+            />
+            <button
+              type="button"
+              onClick={() => setShowMapbox((v) => !v)}
+              className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+              aria-label={showMapbox ? "Hide token" : "Show token"}
+            >
+              {showMapbox ? (
+                <EyeOff className="size-4" />
+              ) : (
+                <Eye className="size-4" />
+              )}
+            </button>
+          </div>
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="ak-google">Google Maps API Key</Label>
+          <div className="relative">
+            <Input
+              id="ak-google"
+              type={showGoogle ? "text" : "password"}
+              value={googleKey}
+              onChange={(e) => setGoogleKey(e.target.value)}
+              placeholder="AIzaSy..."
+              className="pr-10"
+            />
+            <button
+              type="button"
+              onClick={() => setShowGoogle((v) => !v)}
+              className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+              aria-label={showGoogle ? "Hide key" : "Show key"}
+            >
+              {showGoogle ? (
+                <EyeOff className="size-4" />
+              ) : (
+                <Eye className="size-4" />
+              )}
+            </button>
+          </div>
+        </div>
+
+        <Button onClick={handleSave} disabled={saving}>
+          {saving ? "Saving..." : "Save"}
+        </Button>
+      </div>
+    </section>
   );
 }

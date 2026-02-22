@@ -1,7 +1,7 @@
 package handler
 
 import (
-	"fmt"
+	"context"
 	"net/http"
 
 	"github.com/sitaware/api/internal/model"
@@ -20,11 +20,7 @@ func NewServerSettingsHandler(settingsRepo *repository.ServerSettingsRepository)
 
 // GetSettings handles GET /api/v1/server/settings (admin)
 func (h *ServerSettingsHandler) GetSettings(w http.ResponseWriter, r *http.Request) {
-	resp, err := h.buildResponse(r)
-	if err != nil {
-		HandleError(w, err)
-		return
-	}
+	resp := h.buildResponse(r.Context())
 	JSON(w, http.StatusOK, resp)
 }
 
@@ -47,21 +43,40 @@ func (h *ServerSettingsHandler) UpdateSettings(w http.ResponseWriter, r *http.Re
 		}
 	}
 
-	resp, err := h.buildResponse(r)
-	if err != nil {
-		HandleError(w, err)
-		return
+	if req.MapboxAccessToken != nil {
+		if err := h.settingsRepo.Set(r.Context(), "mapbox_access_token", *req.MapboxAccessToken); err != nil {
+			HandleError(w, err)
+			return
+		}
 	}
+
+	if req.GoogleMapsApiKey != nil {
+		if err := h.settingsRepo.Set(r.Context(), "google_maps_api_key", *req.GoogleMapsApiKey); err != nil {
+			HandleError(w, err)
+			return
+		}
+	}
+
+	resp := h.buildResponse(r.Context())
 	JSON(w, http.StatusOK, resp)
 }
 
-func (h *ServerSettingsHandler) buildResponse(r *http.Request) (*model.ServerSettingsResponse, error) {
-	mfaSetting, err := h.settingsRepo.Get(r.Context(), "mfa_required")
-	if err != nil {
-		return nil, fmt.Errorf("get mfa_required setting: %w", err)
-	}
-
+// buildResponse assembles the full server settings response from individual
+// key-value entries. Missing keys default to their zero value.
+func (h *ServerSettingsHandler) buildResponse(ctx context.Context) *model.ServerSettingsResponse {
 	return &model.ServerSettingsResponse{
-		MFARequired: mfaSetting.Value == "true",
-	}, nil
+		MFARequired:       h.getSettingValue(ctx, "mfa_required") == "true",
+		MapboxAccessToken: h.getSettingValue(ctx, "mapbox_access_token"),
+		GoogleMapsApiKey:  h.getSettingValue(ctx, "google_maps_api_key"),
+	}
+}
+
+// getSettingValue returns the value for a server setting key, or an empty
+// string if the key does not exist.
+func (h *ServerSettingsHandler) getSettingValue(ctx context.Context, key string) string {
+	s, err := h.settingsRepo.Get(ctx, key)
+	if err != nil {
+		return ""
+	}
+	return s.Value
 }

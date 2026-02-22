@@ -94,6 +94,8 @@ export interface PasskeyBeginResponse {
 /** Server-level settings. */
 export interface ServerSettings {
   mfa_required: boolean;
+  mapbox_access_token: string;
+  google_maps_api_key: string;
 }
 
 /** Helper: login may return either auth tokens or an MFA challenge. */
@@ -302,6 +304,8 @@ export interface MapSettings {
   max_zoom: number;
   terrain_url: string;
   terrain_encoding: string;
+  mapbox_access_token?: string;
+  google_maps_api_key?: string;
   configs: MapConfigResponse[];
 }
 

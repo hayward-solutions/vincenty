@@ -12,14 +12,15 @@ import (
 
 // MapConfigService handles map configuration business logic.
 type MapConfigService struct {
-	repo        *repository.MapConfigRepository
-	terrainRepo *repository.TerrainConfigRepository
-	mapDefaults config.MapConfig
+	repo         *repository.MapConfigRepository
+	terrainRepo  *repository.TerrainConfigRepository
+	settingsRepo *repository.ServerSettingsRepository
+	mapDefaults  config.MapConfig
 }
 
 // NewMapConfigService creates a new MapConfigService.
-func NewMapConfigService(repo *repository.MapConfigRepository, terrainRepo *repository.TerrainConfigRepository, mapDefaults config.MapConfig) *MapConfigService {
-	return &MapConfigService{repo: repo, terrainRepo: terrainRepo, mapDefaults: mapDefaults}
+func NewMapConfigService(repo *repository.MapConfigRepository, terrainRepo *repository.TerrainConfigRepository, settingsRepo *repository.ServerSettingsRepository, mapDefaults config.MapConfig) *MapConfigService {
+	return &MapConfigService{repo: repo, terrainRepo: terrainRepo, settingsRepo: settingsRepo, mapDefaults: mapDefaults}
 }
 
 // BootstrapMapConfigs seeds the built-in map configurations if none exist yet.
@@ -170,7 +171,21 @@ func (s *MapConfigService) GetSettings(ctx context.Context) (*model.MapSettingsR
 		resp.TerrainEncoding = defaultTerrain.TerrainEncoding
 	}
 
+	// Include map provider API keys from server settings
+	resp.MapboxAccessToken = s.getSettingValue(ctx, "mapbox_access_token")
+	resp.GoogleMapsApiKey = s.getSettingValue(ctx, "google_maps_api_key")
+
 	return resp, nil
+}
+
+// getSettingValue returns the value for a server setting key, or an empty
+// string if the key does not exist.
+func (s *MapConfigService) getSettingValue(ctx context.Context, key string) string {
+	setting, err := s.settingsRepo.Get(ctx, key)
+	if err != nil {
+		return ""
+	}
+	return setting.Value
 }
 
 // Update modifies a map configuration.

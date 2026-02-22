@@ -119,14 +119,16 @@ type UpdateMapConfigRequest struct {
 // MapSettingsResponse is returned by the public map config endpoint.
 // It combines the server-side defaults with the active map configuration.
 type MapSettingsResponse struct {
-	TileURL         string              `json:"tile_url"`
-	StyleJSON       *json.RawMessage    `json:"style_json,omitempty"`
-	CenterLat       float64             `json:"center_lat"`
-	CenterLng       float64             `json:"center_lng"`
-	Zoom            int                 `json:"zoom"`
-	MinZoom         int                 `json:"min_zoom"`
-	MaxZoom         int                 `json:"max_zoom"`
-	TerrainURL      string              `json:"terrain_url"`
-	TerrainEncoding string              `json:"terrain_encoding"`
-	Configs         []MapConfigResponse `json:"configs"`
+	TileURL           string              `json:"tile_url"`
+	StyleJSON         *json.RawMessage    `json:"style_json,omitempty"`
+	CenterLat         float64             `json:"center_lat"`
+	CenterLng         float64             `json:"center_lng"`
+	Zoom              int                 `json:"zoom"`
+	MinZoom           int                 `json:"min_zoom"`
+	MaxZoom           int                 `json:"max_zoom"`
+	TerrainURL        string              `json:"terrain_url"`
+	TerrainEncoding   string              `json:"terrain_encoding"`
+	MapboxAccessToken string              `json:"mapbox_access_token,omitempty"`
+	GoogleMapsApiKey  string              `json:"google_maps_api_key,omitempty"`
+	Configs           []MapConfigResponse `json:"configs"`
 }

@@ -161,7 +161,7 @@ func main() {
 	userService := service.NewUserService(userRepo, tokenRepo, storageSvc)
 	groupService := service.NewGroupService(groupRepo, userRepo)
 	locationService := service.NewLocationService(locationRepo, groupRepo, ps, cfg.WS.LocationThrottle)
-	mapConfigService := service.NewMapConfigService(mapConfigRepo, terrainConfigRepo, cfg.Map)
+	mapConfigService := service.NewMapConfigService(mapConfigRepo, terrainConfigRepo, serverSettingsRepo, cfg.Map)
 	terrainConfigService := service.NewTerrainConfigService(terrainConfigRepo, cfg.Map)
 	messageService := service.NewMessageService(messageRepo, groupRepo, storageSvc, ps)
 	auditService := service.NewAuditService(auditRepo, groupRepo)
