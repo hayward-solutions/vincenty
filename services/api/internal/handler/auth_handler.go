@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"errors"
 	"net/http"
 
 	"github.com/sitaware/api/internal/model"
@@ -31,6 +32,12 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 
 	resp, err := h.authService.Login(r.Context(), &req)
 	if err != nil {
+		// Check if MFA is required — return the challenge as a 200 response
+		var mfaErr *model.MFARequiredError
+		if errors.As(err, &mfaErr) {
+			JSON(w, http.StatusOK, mfaErr.Challenge)
+			return
+		}
 		HandleError(w, err)
 		return
 	}

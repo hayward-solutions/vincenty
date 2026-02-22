@@ -10,6 +10,8 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/go-webauthn/webauthn/webauthn"
+	"github.com/google/uuid"
 	"github.com/sitaware/api/internal/auth"
 	"github.com/sitaware/api/internal/config"
 	"github.com/sitaware/api/internal/database"
@@ -104,6 +106,8 @@ func main() {
 	messageRepo := repository.NewMessageRepository(db)
 	auditRepo := repository.NewAuditRepository(db)
 	cotRepo := repository.NewCotRepository(db)
+	mfaRepo := repository.NewMFARepository(db)
+	serverSettingsRepo := repository.NewServerSettingsRepository(db)
 
 	// -----------------------------------------------------------------------
 	// Pub/Sub
@@ -115,7 +119,44 @@ func main() {
 	// Services
 	// -----------------------------------------------------------------------
 	jwtService := auth.NewJWTService(cfg.JWT)
-	authService := service.NewAuthService(userRepo, tokenRepo, jwtService)
+
+	// -----------------------------------------------------------------------
+	// MFA encryption + WebAuthn
+	// -----------------------------------------------------------------------
+	var encryptor auth.SecretEncryptor
+	if cfg.MFA.KMSKeyARN != "" {
+		// Use AWS KMS for TOTP secret encryption
+		kmsClient, err := connectKMS(context.Background(), cfg.S3.Region)
+		if err != nil {
+			slog.Error("failed to create KMS client", "error", err)
+			os.Exit(1)
+		}
+		encryptor = auth.NewKMSEncryptor(kmsClient, cfg.MFA.KMSKeyARN)
+		slog.Info("using AWS KMS for MFA secret encryption", "key_arn", cfg.MFA.KMSKeyARN)
+	} else {
+		// Derive encryption key from JWT secret via HKDF
+		var err error
+		encryptor, err = auth.NewLocalEncryptor([]byte(cfg.JWT.Secret))
+		if err != nil {
+			slog.Error("failed to create local encryptor", "error", err)
+			os.Exit(1)
+		}
+		slog.Info("using HKDF-derived local encryption for MFA secrets")
+	}
+
+	waConfig := &webauthn.Config{
+		RPDisplayName: cfg.WebAuthn.RPDisplayName,
+		RPID:          cfg.WebAuthn.RPID,
+		RPOrigins:     cfg.WebAuthn.RPOrigins,
+	}
+	wa, err := webauthn.New(waConfig)
+	if err != nil {
+		slog.Error("failed to create WebAuthn instance", "error", err)
+		os.Exit(1)
+	}
+
+	mfaService := service.NewMFAService(mfaRepo, userRepo, encryptor, rdb, wa)
+	authService := service.NewAuthService(userRepo, tokenRepo, jwtService, mfaService)
 	userService := service.NewUserService(userRepo, tokenRepo, storageSvc)
 	groupService := service.NewGroupService(groupRepo, userRepo)
 	locationService := service.NewLocationService(locationRepo, groupRepo, ps, cfg.WS.LocationThrottle)
@@ -144,6 +185,8 @@ func main() {
 	messageHandler := handler.NewMessageHandler(messageService)
 	auditHandler := handler.NewAuditHandler(auditService)
 	cotHandler := handler.NewCotHandler(cotService)
+	mfaHandler := handler.NewMFAHandler(mfaService, authService)
+	serverSettingsHandler := handler.NewServerSettingsHandler(serverSettingsRepo)
 
 	// -----------------------------------------------------------------------
 	// WebSocket Hub
@@ -220,6 +263,16 @@ func main() {
 	// Auth (authenticated)
 	mux.Handle("POST /api/v1/auth/logout", authMW.Authenticate(http.HandlerFunc(authHandler.Logout)))
 
+	// MFA login challenge (public — requires mfa_token in body)
+	mux.HandleFunc("POST /api/v1/auth/mfa/totp", mfaHandler.MFAVerifyTOTP)
+	mux.HandleFunc("POST /api/v1/auth/mfa/recovery", mfaHandler.MFARecovery)
+	mux.HandleFunc("POST /api/v1/auth/mfa/webauthn/begin", mfaHandler.MFAWebAuthnBegin)
+	mux.HandleFunc("POST /api/v1/auth/mfa/webauthn/finish", mfaHandler.MFAWebAuthnFinish)
+
+	// Passkey passwordless login (public)
+	mux.HandleFunc("POST /api/v1/auth/passkey/begin", mfaHandler.PasskeyBegin)
+	mux.HandleFunc("POST /api/v1/auth/passkey/finish", mfaHandler.PasskeyFinish)
+
 	// Users - self (authenticated)
 	mux.Handle("GET /api/v1/users/me", authMW.Authenticate(http.HandlerFunc(userHandler.GetMe)))
 	mux.Handle("PUT /api/v1/users/me", authMW.Authenticate(http.HandlerFunc(userHandler.UpdateMe)))
@@ -227,6 +280,16 @@ func main() {
 	mux.Handle("PUT /api/v1/users/me/avatar", authMW.Authenticate(http.HandlerFunc(userHandler.UploadAvatar)))
 	mux.Handle("DELETE /api/v1/users/me/avatar", authMW.Authenticate(http.HandlerFunc(userHandler.DeleteAvatar)))
 	mux.Handle("GET /api/v1/users/{id}/avatar", authMW.AuthenticateWithQueryToken(http.HandlerFunc(userHandler.ServeAvatar)))
+
+	// MFA setup (authenticated)
+	mux.Handle("POST /api/v1/users/me/mfa/totp/setup", authMW.Authenticate(http.HandlerFunc(mfaHandler.SetupTOTP)))
+	mux.Handle("POST /api/v1/users/me/mfa/totp/verify", authMW.Authenticate(http.HandlerFunc(mfaHandler.VerifyTOTPSetup)))
+	mux.Handle("POST /api/v1/users/me/mfa/webauthn/register/begin", authMW.Authenticate(http.HandlerFunc(mfaHandler.BeginWebAuthnRegister)))
+	mux.Handle("POST /api/v1/users/me/mfa/webauthn/register/finish", authMW.Authenticate(http.HandlerFunc(mfaHandler.FinishWebAuthnRegister)))
+	mux.Handle("GET /api/v1/users/me/mfa/methods", authMW.Authenticate(http.HandlerFunc(mfaHandler.ListMethods)))
+	mux.Handle("DELETE /api/v1/users/me/mfa/methods/{id}", authMW.Authenticate(http.HandlerFunc(mfaHandler.DeleteMethod)))
+	mux.Handle("PUT /api/v1/users/me/mfa/webauthn/{id}/passwordless", authMW.Authenticate(http.HandlerFunc(mfaHandler.TogglePasswordless)))
+	mux.Handle("POST /api/v1/users/me/mfa/recovery-codes", authMW.Authenticate(http.HandlerFunc(mfaHandler.RegenerateRecoveryCodes)))
 
 	// Devices - self (authenticated)
 	mux.Handle("GET /api/v1/users/me/devices", authMW.Authenticate(http.HandlerFunc(deviceHandler.List)))
@@ -236,7 +299,8 @@ func main() {
 	mux.Handle("PUT /api/v1/devices/{id}", authMW.Authenticate(http.HandlerFunc(deviceHandler.Update)))
 	mux.Handle("DELETE /api/v1/devices/{id}", authMW.Authenticate(http.HandlerFunc(deviceHandler.Delete)))
 
-	// Users - admin
+	// Users - admin (includes MFA reset)
+	mux.Handle("DELETE /api/v1/users/{id}/mfa", authMW.RequireAdmin(http.HandlerFunc(mfaHandler.AdminResetMFA)))
 	mux.Handle("GET /api/v1/users", authMW.RequireAdmin(http.HandlerFunc(userHandler.List)))
 	mux.Handle("POST /api/v1/users", authMW.RequireAdmin(http.HandlerFunc(userHandler.Create)))
 	mux.Handle("GET /api/v1/users/{id}", authMW.RequireAdmin(http.HandlerFunc(userHandler.Get)))
@@ -302,6 +366,10 @@ func main() {
 	mux.Handle("GET /api/v1/users/me/locations/history", authMW.Authenticate(http.HandlerFunc(locationHandler.GetMyHistory)))
 	mux.Handle("GET /api/v1/users/me/locations/export", authMW.Authenticate(http.HandlerFunc(locationHandler.ExportGPX)))
 
+	// Server settings (admin)
+	mux.Handle("GET /api/v1/server/settings", authMW.RequireAdmin(http.HandlerFunc(serverSettingsHandler.GetSettings)))
+	mux.Handle("PUT /api/v1/server/settings", authMW.RequireAdmin(http.HandlerFunc(serverSettingsHandler.UpdateSettings)))
+
 	// CoT (Cursor on Target) - authenticated
 	mux.Handle("POST /api/v1/cot/events", authMW.Authenticate(http.HandlerFunc(cotHandler.IngestEvents)))
 	mux.Handle("GET /api/v1/cot/events", authMW.Authenticate(http.HandlerFunc(cotHandler.ListEvents)))
@@ -312,7 +380,20 @@ func main() {
 	// -----------------------------------------------------------------------
 	auditMW := middleware.Audit(auditService, jwtService)
 
+	// MFA enforcement middleware: when mfa_required is enabled server-wide,
+	// block non-MFA-setup requests for users without MFA configured.
+	mfaChecker := &mfaSetupChecker{settingsRepo: serverSettingsRepo}
+	getUserMFAEnabled := func(ctx context.Context, userID uuid.UUID) (bool, error) {
+		u, err := userRepo.GetByID(ctx, userID)
+		if err != nil {
+			return false, err
+		}
+		return u.MFAEnabled, nil
+	}
+	mfaEnforcementMW := authMW.RequireMFASetup(mfaChecker, getUserMFAEnabled)
+
 	var rootHandler http.Handler = mux
+	rootHandler = mfaEnforcementMW(rootHandler)
 	rootHandler = auditMW(rootHandler)
 	rootHandler = middleware.Logging(rootHandler)
 	rootHandler = middleware.RateLimit(cfg.RateLimit)(rootHandler)
@@ -360,4 +441,17 @@ func main() {
 	}
 
 	slog.Info("server stopped gracefully")
+}
+
+// mfaSetupChecker adapts ServerSettingsRepository to the middleware.MFASetupChecker interface.
+type mfaSetupChecker struct {
+	settingsRepo *repository.ServerSettingsRepository
+}
+
+func (c *mfaSetupChecker) IsMFARequired(ctx context.Context) bool {
+	s, err := c.settingsRepo.Get(ctx, "mfa_required")
+	if err != nil {
+		return false
+	}
+	return s.Value == "true"
 }

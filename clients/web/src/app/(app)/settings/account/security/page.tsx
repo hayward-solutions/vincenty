@@ -14,6 +14,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { ApiError } from "@/lib/api";
+import { MFAMethodList } from "@/components/mfa/mfa-method-list";
 
 export default function SecuritySettingsPage() {
   const { changePassword, isLoading } = useChangePassword();
@@ -125,33 +126,7 @@ export default function SecuritySettingsPage() {
         </CardContent>
       </Card>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Multi-Factor Authentication</CardTitle>
-          <CardDescription>
-            Add an extra layer of security to your account.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <p className="text-sm text-muted-foreground">
-            MFA configuration coming soon.
-          </p>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Passkeys</CardTitle>
-          <CardDescription>
-            Sign in without a password using biometrics or a security key.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <p className="text-sm text-muted-foreground">
-            Passkey management coming soon.
-          </p>
-        </CardContent>
-      </Card>
+      <MFAMethodList />
 
       <Card>
         <CardHeader>

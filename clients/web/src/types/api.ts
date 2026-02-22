@@ -8,6 +8,7 @@ export interface User {
   marker_color: string;
   is_admin: boolean;
   is_active: boolean;
+  mfa_enabled: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -34,6 +35,91 @@ export interface AuthResponse {
   access_token: string;
   refresh_token: string;
   user: User;
+}
+
+// ---------------------------------------------------------------------------
+// MFA types
+// ---------------------------------------------------------------------------
+
+/** Returned by login when MFA is required. */
+export interface MFAChallengeResponse {
+  mfa_required: true;
+  mfa_token: string;
+  methods: string[]; // e.g. ["totp", "webauthn", "recovery"]
+}
+
+/** A single enrolled MFA method. */
+export interface MFAMethod {
+  id: string;
+  type: "totp" | "webauthn";
+  name: string;
+  verified: boolean;
+  passwordless_enabled?: boolean;
+  last_used_at?: string;
+  created_at: string;
+}
+
+/** Returned when beginning TOTP setup. */
+export interface TOTPSetupResponse {
+  method_id: string;
+  secret: string;
+  uri: string;
+  issuer: string;
+  account: string;
+}
+
+/** Returned when TOTP is verified (first method triggers recovery codes). */
+export interface TOTPVerifyResponse {
+  verified: true;
+  recovery_codes?: string[];
+}
+
+/** Returned when WebAuthn registration finishes. */
+export interface WebAuthnRegisterResponse {
+  registered: true;
+  recovery_codes?: string[];
+}
+
+/** Returned when recovery codes are regenerated. */
+export interface RecoveryCodesResponse {
+  codes: string[];
+}
+
+/** Returned by passkey begin. */
+export interface PasskeyBeginResponse {
+  options: PublicKeyCredentialRequestOptionsJSON;
+  session_id: string;
+}
+
+/** Server-level settings. */
+export interface ServerSettings {
+  mfa_required: boolean;
+}
+
+/** Helper: login may return either auth tokens or an MFA challenge. */
+export type LoginResult = AuthResponse | MFAChallengeResponse;
+
+/** Type guard for MFA challenge responses. */
+export function isMFAChallengeResponse(
+  data: LoginResult
+): data is MFAChallengeResponse {
+  return "mfa_required" in data && data.mfa_required === true;
+}
+
+// WebAuthn JSON types (from the Web Authentication API)
+export interface PublicKeyCredentialRequestOptionsJSON {
+  challenge: string;
+  timeout?: number;
+  rpId?: string;
+  allowCredentials?: PublicKeyCredentialDescriptorJSON[];
+  userVerification?: string;
+  extensions?: Record<string, unknown>;
+}
+
+export interface PublicKeyCredentialDescriptorJSON {
+  type: string;
+  id: string;
+  transports?: string[];
 }
 
 export interface ListResponse<T> {

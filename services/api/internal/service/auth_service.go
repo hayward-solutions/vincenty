@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/sitaware/api/internal/auth"
 	"github.com/sitaware/api/internal/config"
 	"github.com/sitaware/api/internal/model"
@@ -14,9 +15,10 @@ import (
 
 // AuthService handles authentication business logic.
 type AuthService struct {
-	userRepo  *repository.UserRepository
-	tokenRepo *repository.TokenRepository
-	jwt       *auth.JWTService
+	userRepo   *repository.UserRepository
+	tokenRepo  *repository.TokenRepository
+	jwt        *auth.JWTService
+	mfaService *MFAService
 }
 
 // NewAuthService creates a new AuthService.
@@ -24,15 +26,19 @@ func NewAuthService(
 	userRepo *repository.UserRepository,
 	tokenRepo *repository.TokenRepository,
 	jwt *auth.JWTService,
+	mfaService *MFAService,
 ) *AuthService {
 	return &AuthService{
-		userRepo:  userRepo,
-		tokenRepo: tokenRepo,
-		jwt:       jwt,
+		userRepo:   userRepo,
+		tokenRepo:  tokenRepo,
+		jwt:        jwt,
+		mfaService: mfaService,
 	}
 }
 
 // Login authenticates a user and returns access + refresh tokens.
+// If the user has MFA enabled, returns an MFARequiredError with a challenge token
+// instead of the auth tokens.
 func (s *AuthService) Login(ctx context.Context, req *model.LoginRequest) (*model.AuthResponse, error) {
 	user, err := s.userRepo.GetByUsername(ctx, req.Username)
 	if err != nil {
@@ -49,6 +55,49 @@ func (s *AuthService) Login(ctx context.Context, req *model.LoginRequest) (*mode
 
 	if err := auth.CheckPassword(req.Password, user.PasswordHash); err != nil {
 		return nil, model.ErrValidation("invalid username or password")
+	}
+
+	// If MFA is enabled, issue an MFA challenge instead of tokens
+	if user.MFAEnabled && s.mfaService != nil {
+		challenge, err := s.mfaService.CreateMFAToken(ctx, user.ID)
+		if err != nil {
+			return nil, err
+		}
+		return nil, model.ErrMFARequired(*challenge)
+	}
+
+	return s.generateTokens(ctx, user)
+}
+
+// CompleteMFALogin validates the MFA token, fetches the user, and issues tokens.
+// Called after a successful MFA verification (TOTP, WebAuthn, or recovery code).
+func (s *AuthService) CompleteMFALogin(ctx context.Context, mfaToken string) (*model.AuthResponse, error) {
+	session, err := s.mfaService.ValidateMFAToken(ctx, mfaToken)
+	if err != nil {
+		return nil, err
+	}
+
+	user, err := s.userRepo.GetByID(ctx, session.UserID)
+	if err != nil {
+		return nil, err
+	}
+
+	if !user.IsActive {
+		return nil, model.ErrForbidden("account is disabled")
+	}
+
+	return s.generateTokens(ctx, user)
+}
+
+// PasskeyLogin handles passwordless login via WebAuthn discoverable credentials.
+func (s *AuthService) PasskeyLogin(ctx context.Context, userID uuid.UUID) (*model.AuthResponse, error) {
+	user, err := s.userRepo.GetByID(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+
+	if !user.IsActive {
+		return nil, model.ErrForbidden("account is disabled")
 	}
 
 	return s.generateTokens(ctx, user)

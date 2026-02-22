@@ -58,6 +58,36 @@ func ErrForbidden(msg string) *ForbiddenError {
 	return &ForbiddenError{Message: msg}
 }
 
+// MFARequiredError is returned by Login when the user has MFA enabled
+// and must complete a second-factor challenge.
+type MFARequiredError struct {
+	Challenge MFAChallengeResponse
+}
+
+func (e *MFARequiredError) Error() string {
+	return "MFA verification required"
+}
+
+// ErrMFARequired creates a new MFARequiredError.
+func ErrMFARequired(challenge MFAChallengeResponse) *MFARequiredError {
+	return &MFARequiredError{Challenge: challenge}
+}
+
+// MFASetupRequiredError is returned when MFA is enforced server-wide
+// but the user has not configured it yet.
+type MFASetupRequiredError struct {
+	Message string
+}
+
+func (e *MFASetupRequiredError) Error() string {
+	return e.Message
+}
+
+// ErrMFASetupRequired creates a new MFASetupRequiredError.
+func ErrMFASetupRequired(msg string) *MFASetupRequiredError {
+	return &MFASetupRequiredError{Message: msg}
+}
+
 // ListResponse is a generic paginated response wrapper.
 type ListResponse[T any] struct {
 	Data     []T `json:"data"`
