@@ -284,6 +284,8 @@ export interface MapConfigResponse {
   style_json?: Record<string, unknown>;
   min_zoom: number;
   max_zoom: number;
+  terrain_url: string;
+  terrain_encoding: string;
   is_default: boolean;
   created_by?: string;
   created_at: string;
@@ -298,6 +300,8 @@ export interface MapSettings {
   zoom: number;
   min_zoom: number;
   max_zoom: number;
+  terrain_url: string;
+  terrain_encoding: string;
   configs: MapConfigResponse[];
 }
 
@@ -308,6 +312,8 @@ export interface CreateMapConfigRequest {
   style_json?: Record<string, unknown>;
   min_zoom?: number;
   max_zoom?: number;
+  terrain_url?: string;
+  terrain_encoding?: string;
   is_default?: boolean;
 }
 
@@ -318,6 +324,8 @@ export interface UpdateMapConfigRequest {
   style_json?: Record<string, unknown>;
   min_zoom?: number;
   max_zoom?: number;
+  terrain_url?: string;
+  terrain_encoding?: string;
   is_default?: boolean;
 }
 

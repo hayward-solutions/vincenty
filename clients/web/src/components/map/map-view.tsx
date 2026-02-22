@@ -74,6 +74,25 @@ export function MapView({ settings, onMapReady, children }: MapViewProps) {
     });
 
     map.on("load", () => {
+      // Register terrain DEM source if a terrain URL is configured.
+      // The source is added eagerly so the toggle in MapControls can
+      // enable/disable terrain without re-adding the source each time.
+      if (settings.terrain_url) {
+        const isTileJSON = settings.terrain_url.endsWith(".json");
+        map.addSource("terrain-dem", {
+          type: "raster-dem",
+          // TileJSON endpoint (e.g. demotiles.maplibre.org) uses `url`;
+          // direct tile template (e.g. {z}/{x}/{y}.png) uses `tiles`.
+          ...(isTileJSON
+            ? { url: settings.terrain_url }
+            : {
+                tiles: [settings.terrain_url],
+                encoding: (settings.terrain_encoding || "terrarium") as "terrarium" | "mapbox",
+              }),
+          tileSize: 256,
+        });
+      }
+
       mapRef.current = map;
       setIsReady(true);
       onMapReady?.(map);

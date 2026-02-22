@@ -479,7 +479,7 @@ export default function MapPage() {
       <MapView settings={settings} onMapReady={handleMapReady}>
         {mapRef.current && (
           <>
-            <MapControls map={mapRef.current} />
+            <MapControls map={mapRef.current} terrainAvailable={!!settings.terrain_url} />
             <SelfMarker
               map={mapRef.current}
               position={lastPosition}
