@@ -14,6 +14,8 @@ type TerrainConfig struct {
 	TerrainURL      string     `json:"-"`
 	TerrainEncoding string     `json:"-"`
 	IsDefault       bool       `json:"-"`
+	IsBuiltin       bool       `json:"-"`
+	IsEnabled       bool       `json:"-"`
 	CreatedBy       *uuid.UUID `json:"-"`
 	CreatedAt       time.Time  `json:"-"`
 	UpdatedAt       time.Time  `json:"-"`
@@ -27,6 +29,8 @@ type TerrainConfigResponse struct {
 	TerrainURL      string     `json:"terrain_url"`
 	TerrainEncoding string     `json:"terrain_encoding"`
 	IsDefault       bool       `json:"is_default"`
+	IsBuiltin       bool       `json:"is_builtin"`
+	IsEnabled       bool       `json:"is_enabled"`
 	CreatedBy       *uuid.UUID `json:"created_by,omitempty"`
 	CreatedAt       time.Time  `json:"created_at"`
 	UpdatedAt       time.Time  `json:"updated_at"`
@@ -41,6 +45,8 @@ func (t *TerrainConfig) ToResponse() TerrainConfigResponse {
 		TerrainURL:      t.TerrainURL,
 		TerrainEncoding: t.TerrainEncoding,
 		IsDefault:       t.IsDefault,
+		IsBuiltin:       t.IsBuiltin,
+		IsEnabled:       t.IsEnabled,
 		CreatedBy:       t.CreatedBy,
 		CreatedAt:       t.CreatedAt,
 		UpdatedAt:       t.UpdatedAt,
@@ -89,12 +95,5 @@ type UpdateTerrainConfigRequest struct {
 	TerrainURL      *string `json:"terrain_url"`
 	TerrainEncoding *string `json:"terrain_encoding"`
 	IsDefault       *bool   `json:"is_default"`
-}
-
-// TerrainDefaultsResponse contains the server-level environment defaults for
-// terrain configuration. These are the baseline values the system falls back to
-// when no database terrain config is marked as default.
-type TerrainDefaultsResponse struct {
-	TerrainURL      string `json:"terrain_url"`
-	TerrainEncoding string `json:"terrain_encoding"`
+	IsEnabled       *bool   `json:"is_enabled"`
 }

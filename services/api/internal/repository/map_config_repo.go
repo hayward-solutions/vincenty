@@ -24,8 +24,8 @@ func NewMapConfigRepository(pool *pgxpool.Pool) *MapConfigRepository {
 // Create inserts a new map configuration.
 func (r *MapConfigRepository) Create(ctx context.Context, mc *model.MapConfig) error {
 	query := `
-		INSERT INTO map_configs (id, name, source_type, tile_url, style_json, min_zoom, max_zoom, is_default, created_by)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+		INSERT INTO map_configs (id, name, source_type, tile_url, style_json, min_zoom, max_zoom, is_default, is_builtin, is_enabled, created_by)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
 		RETURNING created_at, updated_at`
 
 	if mc.ID == uuid.Nil {
@@ -35,7 +35,7 @@ func (r *MapConfigRepository) Create(ctx context.Context, mc *model.MapConfig) e
 	return r.pool.QueryRow(ctx, query,
 		mc.ID, mc.Name, mc.SourceType, mc.TileURL, mc.StyleJSON,
 		mc.MinZoom, mc.MaxZoom,
-		mc.IsDefault, mc.CreatedBy,
+		mc.IsDefault, mc.IsBuiltin, mc.IsEnabled, mc.CreatedBy,
 	).Scan(&mc.CreatedAt, &mc.UpdatedAt)
 }
 
@@ -44,7 +44,7 @@ func (r *MapConfigRepository) GetByID(ctx context.Context, id uuid.UUID) (*model
 	query := `
 		SELECT id, name, source_type, tile_url, style_json,
 		       min_zoom, max_zoom,
-		       is_default, created_by, created_at, updated_at
+		       is_default, is_builtin, is_enabled, created_by, created_at, updated_at
 		FROM map_configs WHERE id = $1`
 
 	mc := &model.MapConfig{}
@@ -52,7 +52,7 @@ func (r *MapConfigRepository) GetByID(ctx context.Context, id uuid.UUID) (*model
 	err := r.pool.QueryRow(ctx, query, id).Scan(
 		&mc.ID, &mc.Name, &mc.SourceType, &mc.TileURL, &styleBytes,
 		&mc.MinZoom, &mc.MaxZoom,
-		&mc.IsDefault, &mc.CreatedBy,
+		&mc.IsDefault, &mc.IsBuiltin, &mc.IsEnabled, &mc.CreatedBy,
 		&mc.CreatedAt, &mc.UpdatedAt,
 	)
 	if err != nil {
@@ -68,13 +68,13 @@ func (r *MapConfigRepository) GetByID(ctx context.Context, id uuid.UUID) (*model
 	return mc, nil
 }
 
-// GetDefault retrieves the default map configuration, if any.
+// GetDefault retrieves the default map configuration that is also enabled, if any.
 func (r *MapConfigRepository) GetDefault(ctx context.Context) (*model.MapConfig, error) {
 	query := `
 		SELECT id, name, source_type, tile_url, style_json,
 		       min_zoom, max_zoom,
-		       is_default, created_by, created_at, updated_at
-		FROM map_configs WHERE is_default = true
+		       is_default, is_builtin, is_enabled, created_by, created_at, updated_at
+		FROM map_configs WHERE is_default = true AND is_enabled = true
 		LIMIT 1`
 
 	mc := &model.MapConfig{}
@@ -82,7 +82,7 @@ func (r *MapConfigRepository) GetDefault(ctx context.Context) (*model.MapConfig,
 	err := r.pool.QueryRow(ctx, query).Scan(
 		&mc.ID, &mc.Name, &mc.SourceType, &mc.TileURL, &styleBytes,
 		&mc.MinZoom, &mc.MaxZoom,
-		&mc.IsDefault, &mc.CreatedBy,
+		&mc.IsDefault, &mc.IsBuiltin, &mc.IsEnabled, &mc.CreatedBy,
 		&mc.CreatedAt, &mc.UpdatedAt,
 	)
 	if err != nil {
@@ -103,7 +103,7 @@ func (r *MapConfigRepository) List(ctx context.Context) ([]model.MapConfig, erro
 	query := `
 		SELECT id, name, source_type, tile_url, style_json,
 		       min_zoom, max_zoom,
-		       is_default, created_by, created_at, updated_at
+		       is_default, is_builtin, is_enabled, created_by, created_at, updated_at
 		FROM map_configs
 		ORDER BY is_default DESC, name ASC`
 
@@ -120,7 +120,7 @@ func (r *MapConfigRepository) List(ctx context.Context) ([]model.MapConfig, erro
 		if err := rows.Scan(
 			&mc.ID, &mc.Name, &mc.SourceType, &mc.TileURL, &styleBytes,
 			&mc.MinZoom, &mc.MaxZoom,
-			&mc.IsDefault, &mc.CreatedBy,
+			&mc.IsDefault, &mc.IsBuiltin, &mc.IsEnabled, &mc.CreatedBy,
 			&mc.CreatedAt, &mc.UpdatedAt,
 		); err != nil {
 			return nil, err
@@ -141,14 +141,14 @@ func (r *MapConfigRepository) Update(ctx context.Context, mc *model.MapConfig) e
 		UPDATE map_configs
 		SET name = $2, source_type = $3, tile_url = $4, style_json = $5,
 		    min_zoom = $6, max_zoom = $7,
-		    is_default = $8, updated_at = NOW()
+		    is_default = $8, is_enabled = $9, updated_at = NOW()
 		WHERE id = $1
 		RETURNING updated_at`
 
 	err := r.pool.QueryRow(ctx, query,
 		mc.ID, mc.Name, mc.SourceType, mc.TileURL, mc.StyleJSON,
 		mc.MinZoom, mc.MaxZoom,
-		mc.IsDefault,
+		mc.IsDefault, mc.IsEnabled,
 	).Scan(&mc.UpdatedAt)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -178,4 +178,12 @@ func (r *MapConfigRepository) ClearDefault(ctx context.Context) error {
 	query := `UPDATE map_configs SET is_default = false WHERE is_default = true`
 	_, err := r.pool.Exec(ctx, query)
 	return err
+}
+
+// CountBuiltin returns the number of built-in map configurations.
+func (r *MapConfigRepository) CountBuiltin(ctx context.Context) (int64, error) {
+	query := `SELECT COUNT(*) FROM map_configs WHERE is_builtin = true`
+	var count int64
+	err := r.pool.QueryRow(ctx, query).Scan(&count)
+	return count, err
 }

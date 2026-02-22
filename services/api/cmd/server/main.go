@@ -176,6 +176,18 @@ func main() {
 	}
 
 	// -----------------------------------------------------------------------
+	// Bootstrap built-in map and terrain configs
+	// -----------------------------------------------------------------------
+	if err := mapConfigService.BootstrapMapConfigs(context.Background()); err != nil {
+		slog.Error("failed to bootstrap map configs", "error", err)
+		os.Exit(1)
+	}
+	if err := terrainConfigService.BootstrapTerrainConfigs(context.Background()); err != nil {
+		slog.Error("failed to bootstrap terrain configs", "error", err)
+		os.Exit(1)
+	}
+
+	// -----------------------------------------------------------------------
 	// Handlers
 	// -----------------------------------------------------------------------
 	authHandler := handler.NewAuthHandler(authService)
@@ -342,7 +354,6 @@ func main() {
 	mux.Handle("GET /api/v1/map/settings", authMW.Authenticate(http.HandlerFunc(mapConfigHandler.GetSettings)))
 
 	// Map configs - CRUD (admin)
-	mux.Handle("GET /api/v1/map-configs/defaults", authMW.RequireAdmin(http.HandlerFunc(mapConfigHandler.GetDefaults)))
 	mux.Handle("GET /api/v1/map-configs", authMW.RequireAdmin(http.HandlerFunc(mapConfigHandler.List)))
 	mux.Handle("POST /api/v1/map-configs", authMW.RequireAdmin(http.HandlerFunc(mapConfigHandler.Create)))
 	mux.Handle("GET /api/v1/map-configs/{id}", authMW.RequireAdmin(http.HandlerFunc(mapConfigHandler.Get)))
@@ -350,7 +361,6 @@ func main() {
 	mux.Handle("DELETE /api/v1/map-configs/{id}", authMW.RequireAdmin(http.HandlerFunc(mapConfigHandler.Delete)))
 
 	// Terrain configs - CRUD (admin)
-	mux.Handle("GET /api/v1/terrain-configs/defaults", authMW.RequireAdmin(http.HandlerFunc(terrainConfigHandler.GetDefaults)))
 	mux.Handle("GET /api/v1/terrain-configs", authMW.RequireAdmin(http.HandlerFunc(terrainConfigHandler.List)))
 	mux.Handle("POST /api/v1/terrain-configs", authMW.RequireAdmin(http.HandlerFunc(terrainConfigHandler.Create)))
 	mux.Handle("GET /api/v1/terrain-configs/{id}", authMW.RequireAdmin(http.HandlerFunc(terrainConfigHandler.Get)))

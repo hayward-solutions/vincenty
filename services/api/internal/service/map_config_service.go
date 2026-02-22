@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"log/slog"
 
 	"github.com/google/uuid"
 	"github.com/sitaware/api/internal/config"
@@ -19,6 +20,54 @@ type MapConfigService struct {
 // NewMapConfigService creates a new MapConfigService.
 func NewMapConfigService(repo *repository.MapConfigRepository, terrainRepo *repository.TerrainConfigRepository, mapDefaults config.MapConfig) *MapConfigService {
 	return &MapConfigService{repo: repo, terrainRepo: terrainRepo, mapDefaults: mapDefaults}
+}
+
+// BootstrapMapConfigs seeds the built-in map configurations if none exist yet.
+// This follows the same pattern as BootstrapAdmin in auth_service.go.
+func (s *MapConfigService) BootstrapMapConfigs(ctx context.Context) error {
+	count, err := s.repo.CountBuiltin(ctx)
+	if err != nil {
+		return err
+	}
+	if count > 0 {
+		slog.Debug("built-in map configs already exist, skipping bootstrap")
+		return nil
+	}
+
+	osmURL := "https://tile.openstreetmap.org/{z}/{x}/{y}.png"
+	satURL := "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
+
+	builtins := []model.MapConfig{
+		{
+			Name:       "OpenStreetMap",
+			SourceType: "remote",
+			TileURL:    &osmURL,
+			MinZoom:    0,
+			MaxZoom:    19,
+			IsDefault:  true,
+			IsBuiltin:  true,
+			IsEnabled:  true,
+		},
+		{
+			Name:       "Satellite (ESRI)",
+			SourceType: "remote",
+			TileURL:    &satURL,
+			MinZoom:    0,
+			MaxZoom:    18,
+			IsDefault:  false,
+			IsBuiltin:  true,
+			IsEnabled:  true,
+		},
+	}
+
+	for i := range builtins {
+		if err := s.repo.Create(ctx, &builtins[i]); err != nil {
+			return err
+		}
+		slog.Info("bootstrap map config created", "name", builtins[i].Name)
+	}
+
+	return nil
 }
 
 // Create creates a new map configuration.
@@ -49,14 +98,16 @@ func (s *MapConfigService) Create(ctx context.Context, req *model.CreateMapConfi
 	}
 
 	mc := &model.MapConfig{
-		Name:      req.Name,
+		Name:       req.Name,
 		SourceType: req.SourceType,
-		TileURL:   tileURL,
-		StyleJSON: req.StyleJSON,
-		MinZoom:   minZoom,
-		MaxZoom:   maxZoom,
-		IsDefault: isDefault,
-		CreatedBy: &createdBy,
+		TileURL:    tileURL,
+		StyleJSON:  req.StyleJSON,
+		MinZoom:    minZoom,
+		MaxZoom:    maxZoom,
+		IsDefault:  isDefault,
+		IsBuiltin:  false,
+		IsEnabled:  true,
+		CreatedBy:  &createdBy,
 	}
 
 	if err := s.repo.Create(ctx, mc); err != nil {
@@ -84,23 +135,22 @@ func (s *MapConfigService) GetSettings(ctx context.Context) (*model.MapSettingsR
 		return nil, err
 	}
 
-	// Start with environment defaults
+	// Start with empty defaults — the seeded built-in configs (which cannot
+	// be deleted) will override these via the DB default lookup below.
 	resp := &model.MapSettingsResponse{
-		TileURL:         s.mapDefaults.DefaultTileURL,
 		CenterLat:       s.mapDefaults.DefaultCenterLat,
 		CenterLng:       s.mapDefaults.DefaultCenterLng,
 		Zoom:            s.mapDefaults.DefaultZoom,
 		MinZoom:         0,
 		MaxZoom:         18,
-		TerrainURL:      s.mapDefaults.DefaultTerrainURL,
 		TerrainEncoding: "terrarium",
 		Configs:         make([]model.MapConfigResponse, 0, len(configs)),
 	}
 
-	// Override tile settings with default DB map config if one exists
+	// Override tile settings with default+enabled DB map config if one exists
 	for _, mc := range configs {
 		resp.Configs = append(resp.Configs, mc.ToResponse())
-		if mc.IsDefault {
+		if mc.IsDefault && mc.IsEnabled {
 			if mc.TileURL != nil {
 				resp.TileURL = *mc.TileURL
 			}
@@ -110,7 +160,7 @@ func (s *MapConfigService) GetSettings(ctx context.Context) (*model.MapSettingsR
 		}
 	}
 
-	// Override terrain settings with default DB terrain config if one exists
+	// Override terrain settings with default+enabled DB terrain config if one exists
 	defaultTerrain, err := s.terrainRepo.GetDefault(ctx)
 	if err != nil {
 		return nil, err
@@ -130,6 +180,37 @@ func (s *MapConfigService) Update(ctx context.Context, id uuid.UUID, req *model.
 		return nil, err
 	}
 
+	// Built-in configs: only is_default and is_enabled can be changed.
+	if mc.IsBuiltin {
+		if req.Name != nil || req.SourceType != nil || req.TileURL != nil ||
+			req.StyleJSON != nil || req.MinZoom != nil || req.MaxZoom != nil {
+			return nil, model.ErrValidation("built-in config fields are read-only")
+		}
+
+		// Cannot disable the current default — must change default first.
+		if req.IsEnabled != nil && !*req.IsEnabled && mc.IsDefault {
+			return nil, model.ErrValidation("cannot disable the current default config; change the default first")
+		}
+
+		if req.IsDefault != nil && *req.IsDefault != mc.IsDefault {
+			if *req.IsDefault {
+				if err := s.repo.ClearDefault(ctx); err != nil {
+					return nil, err
+				}
+			}
+			mc.IsDefault = *req.IsDefault
+		}
+		if req.IsEnabled != nil {
+			mc.IsEnabled = *req.IsEnabled
+		}
+
+		if err := s.repo.Update(ctx, mc); err != nil {
+			return nil, err
+		}
+		return mc, nil
+	}
+
+	// User-created configs: all fields can be changed.
 	if req.Name != nil {
 		if *req.Name == "" {
 			return nil, model.ErrValidation("name cannot be empty")
@@ -157,6 +238,13 @@ func (s *MapConfigService) Update(ctx context.Context, id uuid.UUID, req *model.
 	if req.MaxZoom != nil {
 		mc.MaxZoom = *req.MaxZoom
 	}
+	if req.IsEnabled != nil {
+		// Cannot disable the current default — must change default first.
+		if !*req.IsEnabled && mc.IsDefault {
+			return nil, model.ErrValidation("cannot disable the current default config; change the default first")
+		}
+		mc.IsEnabled = *req.IsEnabled
+	}
 	if req.IsDefault != nil && *req.IsDefault != mc.IsDefault {
 		if *req.IsDefault {
 			if err := s.repo.ClearDefault(ctx); err != nil {
@@ -173,18 +261,16 @@ func (s *MapConfigService) Update(ctx context.Context, id uuid.UUID, req *model.
 	return mc, nil
 }
 
-// GetDefaults returns the server-level environment defaults for the map
-// configuration. These are the baseline values used when no database config
-// is marked as default.
-func (s *MapConfigService) GetDefaults() *model.MapDefaultsResponse {
-	return &model.MapDefaultsResponse{
-		TileURL: s.mapDefaults.DefaultTileURL,
-		MinZoom: 0,
-		MaxZoom: 18,
-	}
-}
-
 // Delete removes a map configuration.
 func (s *MapConfigService) Delete(ctx context.Context, id uuid.UUID) error {
+	mc, err := s.repo.GetByID(ctx, id)
+	if err != nil {
+		return err
+	}
+
+	if mc.IsBuiltin {
+		return model.ErrValidation("built-in configs cannot be deleted")
+	}
+
 	return s.repo.Delete(ctx, id)
 }

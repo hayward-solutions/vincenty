@@ -19,13 +19,6 @@ func NewTerrainConfigHandler(terrainConfigService *service.TerrainConfigService)
 	return &TerrainConfigHandler{terrainConfigService: terrainConfigService}
 }
 
-// GetDefaults handles GET /api/v1/terrain-configs/defaults (admin)
-// Returns the server-level environment defaults so admins can see the baseline
-// terrain configuration and revert to it if needed.
-func (h *TerrainConfigHandler) GetDefaults(w http.ResponseWriter, r *http.Request) {
-	JSON(w, http.StatusOK, h.terrainConfigService.GetDefaults())
-}
-
 // --------------------------------------------------------------------------
 // Admin CRUD
 // --------------------------------------------------------------------------

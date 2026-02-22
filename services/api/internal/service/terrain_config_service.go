@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"log/slog"
 
 	"github.com/google/uuid"
 	"github.com/sitaware/api/internal/config"
@@ -18,6 +19,39 @@ type TerrainConfigService struct {
 // NewTerrainConfigService creates a new TerrainConfigService.
 func NewTerrainConfigService(repo *repository.TerrainConfigRepository, mapDefaults config.MapConfig) *TerrainConfigService {
 	return &TerrainConfigService{repo: repo, mapDefaults: mapDefaults}
+}
+
+// BootstrapTerrainConfigs seeds the built-in terrain configurations if none exist yet.
+func (s *TerrainConfigService) BootstrapTerrainConfigs(ctx context.Context) error {
+	count, err := s.repo.CountBuiltin(ctx)
+	if err != nil {
+		return err
+	}
+	if count > 0 {
+		slog.Debug("built-in terrain configs already exist, skipping bootstrap")
+		return nil
+	}
+
+	builtins := []model.TerrainConfig{
+		{
+			Name:            "AWS Terrarium",
+			SourceType:      "remote",
+			TerrainURL:      "https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png",
+			TerrainEncoding: "terrarium",
+			IsDefault:       true,
+			IsBuiltin:       true,
+			IsEnabled:       true,
+		},
+	}
+
+	for i := range builtins {
+		if err := s.repo.Create(ctx, &builtins[i]); err != nil {
+			return err
+		}
+		slog.Info("bootstrap terrain config created", "name", builtins[i].Name)
+	}
+
+	return nil
 }
 
 // Create creates a new terrain configuration.
@@ -40,6 +74,8 @@ func (s *TerrainConfigService) Create(ctx context.Context, req *model.CreateTerr
 		TerrainURL:      req.TerrainURL,
 		TerrainEncoding: req.TerrainEncoding,
 		IsDefault:       isDefault,
+		IsBuiltin:       false,
+		IsEnabled:       true,
 		CreatedBy:       &createdBy,
 	}
 
@@ -67,6 +103,36 @@ func (s *TerrainConfigService) Update(ctx context.Context, id uuid.UUID, req *mo
 		return nil, err
 	}
 
+	// Built-in configs: only is_default and is_enabled can be changed.
+	if tc.IsBuiltin {
+		if req.Name != nil || req.SourceType != nil || req.TerrainURL != nil || req.TerrainEncoding != nil {
+			return nil, model.ErrValidation("built-in config fields are read-only")
+		}
+
+		// Cannot disable the current default — must change default first.
+		if req.IsEnabled != nil && !*req.IsEnabled && tc.IsDefault {
+			return nil, model.ErrValidation("cannot disable the current default config; change the default first")
+		}
+
+		if req.IsDefault != nil && *req.IsDefault != tc.IsDefault {
+			if *req.IsDefault {
+				if err := s.repo.ClearDefault(ctx); err != nil {
+					return nil, err
+				}
+			}
+			tc.IsDefault = *req.IsDefault
+		}
+		if req.IsEnabled != nil {
+			tc.IsEnabled = *req.IsEnabled
+		}
+
+		if err := s.repo.Update(ctx, tc); err != nil {
+			return nil, err
+		}
+		return tc, nil
+	}
+
+	// User-created configs: all fields can be changed.
 	if req.Name != nil {
 		if *req.Name == "" {
 			return nil, model.ErrValidation("name cannot be empty")
@@ -94,6 +160,13 @@ func (s *TerrainConfigService) Update(ctx context.Context, id uuid.UUID, req *mo
 		}
 		tc.TerrainEncoding = *req.TerrainEncoding
 	}
+	if req.IsEnabled != nil {
+		// Cannot disable the current default — must change default first.
+		if !*req.IsEnabled && tc.IsDefault {
+			return nil, model.ErrValidation("cannot disable the current default config; change the default first")
+		}
+		tc.IsEnabled = *req.IsEnabled
+	}
 	if req.IsDefault != nil && *req.IsDefault != tc.IsDefault {
 		if *req.IsDefault {
 			if err := s.repo.ClearDefault(ctx); err != nil {
@@ -112,15 +185,14 @@ func (s *TerrainConfigService) Update(ctx context.Context, id uuid.UUID, req *mo
 
 // Delete removes a terrain configuration.
 func (s *TerrainConfigService) Delete(ctx context.Context, id uuid.UUID) error {
-	return s.repo.Delete(ctx, id)
-}
-
-// GetDefaults returns the server-level environment defaults for terrain
-// configuration. These are the baseline values used when no database terrain
-// config is marked as default.
-func (s *TerrainConfigService) GetDefaults() *model.TerrainDefaultsResponse {
-	return &model.TerrainDefaultsResponse{
-		TerrainURL:      s.mapDefaults.DefaultTerrainURL,
-		TerrainEncoding: "terrarium",
+	tc, err := s.repo.GetByID(ctx, id)
+	if err != nil {
+		return err
 	}
+
+	if tc.IsBuiltin {
+		return model.ErrValidation("built-in configs cannot be deleted")
+	}
+
+	return s.repo.Delete(ctx, id)
 }

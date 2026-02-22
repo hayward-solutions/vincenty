@@ -9,32 +9,36 @@ import (
 
 // MapConfig represents a map tile configuration.
 type MapConfig struct {
-	ID        uuid.UUID        `json:"-"`
-	Name      string           `json:"-"`
-	SourceType string          `json:"-"`
-	TileURL   *string          `json:"-"`
-	StyleJSON *json.RawMessage `json:"-"`
-	MinZoom   int              `json:"-"`
-	MaxZoom   int              `json:"-"`
-	IsDefault bool             `json:"-"`
-	CreatedBy *uuid.UUID       `json:"-"`
-	CreatedAt time.Time        `json:"-"`
-	UpdatedAt time.Time        `json:"-"`
+	ID         uuid.UUID        `json:"-"`
+	Name       string           `json:"-"`
+	SourceType string           `json:"-"`
+	TileURL    *string          `json:"-"`
+	StyleJSON  *json.RawMessage `json:"-"`
+	MinZoom    int              `json:"-"`
+	MaxZoom    int              `json:"-"`
+	IsDefault  bool             `json:"-"`
+	IsBuiltin  bool             `json:"-"`
+	IsEnabled  bool             `json:"-"`
+	CreatedBy  *uuid.UUID       `json:"-"`
+	CreatedAt  time.Time        `json:"-"`
+	UpdatedAt  time.Time        `json:"-"`
 }
 
 // MapConfigResponse is the JSON representation returned by the API.
 type MapConfigResponse struct {
-	ID        uuid.UUID        `json:"id"`
-	Name      string           `json:"name"`
-	SourceType string          `json:"source_type"`
-	TileURL   string           `json:"tile_url"`
-	StyleJSON *json.RawMessage `json:"style_json,omitempty"`
-	MinZoom   int              `json:"min_zoom"`
-	MaxZoom   int              `json:"max_zoom"`
-	IsDefault bool             `json:"is_default"`
-	CreatedBy *uuid.UUID       `json:"created_by,omitempty"`
-	CreatedAt time.Time        `json:"created_at"`
-	UpdatedAt time.Time        `json:"updated_at"`
+	ID         uuid.UUID        `json:"id"`
+	Name       string           `json:"name"`
+	SourceType string           `json:"source_type"`
+	TileURL    string           `json:"tile_url"`
+	StyleJSON  *json.RawMessage `json:"style_json,omitempty"`
+	MinZoom    int              `json:"min_zoom"`
+	MaxZoom    int              `json:"max_zoom"`
+	IsDefault  bool             `json:"is_default"`
+	IsBuiltin  bool             `json:"is_builtin"`
+	IsEnabled  bool             `json:"is_enabled"`
+	CreatedBy  *uuid.UUID       `json:"created_by,omitempty"`
+	CreatedAt  time.Time        `json:"created_at"`
+	UpdatedAt  time.Time        `json:"updated_at"`
 }
 
 // ToResponse converts a MapConfig to its API response.
@@ -44,17 +48,19 @@ func (m *MapConfig) ToResponse() MapConfigResponse {
 		tileURL = *m.TileURL
 	}
 	return MapConfigResponse{
-		ID:        m.ID,
-		Name:      m.Name,
+		ID:         m.ID,
+		Name:       m.Name,
 		SourceType: m.SourceType,
-		TileURL:   tileURL,
-		StyleJSON: m.StyleJSON,
-		MinZoom:   m.MinZoom,
-		MaxZoom:   m.MaxZoom,
-		IsDefault: m.IsDefault,
-		CreatedBy: m.CreatedBy,
-		CreatedAt: m.CreatedAt,
-		UpdatedAt: m.UpdatedAt,
+		TileURL:    tileURL,
+		StyleJSON:  m.StyleJSON,
+		MinZoom:    m.MinZoom,
+		MaxZoom:    m.MaxZoom,
+		IsDefault:  m.IsDefault,
+		IsBuiltin:  m.IsBuiltin,
+		IsEnabled:  m.IsEnabled,
+		CreatedBy:  m.CreatedBy,
+		CreatedAt:  m.CreatedAt,
+		UpdatedAt:  m.UpdatedAt,
 	}
 }
 
@@ -107,15 +113,7 @@ type UpdateMapConfigRequest struct {
 	MinZoom    *int             `json:"min_zoom"`
 	MaxZoom    *int             `json:"max_zoom"`
 	IsDefault  *bool            `json:"is_default"`
-}
-
-// MapDefaultsResponse contains the server-level environment defaults for the
-// map configuration. These are the baseline values the system falls back to
-// when no database config is marked as default.
-type MapDefaultsResponse struct {
-	TileURL string `json:"tile_url"`
-	MinZoom int    `json:"min_zoom"`
-	MaxZoom int    `json:"max_zoom"`
+	IsEnabled  *bool            `json:"is_enabled"`
 }
 
 // MapSettingsResponse is returned by the public map config endpoint.

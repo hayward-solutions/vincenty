@@ -285,6 +285,8 @@ export interface MapConfigResponse {
   min_zoom: number;
   max_zoom: number;
   is_default: boolean;
+  is_builtin: boolean;
+  is_enabled: boolean;
   created_by?: string;
   created_at: string;
   updated_at: string;
@@ -301,12 +303,6 @@ export interface MapSettings {
   terrain_url: string;
   terrain_encoding: string;
   configs: MapConfigResponse[];
-}
-
-export interface MapDefaultsResponse {
-  tile_url: string;
-  min_zoom: number;
-  max_zoom: number;
 }
 
 export interface CreateMapConfigRequest {
@@ -327,6 +323,7 @@ export interface UpdateMapConfigRequest {
   min_zoom?: number;
   max_zoom?: number;
   is_default?: boolean;
+  is_enabled?: boolean;
 }
 
 // ---------------------------------------------------------------------------
@@ -340,14 +337,11 @@ export interface TerrainConfigResponse {
   terrain_url: string;
   terrain_encoding: string;
   is_default: boolean;
+  is_builtin: boolean;
+  is_enabled: boolean;
   created_by?: string;
   created_at: string;
   updated_at: string;
-}
-
-export interface TerrainDefaultsResponse {
-  terrain_url: string;
-  terrain_encoding: string;
 }
 
 export interface CreateTerrainConfigRequest {
@@ -364,6 +358,7 @@ export interface UpdateTerrainConfigRequest {
   terrain_url?: string;
   terrain_encoding?: string;
   is_default?: boolean;
+  is_enabled?: boolean;
 }
 
 // ---------------------------------------------------------------------------

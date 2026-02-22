@@ -23,8 +23,8 @@ func NewTerrainConfigRepository(pool *pgxpool.Pool) *TerrainConfigRepository {
 // Create inserts a new terrain configuration.
 func (r *TerrainConfigRepository) Create(ctx context.Context, tc *model.TerrainConfig) error {
 	query := `
-		INSERT INTO terrain_configs (id, name, source_type, terrain_url, terrain_encoding, is_default, created_by)
-		VALUES ($1, $2, $3, $4, $5, $6, $7)
+		INSERT INTO terrain_configs (id, name, source_type, terrain_url, terrain_encoding, is_default, is_builtin, is_enabled, created_by)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
 		RETURNING created_at, updated_at`
 
 	if tc.ID == uuid.Nil {
@@ -33,7 +33,7 @@ func (r *TerrainConfigRepository) Create(ctx context.Context, tc *model.TerrainC
 
 	return r.pool.QueryRow(ctx, query,
 		tc.ID, tc.Name, tc.SourceType, tc.TerrainURL, tc.TerrainEncoding,
-		tc.IsDefault, tc.CreatedBy,
+		tc.IsDefault, tc.IsBuiltin, tc.IsEnabled, tc.CreatedBy,
 	).Scan(&tc.CreatedAt, &tc.UpdatedAt)
 }
 
@@ -41,13 +41,13 @@ func (r *TerrainConfigRepository) Create(ctx context.Context, tc *model.TerrainC
 func (r *TerrainConfigRepository) GetByID(ctx context.Context, id uuid.UUID) (*model.TerrainConfig, error) {
 	query := `
 		SELECT id, name, source_type, terrain_url, terrain_encoding,
-		       is_default, created_by, created_at, updated_at
+		       is_default, is_builtin, is_enabled, created_by, created_at, updated_at
 		FROM terrain_configs WHERE id = $1`
 
 	tc := &model.TerrainConfig{}
 	err := r.pool.QueryRow(ctx, query, id).Scan(
 		&tc.ID, &tc.Name, &tc.SourceType, &tc.TerrainURL, &tc.TerrainEncoding,
-		&tc.IsDefault, &tc.CreatedBy,
+		&tc.IsDefault, &tc.IsBuiltin, &tc.IsEnabled, &tc.CreatedBy,
 		&tc.CreatedAt, &tc.UpdatedAt,
 	)
 	if err != nil {
@@ -59,18 +59,18 @@ func (r *TerrainConfigRepository) GetByID(ctx context.Context, id uuid.UUID) (*m
 	return tc, nil
 }
 
-// GetDefault retrieves the default terrain configuration, if any.
+// GetDefault retrieves the default terrain configuration that is also enabled, if any.
 func (r *TerrainConfigRepository) GetDefault(ctx context.Context) (*model.TerrainConfig, error) {
 	query := `
 		SELECT id, name, source_type, terrain_url, terrain_encoding,
-		       is_default, created_by, created_at, updated_at
-		FROM terrain_configs WHERE is_default = true
+		       is_default, is_builtin, is_enabled, created_by, created_at, updated_at
+		FROM terrain_configs WHERE is_default = true AND is_enabled = true
 		LIMIT 1`
 
 	tc := &model.TerrainConfig{}
 	err := r.pool.QueryRow(ctx, query).Scan(
 		&tc.ID, &tc.Name, &tc.SourceType, &tc.TerrainURL, &tc.TerrainEncoding,
-		&tc.IsDefault, &tc.CreatedBy,
+		&tc.IsDefault, &tc.IsBuiltin, &tc.IsEnabled, &tc.CreatedBy,
 		&tc.CreatedAt, &tc.UpdatedAt,
 	)
 	if err != nil {
@@ -86,7 +86,7 @@ func (r *TerrainConfigRepository) GetDefault(ctx context.Context) (*model.Terrai
 func (r *TerrainConfigRepository) List(ctx context.Context) ([]model.TerrainConfig, error) {
 	query := `
 		SELECT id, name, source_type, terrain_url, terrain_encoding,
-		       is_default, created_by, created_at, updated_at
+		       is_default, is_builtin, is_enabled, created_by, created_at, updated_at
 		FROM terrain_configs
 		ORDER BY is_default DESC, name ASC`
 
@@ -101,7 +101,7 @@ func (r *TerrainConfigRepository) List(ctx context.Context) ([]model.TerrainConf
 		var tc model.TerrainConfig
 		if err := rows.Scan(
 			&tc.ID, &tc.Name, &tc.SourceType, &tc.TerrainURL, &tc.TerrainEncoding,
-			&tc.IsDefault, &tc.CreatedBy,
+			&tc.IsDefault, &tc.IsBuiltin, &tc.IsEnabled, &tc.CreatedBy,
 			&tc.CreatedAt, &tc.UpdatedAt,
 		); err != nil {
 			return nil, err
@@ -117,13 +117,13 @@ func (r *TerrainConfigRepository) Update(ctx context.Context, tc *model.TerrainC
 	query := `
 		UPDATE terrain_configs
 		SET name = $2, source_type = $3, terrain_url = $4, terrain_encoding = $5,
-		    is_default = $6, updated_at = NOW()
+		    is_default = $6, is_enabled = $7, updated_at = NOW()
 		WHERE id = $1
 		RETURNING updated_at`
 
 	err := r.pool.QueryRow(ctx, query,
 		tc.ID, tc.Name, tc.SourceType, tc.TerrainURL, tc.TerrainEncoding,
-		tc.IsDefault,
+		tc.IsDefault, tc.IsEnabled,
 	).Scan(&tc.UpdatedAt)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -153,4 +153,12 @@ func (r *TerrainConfigRepository) ClearDefault(ctx context.Context) error {
 	query := `UPDATE terrain_configs SET is_default = false WHERE is_default = true`
 	_, err := r.pool.Exec(ctx, query)
 	return err
+}
+
+// CountBuiltin returns the number of built-in terrain configurations.
+func (r *TerrainConfigRepository) CountBuiltin(ctx context.Context) (int64, error) {
+	query := `SELECT COUNT(*) FROM terrain_configs WHERE is_builtin = true`
+	var count int64
+	err := r.pool.QueryRow(ctx, query).Scan(&count)
+	return count, err
 }

@@ -5,11 +5,9 @@ import { api } from "@/lib/api";
 import type {
   MapSettings,
   MapConfigResponse,
-  MapDefaultsResponse,
   CreateMapConfigRequest,
   UpdateMapConfigRequest,
   TerrainConfigResponse,
-  TerrainDefaultsResponse,
   CreateTerrainConfigRequest,
   UpdateTerrainConfigRequest,
 } from "@/types/api";
@@ -39,39 +37,6 @@ export function useMapSettings() {
   }, [fetchSettings]);
 
   return { settings, isLoading, error, refetch: fetchSettings };
-}
-
-// ---------------------------------------------------------------------------
-// Admin hooks
-// ---------------------------------------------------------------------------
-
-export function useMapDefaults() {
-  const [defaults, setDefaults] = useState<MapDefaultsResponse | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  const fetchDefaults = useCallback(async () => {
-    setIsLoading(true);
-    setError(null);
-    try {
-      const result = await api.get<MapDefaultsResponse>(
-        "/api/v1/map-configs/defaults"
-      );
-      setDefaults(result);
-    } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "Failed to fetch map defaults"
-      );
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    fetchDefaults();
-  }, [fetchDefaults]);
-
-  return { defaults, isLoading, error, refetch: fetchDefaults };
 }
 
 // ---------------------------------------------------------------------------
@@ -158,39 +123,6 @@ export function useDeleteMapConfig() {
 // ---------------------------------------------------------------------------
 // Terrain config hooks
 // ---------------------------------------------------------------------------
-
-export function useTerrainDefaults() {
-  const [defaults, setDefaults] = useState<TerrainDefaultsResponse | null>(
-    null
-  );
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  const fetchDefaults = useCallback(async () => {
-    setIsLoading(true);
-    setError(null);
-    try {
-      const result = await api.get<TerrainDefaultsResponse>(
-        "/api/v1/terrain-configs/defaults"
-      );
-      setDefaults(result);
-    } catch (err) {
-      setError(
-        err instanceof Error
-          ? err.message
-          : "Failed to fetch terrain defaults"
-      );
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    fetchDefaults();
-  }, [fetchDefaults]);
-
-  return { defaults, isLoading, error, refetch: fetchDefaults };
-}
 
 export function useTerrainConfigs() {
   const [configs, setConfigs] = useState<TerrainConfigResponse[]>([]);

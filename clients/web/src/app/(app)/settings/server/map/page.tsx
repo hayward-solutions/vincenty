@@ -5,12 +5,10 @@ import { toast } from "sonner";
 import { ApiError } from "@/lib/api";
 import {
   useMapConfigs,
-  useMapDefaults,
   useCreateMapConfig,
   useDeleteMapConfig,
   useUpdateMapConfig,
   useTerrainConfigs,
-  useTerrainDefaults,
   useCreateTerrainConfig,
   useDeleteTerrainConfig,
   useUpdateTerrainConfig,
@@ -41,12 +39,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import type {
-  MapConfigResponse,
-  MapDefaultsResponse,
-  TerrainConfigResponse,
-  TerrainDefaultsResponse,
-} from "@/types/api";
+import type { MapConfigResponse, TerrainConfigResponse } from "@/types/api";
 
 // ===========================================================================
 // Page
@@ -54,7 +47,6 @@ import type {
 
 export default function MapSettingsPage() {
   const { configs, isLoading, refetch } = useMapConfigs();
-  const { defaults, isLoading: defaultsLoading } = useMapDefaults();
   const [createOpen, setCreateOpen] = useState(false);
   const [editConfig, setEditConfig] = useState<MapConfigResponse | null>(null);
 
@@ -63,14 +55,9 @@ export default function MapSettingsPage() {
     isLoading: terrainLoading,
     refetch: refetchTerrain,
   } = useTerrainConfigs();
-  const { defaults: terrainDefaults, isLoading: terrainDefaultsLoading } =
-    useTerrainDefaults();
   const [createTerrainOpen, setCreateTerrainOpen] = useState(false);
   const [editTerrainConfig, setEditTerrainConfig] =
     useState<TerrainConfigResponse | null>(null);
-
-  const tileLoading = isLoading || defaultsLoading;
-  const terrainSectionLoading = terrainLoading || terrainDefaultsLoading;
 
   return (
     <div className="p-4 md:p-6 space-y-8">
@@ -83,7 +70,7 @@ export default function MapSettingsPage() {
           <Button onClick={() => setCreateOpen(true)}>Create Config</Button>
         </div>
 
-        {tileLoading ? (
+        {isLoading ? (
           <div className="space-y-2">
             <Skeleton className="h-12 w-full" />
             <Skeleton className="h-12 w-full" />
@@ -93,22 +80,21 @@ export default function MapSettingsPage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Source Type</TableHead>
+                  <TableHead className="w-[20%]">Name</TableHead>
+                  <TableHead className="w-[10%]">Source Type</TableHead>
                   <TableHead>Tile URL</TableHead>
-                  <TableHead>Zoom</TableHead>
-                  <TableHead>Default</TableHead>
+                  <TableHead className="w-[10%]">Zoom</TableHead>
+                  <TableHead className="w-[12%]">Status</TableHead>
                   <TableHead className="w-12" />
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {defaults && <TileServerDefaultRow defaults={defaults} />}
                 {configs.map((config) => (
                   <TileConfigRow
                     key={config.id}
                     config={config}
                     onEdit={() => setEditConfig(config)}
-                    onDeleted={refetch}
+                    onChanged={refetch}
                   />
                 ))}
               </TableBody>
@@ -143,7 +129,7 @@ export default function MapSettingsPage() {
           </Button>
         </div>
 
-        {terrainSectionLoading ? (
+        {terrainLoading ? (
           <div className="space-y-2">
             <Skeleton className="h-12 w-full" />
             <Skeleton className="h-12 w-full" />
@@ -153,24 +139,21 @@ export default function MapSettingsPage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Source Type</TableHead>
+                  <TableHead className="w-[20%]">Name</TableHead>
+                  <TableHead className="w-[10%]">Source Type</TableHead>
                   <TableHead>Terrain URL</TableHead>
-                  <TableHead>Encoding</TableHead>
-                  <TableHead>Default</TableHead>
+                  <TableHead className="w-[10%]">Encoding</TableHead>
+                  <TableHead className="w-[12%]">Status</TableHead>
                   <TableHead className="w-12" />
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {terrainDefaults && (
-                  <TerrainServerDefaultRow defaults={terrainDefaults} />
-                )}
                 {terrainConfigs.map((config) => (
                   <TerrainConfigRow
                     key={config.id}
                     config={config}
                     onEdit={() => setEditTerrainConfig(config)}
-                    onDeleted={refetchTerrain}
+                    onChanged={refetchTerrain}
                   />
                 ))}
               </TableBody>
@@ -201,51 +184,24 @@ export default function MapSettingsPage() {
 // Tile config rows
 // ===========================================================================
 
-function TileServerDefaultRow({
-  defaults,
-}: {
-  defaults: MapDefaultsResponse;
-}) {
-  return (
-    <TableRow className="text-muted-foreground">
-      <TableCell className="font-medium">
-        Server Default
-        <Badge variant="outline" className="ml-2">
-          System
-        </Badge>
-      </TableCell>
-      <TableCell>
-        <Badge variant="secondary">remote</Badge>
-      </TableCell>
-      <TableCell className="max-w-xs truncate text-sm">
-        {defaults.tile_url}
-      </TableCell>
-      <TableCell className="text-sm">
-        {defaults.min_zoom}-{defaults.max_zoom}
-      </TableCell>
-      <TableCell />
-      <TableCell />
-    </TableRow>
-  );
-}
-
 function TileConfigRow({
   config,
   onEdit,
-  onDeleted,
+  onChanged,
 }: {
   config: MapConfigResponse;
   onEdit: () => void;
-  onDeleted: () => void;
+  onChanged: () => void;
 }) {
   const { deleteMapConfig } = useDeleteMapConfig();
+  const { updateMapConfig } = useUpdateMapConfig();
 
   async function handleDelete() {
     if (!confirm(`Delete tile config "${config.name}"?`)) return;
     try {
       await deleteMapConfig(config.id);
       toast.success(`Tile config "${config.name}" deleted`);
-      onDeleted();
+      onChanged();
     } catch (err) {
       toast.error(
         err instanceof ApiError ? err.message : "Failed to delete tile config"
@@ -253,9 +209,44 @@ function TileConfigRow({
     }
   }
 
+  async function handleSetDefault() {
+    try {
+      await updateMapConfig(config.id, { is_default: true });
+      toast.success(`"${config.name}" set as default`);
+      onChanged();
+    } catch (err) {
+      toast.error(
+        err instanceof ApiError ? err.message : "Failed to set default"
+      );
+    }
+  }
+
+  async function handleToggleEnabled() {
+    try {
+      await updateMapConfig(config.id, { is_enabled: !config.is_enabled });
+      toast.success(
+        `"${config.name}" ${config.is_enabled ? "disabled" : "enabled"}`
+      );
+      onChanged();
+    } catch (err) {
+      toast.error(
+        err instanceof ApiError ? err.message : "Failed to update config"
+      );
+    }
+  }
+
+  const isDisabled = !config.is_enabled;
+
   return (
-    <TableRow>
-      <TableCell className="font-medium">{config.name}</TableCell>
+    <TableRow className={isDisabled ? "text-muted-foreground opacity-60" : ""}>
+      <TableCell className="font-medium">
+        {config.name}
+        {config.is_builtin && (
+          <Badge variant="outline" className="ml-2">
+            Built-in
+          </Badge>
+        )}
+      </TableCell>
       <TableCell>
         <Badge variant="secondary">{config.source_type}</Badge>
       </TableCell>
@@ -266,7 +257,10 @@ function TileConfigRow({
         {config.min_zoom}-{config.max_zoom}
       </TableCell>
       <TableCell>
-        {config.is_default && <Badge variant="default">Default</Badge>}
+        <div className="flex items-center gap-1.5">
+          {config.is_default && <Badge variant="default">Default</Badge>}
+          {isDisabled && <Badge variant="secondary">Disabled</Badge>}
+        </div>
       </TableCell>
       <TableCell>
         <DropdownMenu>
@@ -276,13 +270,25 @@ function TileConfigRow({
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            <DropdownMenuItem onClick={onEdit}>Edit</DropdownMenuItem>
-            <DropdownMenuItem
-              onClick={handleDelete}
-              className="text-destructive"
-            >
-              Delete
+            {!config.is_default && config.is_enabled && (
+              <DropdownMenuItem onClick={handleSetDefault}>
+                Set as Default
+              </DropdownMenuItem>
+            )}
+            {!config.is_builtin && (
+              <DropdownMenuItem onClick={onEdit}>Edit</DropdownMenuItem>
+            )}
+            <DropdownMenuItem onClick={handleToggleEnabled}>
+              {config.is_enabled ? "Disable" : "Enable"}
             </DropdownMenuItem>
+            {!config.is_builtin && (
+              <DropdownMenuItem
+                onClick={handleDelete}
+                className="text-destructive"
+              >
+                Delete
+              </DropdownMenuItem>
+            )}
           </DropdownMenuContent>
         </DropdownMenu>
       </TableCell>
@@ -590,49 +596,24 @@ function EditTileConfigDialog({
 // Terrain config rows
 // ===========================================================================
 
-function TerrainServerDefaultRow({
-  defaults,
-}: {
-  defaults: TerrainDefaultsResponse;
-}) {
-  return (
-    <TableRow className="text-muted-foreground">
-      <TableCell className="font-medium">
-        Server Default
-        <Badge variant="outline" className="ml-2">
-          System
-        </Badge>
-      </TableCell>
-      <TableCell>
-        <Badge variant="secondary">remote</Badge>
-      </TableCell>
-      <TableCell className="max-w-xs truncate text-sm">
-        {defaults.terrain_url}
-      </TableCell>
-      <TableCell className="text-sm">{defaults.terrain_encoding}</TableCell>
-      <TableCell />
-      <TableCell />
-    </TableRow>
-  );
-}
-
 function TerrainConfigRow({
   config,
   onEdit,
-  onDeleted,
+  onChanged,
 }: {
   config: TerrainConfigResponse;
   onEdit: () => void;
-  onDeleted: () => void;
+  onChanged: () => void;
 }) {
   const { deleteTerrainConfig } = useDeleteTerrainConfig();
+  const { updateTerrainConfig } = useUpdateTerrainConfig();
 
   async function handleDelete() {
     if (!confirm(`Delete terrain config "${config.name}"?`)) return;
     try {
       await deleteTerrainConfig(config.id);
       toast.success(`Terrain config "${config.name}" deleted`);
-      onDeleted();
+      onChanged();
     } catch (err) {
       toast.error(
         err instanceof ApiError
@@ -642,9 +623,46 @@ function TerrainConfigRow({
     }
   }
 
+  async function handleSetDefault() {
+    try {
+      await updateTerrainConfig(config.id, { is_default: true });
+      toast.success(`"${config.name}" set as default`);
+      onChanged();
+    } catch (err) {
+      toast.error(
+        err instanceof ApiError ? err.message : "Failed to set default"
+      );
+    }
+  }
+
+  async function handleToggleEnabled() {
+    try {
+      await updateTerrainConfig(config.id, {
+        is_enabled: !config.is_enabled,
+      });
+      toast.success(
+        `"${config.name}" ${config.is_enabled ? "disabled" : "enabled"}`
+      );
+      onChanged();
+    } catch (err) {
+      toast.error(
+        err instanceof ApiError ? err.message : "Failed to update config"
+      );
+    }
+  }
+
+  const isDisabled = !config.is_enabled;
+
   return (
-    <TableRow>
-      <TableCell className="font-medium">{config.name}</TableCell>
+    <TableRow className={isDisabled ? "text-muted-foreground opacity-60" : ""}>
+      <TableCell className="font-medium">
+        {config.name}
+        {config.is_builtin && (
+          <Badge variant="outline" className="ml-2">
+            Built-in
+          </Badge>
+        )}
+      </TableCell>
       <TableCell>
         <Badge variant="secondary">{config.source_type}</Badge>
       </TableCell>
@@ -653,7 +671,10 @@ function TerrainConfigRow({
       </TableCell>
       <TableCell className="text-sm">{config.terrain_encoding}</TableCell>
       <TableCell>
-        {config.is_default && <Badge variant="default">Default</Badge>}
+        <div className="flex items-center gap-1.5">
+          {config.is_default && <Badge variant="default">Default</Badge>}
+          {isDisabled && <Badge variant="secondary">Disabled</Badge>}
+        </div>
       </TableCell>
       <TableCell>
         <DropdownMenu>
@@ -663,13 +684,25 @@ function TerrainConfigRow({
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            <DropdownMenuItem onClick={onEdit}>Edit</DropdownMenuItem>
-            <DropdownMenuItem
-              onClick={handleDelete}
-              className="text-destructive"
-            >
-              Delete
+            {!config.is_default && config.is_enabled && (
+              <DropdownMenuItem onClick={handleSetDefault}>
+                Set as Default
+              </DropdownMenuItem>
+            )}
+            {!config.is_builtin && (
+              <DropdownMenuItem onClick={onEdit}>Edit</DropdownMenuItem>
+            )}
+            <DropdownMenuItem onClick={handleToggleEnabled}>
+              {config.is_enabled ? "Disable" : "Enable"}
             </DropdownMenuItem>
+            {!config.is_builtin && (
+              <DropdownMenuItem
+                onClick={handleDelete}
+                className="text-destructive"
+              >
+                Delete
+              </DropdownMenuItem>
+            )}
           </DropdownMenuContent>
         </DropdownMenu>
       </TableCell>

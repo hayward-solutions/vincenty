@@ -114,11 +114,9 @@ type S3Config struct {
 }
 
 type MapConfig struct {
-	DefaultTileURL    string
-	DefaultTerrainURL string
-	DefaultCenterLat  float64
-	DefaultCenterLng  float64
-	DefaultZoom       int
+	DefaultCenterLat float64
+	DefaultCenterLng float64
+	DefaultZoom      int
 }
 
 type CORSConfig struct {
@@ -196,11 +194,9 @@ func Load() (*Config, error) {
 			}
 		}(),
 		Map: MapConfig{
-			DefaultTileURL:    envStr("MAP_DEFAULT_TILE_URL", "https://tile.openstreetmap.org/{z}/{x}/{y}.png"),
-			DefaultTerrainURL: envStr("MAP_DEFAULT_TERRAIN_URL", "https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png"),
-			DefaultCenterLat:  envFloat("MAP_DEFAULT_CENTER_LAT", 0),
-			DefaultCenterLng:  envFloat("MAP_DEFAULT_CENTER_LNG", 0),
-			DefaultZoom:       envInt("MAP_DEFAULT_ZOOM", 2),
+			DefaultCenterLat: envFloat("MAP_DEFAULT_CENTER_LAT", 0),
+			DefaultCenterLng: envFloat("MAP_DEFAULT_CENTER_LNG", 0),
+			DefaultZoom:      envInt("MAP_DEFAULT_ZOOM", 2),
 		},
 		MFA: MFAConfig{
 			KMSKeyARN: envStr("MFA_KMS_KEY_ARN", ""),
