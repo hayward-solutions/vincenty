@@ -119,6 +119,7 @@ export function MapControls({ map, terrainAvailable, position }: MapControlsProp
     try {
       if (isTerrain) {
         map.setTerrain(null);
+        map.easeTo({ pitch: 0, duration: 500 });
         setIsTerrain(false);
       } else {
         // Enabling terrain — switch away from globe first (incompatible)
@@ -127,6 +128,7 @@ export function MapControls({ map, terrainAvailable, position }: MapControlsProp
           setIsGlobe(false);
         }
         map.setTerrain({ source: "terrain-dem", exaggeration: 1.0 });
+        map.easeTo({ pitch: 50, duration: 500 });
         setIsTerrain(true);
       }
     } catch { /* map destroyed */ }
