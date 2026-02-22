@@ -51,7 +51,15 @@ export function SelfMarker({
   const styleKeyRef = useRef("");
 
   useEffect(() => {
-    if (!position) return;
+    if (!position) {
+      // Remove marker when position is cleared (e.g. "Show self" toggled off)
+      if (markerRef.current) {
+        markerRef.current.remove();
+        markerRef.current = null;
+        styleKeyRef.current = "";
+      }
+      return;
+    }
 
     injectPulseStyle();
 
