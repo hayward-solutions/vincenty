@@ -284,8 +284,6 @@ export interface MapConfigResponse {
   style_json?: Record<string, unknown>;
   min_zoom: number;
   max_zoom: number;
-  terrain_url: string;
-  terrain_encoding: string;
   is_default: boolean;
   created_by?: string;
   created_at: string;
@@ -305,6 +303,12 @@ export interface MapSettings {
   configs: MapConfigResponse[];
 }
 
+export interface MapDefaultsResponse {
+  tile_url: string;
+  min_zoom: number;
+  max_zoom: number;
+}
+
 export interface CreateMapConfigRequest {
   name: string;
   source_type?: string;
@@ -312,8 +316,6 @@ export interface CreateMapConfigRequest {
   style_json?: Record<string, unknown>;
   min_zoom?: number;
   max_zoom?: number;
-  terrain_url?: string;
-  terrain_encoding?: string;
   is_default?: boolean;
 }
 
@@ -324,6 +326,41 @@ export interface UpdateMapConfigRequest {
   style_json?: Record<string, unknown>;
   min_zoom?: number;
   max_zoom?: number;
+  is_default?: boolean;
+}
+
+// ---------------------------------------------------------------------------
+// Terrain configs
+// ---------------------------------------------------------------------------
+
+export interface TerrainConfigResponse {
+  id: string;
+  name: string;
+  source_type: string;
+  terrain_url: string;
+  terrain_encoding: string;
+  is_default: boolean;
+  created_by?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface TerrainDefaultsResponse {
+  terrain_url: string;
+  terrain_encoding: string;
+}
+
+export interface CreateTerrainConfigRequest {
+  name: string;
+  source_type?: string;
+  terrain_url: string;
+  terrain_encoding?: string;
+  is_default?: boolean;
+}
+
+export interface UpdateTerrainConfigRequest {
+  name?: string;
+  source_type?: string;
   terrain_url?: string;
   terrain_encoding?: string;
   is_default?: boolean;

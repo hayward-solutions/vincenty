@@ -12,12 +12,13 @@ import (
 // MapConfigService handles map configuration business logic.
 type MapConfigService struct {
 	repo        *repository.MapConfigRepository
+	terrainRepo *repository.TerrainConfigRepository
 	mapDefaults config.MapConfig
 }
 
 // NewMapConfigService creates a new MapConfigService.
-func NewMapConfigService(repo *repository.MapConfigRepository, mapDefaults config.MapConfig) *MapConfigService {
-	return &MapConfigService{repo: repo, mapDefaults: mapDefaults}
+func NewMapConfigService(repo *repository.MapConfigRepository, terrainRepo *repository.TerrainConfigRepository, mapDefaults config.MapConfig) *MapConfigService {
+	return &MapConfigService{repo: repo, terrainRepo: terrainRepo, mapDefaults: mapDefaults}
 }
 
 // Create creates a new map configuration.
@@ -25,10 +26,6 @@ func (s *MapConfigService) Create(ctx context.Context, req *model.CreateMapConfi
 	var tileURL *string
 	if req.TileURL != "" {
 		tileURL = &req.TileURL
-	}
-	var terrainURL *string
-	if req.TerrainURL != "" {
-		terrainURL = &req.TerrainURL
 	}
 
 	minZoom := 0
@@ -52,16 +49,14 @@ func (s *MapConfigService) Create(ctx context.Context, req *model.CreateMapConfi
 	}
 
 	mc := &model.MapConfig{
-		Name:            req.Name,
-		SourceType:      req.SourceType,
-		TileURL:         tileURL,
-		StyleJSON:       req.StyleJSON,
-		MinZoom:         minZoom,
-		MaxZoom:         maxZoom,
-		TerrainURL:      terrainURL,
-		TerrainEncoding: req.TerrainEncoding,
-		IsDefault:       isDefault,
-		CreatedBy:       &createdBy,
+		Name:      req.Name,
+		SourceType: req.SourceType,
+		TileURL:   tileURL,
+		StyleJSON: req.StyleJSON,
+		MinZoom:   minZoom,
+		MaxZoom:   maxZoom,
+		IsDefault: isDefault,
+		CreatedBy: &createdBy,
 	}
 
 	if err := s.repo.Create(ctx, mc); err != nil {
@@ -82,7 +77,7 @@ func (s *MapConfigService) List(ctx context.Context) ([]model.MapConfig, error) 
 }
 
 // GetSettings returns the map settings for the client, combining the default
-// DB config (if any) with the server-side environment defaults.
+// DB configs (tile and terrain) with the server-side environment defaults.
 func (s *MapConfigService) GetSettings(ctx context.Context) (*model.MapSettingsResponse, error) {
 	configs, err := s.repo.List(ctx)
 	if err != nil {
@@ -102,7 +97,7 @@ func (s *MapConfigService) GetSettings(ctx context.Context) (*model.MapSettingsR
 		Configs:         make([]model.MapConfigResponse, 0, len(configs)),
 	}
 
-	// Override with default DB config if one exists
+	// Override tile settings with default DB map config if one exists
 	for _, mc := range configs {
 		resp.Configs = append(resp.Configs, mc.ToResponse())
 		if mc.IsDefault {
@@ -112,13 +107,17 @@ func (s *MapConfigService) GetSettings(ctx context.Context) (*model.MapSettingsR
 			resp.StyleJSON = mc.StyleJSON
 			resp.MinZoom = mc.MinZoom
 			resp.MaxZoom = mc.MaxZoom
-			if mc.TerrainURL != nil {
-				resp.TerrainURL = *mc.TerrainURL
-			}
-			if mc.TerrainEncoding != "" {
-				resp.TerrainEncoding = mc.TerrainEncoding
-			}
 		}
+	}
+
+	// Override terrain settings with default DB terrain config if one exists
+	defaultTerrain, err := s.terrainRepo.GetDefault(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if defaultTerrain != nil {
+		resp.TerrainURL = defaultTerrain.TerrainURL
+		resp.TerrainEncoding = defaultTerrain.TerrainEncoding
 	}
 
 	return resp, nil
@@ -158,15 +157,6 @@ func (s *MapConfigService) Update(ctx context.Context, id uuid.UUID, req *model.
 	if req.MaxZoom != nil {
 		mc.MaxZoom = *req.MaxZoom
 	}
-	if req.TerrainURL != nil {
-		mc.TerrainURL = req.TerrainURL
-	}
-	if req.TerrainEncoding != nil {
-		if *req.TerrainEncoding != "terrarium" && *req.TerrainEncoding != "mapbox" {
-			return nil, model.ErrValidation("terrain_encoding must be 'terrarium' or 'mapbox'")
-		}
-		mc.TerrainEncoding = *req.TerrainEncoding
-	}
 	if req.IsDefault != nil && *req.IsDefault != mc.IsDefault {
 		if *req.IsDefault {
 			if err := s.repo.ClearDefault(ctx); err != nil {
@@ -181,6 +171,17 @@ func (s *MapConfigService) Update(ctx context.Context, id uuid.UUID, req *model.
 	}
 
 	return mc, nil
+}
+
+// GetDefaults returns the server-level environment defaults for the map
+// configuration. These are the baseline values used when no database config
+// is marked as default.
+func (s *MapConfigService) GetDefaults() *model.MapDefaultsResponse {
+	return &model.MapDefaultsResponse{
+		TileURL: s.mapDefaults.DefaultTileURL,
+		MinZoom: 0,
+		MaxZoom: 18,
+	}
 }
 
 // Delete removes a map configuration.

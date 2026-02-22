@@ -9,36 +9,32 @@ import (
 
 // MapConfig represents a map tile configuration.
 type MapConfig struct {
-	ID              uuid.UUID        `json:"-"`
-	Name            string           `json:"-"`
-	SourceType      string           `json:"-"`
-	TileURL         *string          `json:"-"`
-	StyleJSON       *json.RawMessage `json:"-"`
-	MinZoom         int              `json:"-"`
-	MaxZoom         int              `json:"-"`
-	TerrainURL      *string          `json:"-"`
-	TerrainEncoding string           `json:"-"`
-	IsDefault       bool             `json:"-"`
-	CreatedBy       *uuid.UUID       `json:"-"`
-	CreatedAt       time.Time        `json:"-"`
-	UpdatedAt       time.Time        `json:"-"`
+	ID        uuid.UUID        `json:"-"`
+	Name      string           `json:"-"`
+	SourceType string          `json:"-"`
+	TileURL   *string          `json:"-"`
+	StyleJSON *json.RawMessage `json:"-"`
+	MinZoom   int              `json:"-"`
+	MaxZoom   int              `json:"-"`
+	IsDefault bool             `json:"-"`
+	CreatedBy *uuid.UUID       `json:"-"`
+	CreatedAt time.Time        `json:"-"`
+	UpdatedAt time.Time        `json:"-"`
 }
 
 // MapConfigResponse is the JSON representation returned by the API.
 type MapConfigResponse struct {
-	ID              uuid.UUID        `json:"id"`
-	Name            string           `json:"name"`
-	SourceType      string           `json:"source_type"`
-	TileURL         string           `json:"tile_url"`
-	StyleJSON       *json.RawMessage `json:"style_json,omitempty"`
-	MinZoom         int              `json:"min_zoom"`
-	MaxZoom         int              `json:"max_zoom"`
-	TerrainURL      string           `json:"terrain_url"`
-	TerrainEncoding string           `json:"terrain_encoding"`
-	IsDefault       bool             `json:"is_default"`
-	CreatedBy       *uuid.UUID       `json:"created_by,omitempty"`
-	CreatedAt       time.Time        `json:"created_at"`
-	UpdatedAt       time.Time        `json:"updated_at"`
+	ID        uuid.UUID        `json:"id"`
+	Name      string           `json:"name"`
+	SourceType string          `json:"source_type"`
+	TileURL   string           `json:"tile_url"`
+	StyleJSON *json.RawMessage `json:"style_json,omitempty"`
+	MinZoom   int              `json:"min_zoom"`
+	MaxZoom   int              `json:"max_zoom"`
+	IsDefault bool             `json:"is_default"`
+	CreatedBy *uuid.UUID       `json:"created_by,omitempty"`
+	CreatedAt time.Time        `json:"created_at"`
+	UpdatedAt time.Time        `json:"updated_at"`
 }
 
 // ToResponse converts a MapConfig to its API response.
@@ -47,38 +43,30 @@ func (m *MapConfig) ToResponse() MapConfigResponse {
 	if m.TileURL != nil {
 		tileURL = *m.TileURL
 	}
-	terrainURL := ""
-	if m.TerrainURL != nil {
-		terrainURL = *m.TerrainURL
-	}
 	return MapConfigResponse{
-		ID:              m.ID,
-		Name:            m.Name,
-		SourceType:      m.SourceType,
-		TileURL:         tileURL,
-		StyleJSON:       m.StyleJSON,
-		MinZoom:         m.MinZoom,
-		MaxZoom:         m.MaxZoom,
-		TerrainURL:      terrainURL,
-		TerrainEncoding: m.TerrainEncoding,
-		IsDefault:       m.IsDefault,
-		CreatedBy:       m.CreatedBy,
-		CreatedAt:       m.CreatedAt,
-		UpdatedAt:       m.UpdatedAt,
+		ID:        m.ID,
+		Name:      m.Name,
+		SourceType: m.SourceType,
+		TileURL:   tileURL,
+		StyleJSON: m.StyleJSON,
+		MinZoom:   m.MinZoom,
+		MaxZoom:   m.MaxZoom,
+		IsDefault: m.IsDefault,
+		CreatedBy: m.CreatedBy,
+		CreatedAt: m.CreatedAt,
+		UpdatedAt: m.UpdatedAt,
 	}
 }
 
 // CreateMapConfigRequest is the expected body for creating a map config.
 type CreateMapConfigRequest struct {
-	Name            string           `json:"name"`
-	SourceType      string           `json:"source_type"`
-	TileURL         string           `json:"tile_url"`
-	StyleJSON       *json.RawMessage `json:"style_json"`
-	MinZoom         *int             `json:"min_zoom"`
-	MaxZoom         *int             `json:"max_zoom"`
-	TerrainURL      string           `json:"terrain_url"`
-	TerrainEncoding string           `json:"terrain_encoding"`
-	IsDefault       *bool            `json:"is_default"`
+	Name       string           `json:"name"`
+	SourceType string           `json:"source_type"`
+	TileURL    string           `json:"tile_url"`
+	StyleJSON  *json.RawMessage `json:"style_json"`
+	MinZoom    *int             `json:"min_zoom"`
+	MaxZoom    *int             `json:"max_zoom"`
+	IsDefault  *bool            `json:"is_default"`
 }
 
 // Validate checks that required fields are present.
@@ -107,26 +95,27 @@ func (r *CreateMapConfigRequest) Validate() error {
 	if r.MinZoom != nil && r.MaxZoom != nil && *r.MinZoom > *r.MaxZoom {
 		return ErrValidation("min_zoom must be less than or equal to max_zoom")
 	}
-	if r.TerrainEncoding == "" {
-		r.TerrainEncoding = "terrarium"
-	}
-	if r.TerrainEncoding != "terrarium" && r.TerrainEncoding != "mapbox" {
-		return ErrValidation("terrain_encoding must be 'terrarium' or 'mapbox'")
-	}
 	return nil
 }
 
 // UpdateMapConfigRequest is the expected body for updating a map config.
 type UpdateMapConfigRequest struct {
-	Name            *string          `json:"name"`
-	SourceType      *string          `json:"source_type"`
-	TileURL         *string          `json:"tile_url"`
-	StyleJSON       *json.RawMessage `json:"style_json"`
-	MinZoom         *int             `json:"min_zoom"`
-	MaxZoom         *int             `json:"max_zoom"`
-	TerrainURL      *string          `json:"terrain_url"`
-	TerrainEncoding *string          `json:"terrain_encoding"`
-	IsDefault       *bool            `json:"is_default"`
+	Name       *string          `json:"name"`
+	SourceType *string          `json:"source_type"`
+	TileURL    *string          `json:"tile_url"`
+	StyleJSON  *json.RawMessage `json:"style_json"`
+	MinZoom    *int             `json:"min_zoom"`
+	MaxZoom    *int             `json:"max_zoom"`
+	IsDefault  *bool            `json:"is_default"`
+}
+
+// MapDefaultsResponse contains the server-level environment defaults for the
+// map configuration. These are the baseline values the system falls back to
+// when no database config is marked as default.
+type MapDefaultsResponse struct {
+	TileURL string `json:"tile_url"`
+	MinZoom int    `json:"min_zoom"`
+	MaxZoom int    `json:"max_zoom"`
 }
 
 // MapSettingsResponse is returned by the public map config endpoint.

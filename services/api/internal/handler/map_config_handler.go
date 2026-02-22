@@ -31,6 +31,13 @@ func (h *MapConfigHandler) GetSettings(w http.ResponseWriter, r *http.Request) {
 	JSON(w, http.StatusOK, settings)
 }
 
+// GetDefaults handles GET /api/v1/map-configs/defaults (admin)
+// Returns the server-level environment defaults so admins can see the baseline
+// configuration and revert to it if needed.
+func (h *MapConfigHandler) GetDefaults(w http.ResponseWriter, r *http.Request) {
+	JSON(w, http.StatusOK, h.mapConfigService.GetDefaults())
+}
+
 // --------------------------------------------------------------------------
 // Admin CRUD
 // --------------------------------------------------------------------------
