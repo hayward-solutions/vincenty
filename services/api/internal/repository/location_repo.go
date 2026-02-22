@@ -181,6 +181,106 @@ func (r *LocationRepository) GetUserHistory(ctx context.Context, userID uuid.UUI
 	return records, rows.Err()
 }
 
+// GetVisibleHistory returns location history for all users visible to the caller
+// (i.e. users who share at least one group with the caller) within a time range.
+func (r *LocationRepository) GetVisibleHistory(ctx context.Context, callerID uuid.UUID, from, to time.Time) ([]LocationRecord, error) {
+	query := `
+		SELECT lh.user_id, lh.device_id,
+		       ST_Y(lh.location) AS lat, ST_X(lh.location) AS lng,
+		       lh.altitude, lh.heading, lh.speed, lh.accuracy,
+		       lh.recorded_at,
+		       u.username, u.display_name,
+		       d.name AS device_name
+		FROM location_history lh
+		INNER JOIN users u ON u.id = lh.user_id
+		LEFT JOIN devices d ON d.id = lh.device_id
+		WHERE lh.user_id IN (
+			SELECT DISTINCT gm2.user_id
+			FROM group_members gm1
+			INNER JOIN group_members gm2 ON gm1.group_id = gm2.group_id
+			WHERE gm1.user_id = $1
+		)
+		AND lh.recorded_at >= $2 AND lh.recorded_at <= $3
+		ORDER BY lh.user_id, lh.recorded_at ASC`
+
+	rows, err := r.pool.Query(ctx, query, callerID, from, to)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var records []LocationRecord
+	for rows.Next() {
+		var rec LocationRecord
+		if err := rows.Scan(
+			&rec.UserID, &rec.DeviceID,
+			&rec.Lat, &rec.Lng,
+			&rec.Altitude, &rec.Heading, &rec.Speed, &rec.Accuracy,
+			&rec.RecordedAt,
+			&rec.Username, &rec.DisplayName,
+			&rec.DeviceName,
+		); err != nil {
+			return nil, err
+		}
+		records = append(records, rec)
+	}
+	return records, rows.Err()
+}
+
+// GetAllHistory returns location history for ALL users within a time range (admin only).
+func (r *LocationRepository) GetAllHistory(ctx context.Context, from, to time.Time) ([]LocationRecord, error) {
+	query := `
+		SELECT lh.user_id, lh.device_id,
+		       ST_Y(lh.location) AS lat, ST_X(lh.location) AS lng,
+		       lh.altitude, lh.heading, lh.speed, lh.accuracy,
+		       lh.recorded_at,
+		       u.username, u.display_name,
+		       d.name AS device_name
+		FROM location_history lh
+		INNER JOIN users u ON u.id = lh.user_id
+		LEFT JOIN devices d ON d.id = lh.device_id
+		WHERE lh.recorded_at >= $1 AND lh.recorded_at <= $2
+		ORDER BY lh.user_id, lh.recorded_at ASC`
+
+	rows, err := r.pool.Query(ctx, query, from, to)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var records []LocationRecord
+	for rows.Next() {
+		var rec LocationRecord
+		if err := rows.Scan(
+			&rec.UserID, &rec.DeviceID,
+			&rec.Lat, &rec.Lng,
+			&rec.Altitude, &rec.Heading, &rec.Speed, &rec.Accuracy,
+			&rec.RecordedAt,
+			&rec.Username, &rec.DisplayName,
+			&rec.DeviceName,
+		); err != nil {
+			return nil, err
+		}
+		records = append(records, rec)
+	}
+	return records, rows.Err()
+}
+
+// UsersShareGroup returns true if the two users share at least one group.
+func (r *LocationRepository) UsersShareGroup(ctx context.Context, userA, userB uuid.UUID) (bool, error) {
+	query := `
+		SELECT EXISTS (
+			SELECT 1
+			FROM group_members gm1
+			INNER JOIN group_members gm2 ON gm1.group_id = gm2.group_id
+			WHERE gm1.user_id = $1 AND gm2.user_id = $2
+		)`
+
+	var exists bool
+	err := r.pool.QueryRow(ctx, query, userA, userB).Scan(&exists)
+	return exists, err
+}
+
 // GetAllLatest returns the most recent location for each user across all groups.
 // Used by admin to see all user positions.
 func (r *LocationRepository) GetAllLatest(ctx context.Context) ([]LocationRecord, error) {

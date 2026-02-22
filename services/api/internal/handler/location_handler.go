@@ -187,6 +187,102 @@ func (h *LocationHandler) ExportGPX(w http.ResponseWriter, r *http.Request) {
 	w.Write(data)
 }
 
+// GetVisibleHistory handles GET /api/v1/locations/history?from=&to=
+// Returns location history for all users visible to the caller.
+// Admins see all users; non-admins see users who share a group with them.
+func (h *LocationHandler) GetVisibleHistory(w http.ResponseWriter, r *http.Request) {
+	claims, ok := middleware.ClaimsFromContext(r.Context())
+	if !ok {
+		Error(w, http.StatusUnauthorized, "unauthorized", "missing auth context")
+		return
+	}
+
+	now := time.Now()
+	from := now.Add(-1 * time.Hour)
+	to := now
+
+	if v := r.URL.Query().Get("from"); v != "" {
+		if t, err := time.Parse(time.RFC3339, v); err == nil {
+			from = t
+		} else {
+			Error(w, http.StatusBadRequest, "validation_error", "from must be RFC3339 format")
+			return
+		}
+	}
+	if v := r.URL.Query().Get("to"); v != "" {
+		if t, err := time.Parse(time.RFC3339, v); err == nil {
+			to = t
+		} else {
+			Error(w, http.StatusBadRequest, "validation_error", "to must be RFC3339 format")
+			return
+		}
+	}
+
+	if to.Sub(from) > 24*time.Hour {
+		Error(w, http.StatusBadRequest, "validation_error", "time range must not exceed 24 hours")
+		return
+	}
+
+	records, err := h.locationService.GetVisibleHistory(r.Context(), claims.UserID, claims.IsAdmin, from, to)
+	if err != nil {
+		HandleError(w, err)
+		return
+	}
+
+	JSON(w, http.StatusOK, records)
+}
+
+// GetUserHistory handles GET /api/v1/users/{userId}/locations/history?from=&to=
+// Returns location history for a specific user.
+// Admins can query any user; non-admins can only query users who share a group.
+func (h *LocationHandler) GetUserHistory(w http.ResponseWriter, r *http.Request) {
+	claims, ok := middleware.ClaimsFromContext(r.Context())
+	if !ok {
+		Error(w, http.StatusUnauthorized, "unauthorized", "missing auth context")
+		return
+	}
+
+	targetUserID, err := uuid.Parse(r.PathValue("userId"))
+	if err != nil {
+		Error(w, http.StatusBadRequest, "validation_error", "invalid user id")
+		return
+	}
+
+	now := time.Now()
+	from := now.Add(-1 * time.Hour)
+	to := now
+
+	if v := r.URL.Query().Get("from"); v != "" {
+		if t, err := time.Parse(time.RFC3339, v); err == nil {
+			from = t
+		} else {
+			Error(w, http.StatusBadRequest, "validation_error", "from must be RFC3339 format")
+			return
+		}
+	}
+	if v := r.URL.Query().Get("to"); v != "" {
+		if t, err := time.Parse(time.RFC3339, v); err == nil {
+			to = t
+		} else {
+			Error(w, http.StatusBadRequest, "validation_error", "to must be RFC3339 format")
+			return
+		}
+	}
+
+	if to.Sub(from) > 24*time.Hour {
+		Error(w, http.StatusBadRequest, "validation_error", "time range must not exceed 24 hours")
+		return
+	}
+
+	records, err := h.locationService.GetUserHistory(r.Context(), targetUserID, claims.UserID, claims.IsAdmin, from, to)
+	if err != nil {
+		HandleError(w, err)
+		return
+	}
+
+	JSON(w, http.StatusOK, records)
+}
+
 // GetAllLocations handles GET /api/v1/locations (admin only)
 // Returns the latest location for every user across all groups.
 func (h *LocationHandler) GetAllLocations(w http.ResponseWriter, r *http.Request) {

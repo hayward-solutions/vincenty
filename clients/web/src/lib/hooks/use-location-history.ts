@@ -26,7 +26,7 @@ export function useLocationHistory() {
             },
           }
         );
-        setData(result ?? []);
+        setData(Array.isArray(result) ? result : []);
       } catch (err) {
         setError(
           err instanceof Error
@@ -67,7 +67,7 @@ export function useMyLocationHistory() {
           },
         }
       );
-      setData(result ?? []);
+      setData(Array.isArray(result) ? result : []);
     } catch (err) {
       setError(
         err instanceof Error
@@ -107,7 +107,7 @@ export function useVisibleHistory() {
           },
         }
       );
-      setData(result ?? []);
+      setData(Array.isArray(result) ? result : []);
     } catch (err) {
       setError(
         err instanceof Error
@@ -148,7 +148,7 @@ export function useUserLocationHistory() {
             },
           }
         );
-        setData(result ?? []);
+        setData(Array.isArray(result) ? result : []);
       } catch (err) {
         setError(
           err instanceof Error
@@ -179,7 +179,7 @@ export function useMyGroups() {
     setIsLoading(true);
     try {
       const result = await api.get<Group[]>("/api/v1/users/me/groups");
-      setGroups(result ?? []);
+      setGroups(Array.isArray(result) ? result : []);
     } catch {
       setGroups([]);
     } finally {
@@ -207,7 +207,7 @@ export function useAllLocations() {
     setError(null);
     try {
       const result = await api.get<LatestLocationEntry[]>("/api/v1/locations");
-      setData(result ?? []);
+      setData(Array.isArray(result) ? result : []);
     } catch (err) {
       setError(
         err instanceof Error ? err.message : "Failed to fetch all locations"

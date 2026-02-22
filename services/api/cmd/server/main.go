@@ -329,6 +329,9 @@ func main() {
 	// Locations - group history (authenticated, permission checked in service)
 	mux.Handle("GET /api/v1/groups/{id}/locations/history", authMW.Authenticate(http.HandlerFunc(locationHandler.GetGroupHistory)))
 
+	// Locations - visible history (authenticated, permission checked in service)
+	mux.Handle("GET /api/v1/locations/history", authMW.Authenticate(http.HandlerFunc(locationHandler.GetVisibleHistory)))
+
 	// Locations - all latest (admin)
 	mux.Handle("GET /api/v1/locations", authMW.RequireAdmin(http.HandlerFunc(locationHandler.GetAllLocations)))
 
@@ -365,6 +368,9 @@ func main() {
 	// Location history - self (authenticated)
 	mux.Handle("GET /api/v1/users/me/locations/history", authMW.Authenticate(http.HandlerFunc(locationHandler.GetMyHistory)))
 	mux.Handle("GET /api/v1/users/me/locations/export", authMW.Authenticate(http.HandlerFunc(locationHandler.ExportGPX)))
+
+	// Location history - specific user (authenticated, permission checked in service)
+	mux.Handle("GET /api/v1/users/{userId}/locations/history", authMW.Authenticate(http.HandlerFunc(locationHandler.GetUserHistory)))
 
 	// Server settings (admin)
 	mux.Handle("GET /api/v1/server/settings", authMW.RequireAdmin(http.HandlerFunc(serverSettingsHandler.GetSettings)))

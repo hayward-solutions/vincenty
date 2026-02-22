@@ -223,6 +223,56 @@ func (s *LocationService) GetMyHistory(ctx context.Context, callerID uuid.UUID, 
 	return entries, nil
 }
 
+// GetVisibleHistory returns location history for all users visible to the caller.
+// Admins see all users; non-admins see users who share a group with them.
+func (s *LocationService) GetVisibleHistory(ctx context.Context, callerID uuid.UUID, callerIsAdmin bool, from, to time.Time) ([]LocationHistoryEntry, error) {
+	var records []repository.LocationRecord
+	var err error
+
+	if callerIsAdmin {
+		records, err = s.locationRepo.GetAllHistory(ctx, from, to)
+	} else {
+		records, err = s.locationRepo.GetVisibleHistory(ctx, callerID, from, to)
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	entries := make([]LocationHistoryEntry, len(records))
+	for i, rec := range records {
+		entries[i] = toHistoryEntry(rec)
+	}
+
+	return entries, nil
+}
+
+// GetUserHistory returns location history for a specific user.
+// Admins can query any user; non-admins can only query users who share a group.
+func (s *LocationService) GetUserHistory(ctx context.Context, targetUserID, callerID uuid.UUID, callerIsAdmin bool, from, to time.Time) ([]LocationHistoryEntry, error) {
+	// Permission check: must be admin, the user themselves, or share a group
+	if !callerIsAdmin && targetUserID != callerID {
+		shared, err := s.locationRepo.UsersShareGroup(ctx, callerID, targetUserID)
+		if err != nil {
+			return nil, fmt.Errorf("failed to check group membership: %w", err)
+		}
+		if !shared {
+			return nil, fmt.Errorf("you do not share a group with this user")
+		}
+	}
+
+	records, err := s.locationRepo.GetUserHistory(ctx, targetUserID, from, to)
+	if err != nil {
+		return nil, err
+	}
+
+	entries := make([]LocationHistoryEntry, len(records))
+	for i, rec := range records {
+		entries[i] = toHistoryEntry(rec)
+	}
+
+	return entries, nil
+}
+
 // LatestLocationEntry is a single user's latest known position.
 type LatestLocationEntry struct {
 	UserID      uuid.UUID `json:"user_id"`
