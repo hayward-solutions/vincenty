@@ -55,7 +55,9 @@ func (h *Hub) Run(ctx context.Context) {
 	messages, err := h.ps.Subscribe(ctx,
 		"group:*:location",
 		"group:*:messages",
+		"group:*:drawings",
 		"user:*:direct",
+		"user:*:drawings",
 	)
 	if err != nil {
 		slog.Error("failed to subscribe to pubsub", "error", err)
@@ -242,6 +244,48 @@ func (h *Hub) routeMessage(msg pubsub.Message) {
 			"target_user_id", userID,
 		)
 		h.sendToUser(userID, data)
+
+	case strings.HasSuffix(channel, ":drawings"):
+		// channel format: group:<uuid>:drawings OR user:<uuid>:drawings
+		// Payload is a DrawingResponse JSON published by DrawingService.
+		targetID := extractID(channel)
+		if targetID == uuid.Nil {
+			return
+		}
+
+		// Extract owner_id from the payload so we can exclude them
+		var partial struct {
+			OwnerID uuid.UUID `json:"owner_id"`
+		}
+		if err := json.Unmarshal(msg.Payload, &partial); err != nil {
+			slog.Warn("failed to unmarshal drawing broadcast owner", "error", err)
+			return
+		}
+
+		// Wrap the DrawingResponse in a WS envelope
+		data, err := json.Marshal(Envelope{
+			Type:    TypeDrawingUpdated,
+			Payload: msg.Payload,
+		})
+		if err != nil {
+			slog.Warn("failed to marshal drawing update envelope", "error", err)
+			return
+		}
+
+		if strings.HasPrefix(channel, "group:") {
+			recipientCount := h.broadcastToGroup(targetID, partial.OwnerID, data)
+			slog.Debug("routeMessage: group drawing update",
+				"group_id", targetID,
+				"owner_id", partial.OwnerID,
+				"recipients", recipientCount,
+			)
+		} else {
+			// user:<uuid>:drawings — send to the specific user
+			slog.Debug("routeMessage: direct drawing update",
+				"target_user_id", targetID,
+			)
+			h.sendToUser(targetID, data)
+		}
 	}
 }
 

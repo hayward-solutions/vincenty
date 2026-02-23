@@ -17,6 +17,8 @@ interface MapToolbarProps {
   onFilterClick: () => void;
   measureActive: boolean;
   onMeasureClick: () => void;
+  drawActive: boolean;
+  onDrawClick: () => void;
 }
 
 /**
@@ -31,6 +33,8 @@ export function MapToolbar({
   onFilterClick,
   measureActive,
   onMeasureClick,
+  drawActive,
+  onDrawClick,
 }: MapToolbarProps) {
   return (
     <TooltipProvider>
@@ -97,8 +101,11 @@ export function MapToolbar({
             <Button
               variant="ghost"
               size="icon-sm"
+              onClick={onDrawClick}
               aria-label="Draw"
-              className="text-muted-foreground"
+              className={
+                drawActive ? "text-foreground" : "text-muted-foreground"
+              }
             >
               <PenTool className="size-4" />
             </Button>

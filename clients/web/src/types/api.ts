@@ -422,6 +422,8 @@ export interface ExifLocation {
 export interface MessageMetadata {
   /** EXIF GPS data extracted from image attachments. */
   exif_locations?: ExifLocation[];
+  /** Drawing ID reference (for message_type "drawing"). */
+  drawing_id?: string;
   /** GPX data is stored as a GeoJSON FeatureCollection (untyped). */
   [key: string]: unknown;
 }
@@ -459,6 +461,47 @@ export interface Conversation {
   name: string;
   lastMessage?: MessageResponse;
 }
+
+// ---------------------------------------------------------------------------
+// Drawings
+// ---------------------------------------------------------------------------
+
+export interface DrawingResponse {
+  id: string;
+  owner_id: string;
+  username: string;
+  display_name: string;
+  name: string;
+  geojson: GeoJSON.FeatureCollection;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CreateDrawingRequest {
+  name: string;
+  geojson: GeoJSON.FeatureCollection;
+}
+
+export interface UpdateDrawingRequest {
+  name?: string;
+  geojson?: GeoJSON.FeatureCollection;
+}
+
+export interface ShareDrawingRequest {
+  group_id?: string;
+  recipient_id?: string;
+}
+
+export interface DrawingShareInfo {
+  type: "group" | "user";
+  id: string;
+  name: string;
+  shared_at: string;
+  message_id: string;
+}
+
+/** Server → Client: a drawing was updated by its owner */
+export interface WSDrawingUpdated extends DrawingResponse {}
 
 // ---------------------------------------------------------------------------
 // Audit logs

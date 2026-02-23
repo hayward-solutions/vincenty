@@ -16,6 +16,7 @@ const (
 	TypeLocationBroadcast = "location_broadcast"
 	TypeLocationSnapshot  = "location_snapshot"
 	TypeMessageNew        = "message_new"
+	TypeDrawingUpdated    = "drawing_updated"
 	TypeConnected         = "connected"
 	TypeError             = "error"
 )
