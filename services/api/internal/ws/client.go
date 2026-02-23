@@ -29,27 +29,31 @@ const (
 
 // Client represents a single WebSocket connection.
 type Client struct {
-	hub      *Hub
-	conn     *websocket.Conn
-	userID   uuid.UUID
-	deviceID uuid.UUID
-	username string
-	isAdmin  bool
-	groups   []uuid.UUID
-	send     chan []byte
+	hub        *Hub
+	conn       *websocket.Conn
+	userID     uuid.UUID
+	deviceID   uuid.UUID
+	deviceName string
+	isPrimary  bool
+	username   string
+	isAdmin    bool
+	groups     []uuid.UUID
+	send       chan []byte
 }
 
 // NewClient creates a new Client.
-func NewClient(hub *Hub, conn *websocket.Conn, userID, deviceID uuid.UUID, username string, isAdmin bool, groups []uuid.UUID) *Client {
+func NewClient(hub *Hub, conn *websocket.Conn, userID, deviceID uuid.UUID, deviceName string, isPrimary bool, username string, isAdmin bool, groups []uuid.UUID) *Client {
 	return &Client{
-		hub:      hub,
-		conn:     conn,
-		userID:   userID,
-		deviceID: deviceID,
-		username: username,
-		isAdmin:  isAdmin,
-		groups:   groups,
-		send:     make(chan []byte, sendBufferSize),
+		hub:        hub,
+		conn:       conn,
+		userID:     userID,
+		deviceID:   deviceID,
+		deviceName: deviceName,
+		isPrimary:  isPrimary,
+		username:   username,
+		isAdmin:    isAdmin,
+		groups:     groups,
+		send:       make(chan []byte, sendBufferSize),
 	}
 }
 

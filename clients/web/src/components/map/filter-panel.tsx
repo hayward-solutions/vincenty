@@ -16,6 +16,10 @@ interface FilterPanelProps {
   showDrawings: boolean;
   onShowDrawingsChange: (show: boolean) => void;
 
+  /** When true, only primary devices are shown on the map. */
+  primaryOnly: boolean;
+  onPrimaryOnlyChange: (primary: boolean) => void;
+
   /** Available groups the user belongs to. */
   groups: Group[];
   selectedGroupIds: Set<string>;
@@ -44,6 +48,8 @@ export function FilterPanel({
   onShowSelfChange,
   showDrawings,
   onShowDrawingsChange,
+  primaryOnly,
+  onPrimaryOnlyChange,
   groups,
   selectedGroupIds,
   onGroupToggle,
@@ -217,7 +223,7 @@ export function FilterPanel({
         </>
       )}
 
-      {/* Device filters — placeholders */}
+      {/* Device filters */}
       <Separator />
 
       <div className="space-y-1.5">
@@ -225,25 +231,15 @@ export function FilterPanel({
           Devices
         </h4>
 
-        <label className="flex items-center gap-2 text-sm cursor-not-allowed opacity-50">
+        <label className="flex items-center gap-2 text-sm cursor-pointer">
           <input
             type="checkbox"
-            disabled
+            checked={primaryOnly}
+            onChange={() => onPrimaryOnlyChange(!primaryOnly)}
             className="h-3.5 w-3.5"
           />
           <span>Primary devices only</span>
         </label>
-
-        <label className="flex items-center gap-2 text-sm cursor-not-allowed opacity-50">
-          <input
-            type="checkbox"
-            disabled
-            className="h-3.5 w-3.5"
-          />
-          <span>Connected only</span>
-        </label>
-
-        <p className="text-xs text-muted-foreground">Coming soon</p>
       </div>
     </div>
   );

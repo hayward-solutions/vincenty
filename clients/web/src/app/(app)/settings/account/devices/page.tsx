@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
+import { Pencil } from "lucide-react";
 import { toast } from "sonner";
-import { useMyDevices, useDeleteDevice } from "@/lib/hooks/use-devices";
+import { useMyDevices, useDeleteDevice, useSetPrimaryDevice, useUpdateDevice } from "@/lib/hooks/use-devices";
 import { useWebSocket } from "@/lib/websocket-context";
 import { ApiError } from "@/lib/api";
 import {
@@ -12,6 +13,16 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Table,
   TableBody,
@@ -120,7 +131,13 @@ function typeVariant(
 export default function DevicesSettingsPage() {
   const { devices, isLoading, error, fetch } = useMyDevices();
   const { deleteDevice } = useDeleteDevice();
+  const { setPrimary } = useSetPrimaryDevice();
+  const { updateDevice, isLoading: isUpdating } = useUpdateDevice();
   const { deviceId } = useWebSocket();
+
+  // Rename dialog state
+  const [renameDevice, setRenameDevice] = useState<{ id: string; name: string } | null>(null);
+  const [renameName, setRenameName] = useState("");
 
   useEffect(() => {
     fetch();
@@ -136,6 +153,46 @@ export default function DevicesSettingsPage() {
     } catch (err) {
       toast.error(
         err instanceof ApiError ? err.message : "Failed to remove device"
+      );
+    }
+  }
+
+  async function handleSetPrimary(id: string, name: string) {
+    try {
+      await setPrimary(id);
+      toast.success(`"${name}" is now your primary device`);
+      fetch();
+    } catch (err) {
+      toast.error(
+        err instanceof ApiError ? err.message : "Failed to set primary device"
+      );
+    }
+  }
+
+  function openRenameDialog(id: string, currentName: string) {
+    setRenameDevice({ id, name: currentName });
+    setRenameName(currentName);
+  }
+
+  async function handleRename() {
+    if (!renameDevice) return;
+    const trimmed = renameName.trim();
+    if (!trimmed) {
+      toast.error("Name must not be empty");
+      return;
+    }
+    if (trimmed === renameDevice.name) {
+      setRenameDevice(null);
+      return;
+    }
+    try {
+      await updateDevice(renameDevice.id, { name: trimmed });
+      toast.success("Device renamed");
+      setRenameDevice(null);
+      fetch();
+    } catch (err) {
+      toast.error(
+        err instanceof ApiError ? err.message : "Failed to rename device"
       );
     }
   }
@@ -170,6 +227,7 @@ export default function DevicesSettingsPage() {
                   <TableRow>
                     <TableHead>Device</TableHead>
                     <TableHead>Type</TableHead>
+                    <TableHead>Primary</TableHead>
                     <TableHead>Last Active</TableHead>
                     <TableHead>Registered</TableHead>
                     <TableHead className="w-[1%]" />
@@ -184,6 +242,14 @@ export default function DevicesSettingsPage() {
                           <div className="flex flex-col gap-0.5">
                             <span className="text-sm font-medium flex items-center gap-2">
                               {device.name}
+                              <button
+                                type="button"
+                                className="text-muted-foreground hover:text-foreground"
+                                onClick={() => openRenameDialog(device.id, device.name)}
+                                title="Rename device"
+                              >
+                                <Pencil className="size-3.5" />
+                              </button>
                               {isCurrent && (
                                 <Badge variant="default" className="text-xs">
                                   This device
@@ -201,6 +267,22 @@ export default function DevicesSettingsPage() {
                           <Badge variant={typeVariant(device.device_type)}>
                             {device.device_type}
                           </Badge>
+                        </TableCell>
+                        <TableCell>
+                          {device.is_primary ? (
+                            <Badge variant="default" className="text-xs">
+                              Primary
+                            </Badge>
+                          ) : (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="text-xs"
+                              onClick={() => handleSetPrimary(device.id, device.name)}
+                            >
+                              Set as primary
+                            </Button>
+                          )}
                         </TableCell>
                         <TableCell className="whitespace-nowrap text-sm text-muted-foreground">
                           {relativeTime(device.last_seen_at)}
@@ -225,7 +307,7 @@ export default function DevicesSettingsPage() {
                   {devices.length === 0 && (
                     <TableRow>
                       <TableCell
-                        colSpan={5}
+                        colSpan={6}
                         className="text-center text-muted-foreground py-8"
                       >
                         No devices registered
@@ -238,6 +320,44 @@ export default function DevicesSettingsPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* Rename dialog */}
+      <Dialog
+        open={renameDevice !== null}
+        onOpenChange={(open) => {
+          if (!open) setRenameDevice(null);
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Rename Device</DialogTitle>
+            <DialogDescription>
+              Give this device a name to identify it easily.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2 py-2">
+            <Label htmlFor="device-name">Name</Label>
+            <Input
+              id="device-name"
+              value={renameName}
+              onChange={(e) => setRenameName(e.target.value)}
+              maxLength={50}
+              placeholder="e.g. Work Laptop, Phone"
+              onKeyDown={(e) => {
+                if (e.key === "Enter") handleRename();
+              }}
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setRenameDevice(null)}>
+              Cancel
+            </Button>
+            <Button onClick={handleRename} disabled={isUpdating}>
+              {isUpdating ? "Saving..." : "Save"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

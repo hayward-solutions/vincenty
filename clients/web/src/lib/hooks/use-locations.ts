@@ -8,6 +8,9 @@ export interface UserLocation {
   user_id: string;
   username: string;
   display_name: string;
+  device_id: string;
+  device_name: string;
+  is_primary: boolean;
   group_id: string;
   lat: number;
   lng: number;
@@ -18,13 +21,15 @@ export interface UserLocation {
 }
 
 /**
- * useLocations tracks the latest known position of other users,
+ * useLocations tracks the latest known position of other devices,
  * populated from WebSocket location_broadcast and location_snapshot messages.
+ *
+ * The map is keyed by device_id (not user_id), so each device gets its own entry.
  */
 export function useLocations() {
   const { subscribe } = useWebSocket();
 
-  // Map of user_id → latest UserLocation.
+  // Map of device_id → latest UserLocation.
   // Using a ref + state combo: ref for fast updates, state for re-renders.
   const locationsRef = useRef<Map<string, UserLocation>>(new Map());
   const [locations, setLocations] = useState<Map<string, UserLocation>>(
@@ -47,10 +52,13 @@ export function useLocations() {
     const unsubscribe = subscribe((type, payload) => {
       if (type === "location_broadcast") {
         const loc = payload as WSLocationBroadcast;
-        locationsRef.current.set(loc.user_id, {
+        locationsRef.current.set(loc.device_id, {
           user_id: loc.user_id,
           username: loc.username,
           display_name: loc.display_name,
+          device_id: loc.device_id,
+          device_name: loc.device_name,
+          is_primary: loc.is_primary,
           group_id: loc.group_id,
           lat: loc.lat,
           lng: loc.lng,
@@ -65,10 +73,13 @@ export function useLocations() {
       if (type === "location_snapshot") {
         const snapshot = payload as WSLocationSnapshot;
         for (const loc of snapshot.locations) {
-          locationsRef.current.set(loc.user_id, {
+          locationsRef.current.set(loc.device_id, {
             user_id: loc.user_id,
             username: loc.username,
             display_name: loc.display_name,
+            device_id: loc.device_id,
+            device_name: loc.device_name,
+            is_primary: loc.is_primary,
             group_id: snapshot.group_id,
             lat: loc.lat,
             lng: loc.lng,
