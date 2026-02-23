@@ -55,11 +55,14 @@ type LocationUpdatePayload struct {
 // Server → Client payloads
 // --------------------------------------------------------------------------
 
-// LocationBroadcastPayload is sent to group members when a user's location changes.
+// LocationBroadcastPayload is sent to group members when a device's location changes.
 type LocationBroadcastPayload struct {
 	UserID      uuid.UUID `json:"user_id"`
 	Username    string    `json:"username"`
 	DisplayName string    `json:"display_name"`
+	DeviceID    uuid.UUID `json:"device_id"`
+	DeviceName  string    `json:"device_name"`
+	IsPrimary   bool      `json:"is_primary"`
 	GroupID     uuid.UUID `json:"group_id"`
 	Lat         float64   `json:"lat"`
 	Lng         float64   `json:"lng"`

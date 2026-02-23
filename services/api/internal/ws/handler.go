@@ -102,7 +102,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// --- Create and register client ---
-	client := NewClient(h.hub, conn, claims.UserID, deviceID, user.Username, claims.IsAdmin, groupIDs)
+	client := NewClient(h.hub, conn, claims.UserID, deviceID, device.Name, device.IsPrimary, user.Username, claims.IsAdmin, groupIDs)
 
 	h.hub.register <- client
 

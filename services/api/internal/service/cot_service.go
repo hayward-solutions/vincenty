@@ -153,11 +153,21 @@ func (s *CotService) bridgePosition(ctx context.Context, evt cot.Event, userID, 
 		groupIDs[i] = g.ID
 	}
 
+	// Resolve device name and primary status for the broadcast
+	deviceName := ""
+	isPrimary := false
+	device, devErr := s.deviceRepo.GetByID(ctx, bridge.DeviceID)
+	if devErr == nil {
+		deviceName = device.Name
+		isPrimary = device.IsPrimary
+	}
+
 	// Call LocationService.Update (this handles persist + broadcast)
 	accepted, err := s.locationSvc.Update(
 		ctx,
 		bridge.UserID, bridge.DeviceID,
-		username, displayName,
+		username, displayName, deviceName,
+		isPrimary,
 		bridge.Lat, bridge.Lng,
 		bridge.Altitude, bridge.Heading, bridge.Speed, bridge.Accuracy,
 		groupIDs,

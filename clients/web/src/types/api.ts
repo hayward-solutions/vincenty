@@ -20,6 +20,7 @@ export interface Device {
   device_type: string;
   device_uid: string;
   user_agent?: string;
+  is_primary: boolean;
   last_seen_at?: string;
   created_at: string;
   updated_at: string;
@@ -243,11 +244,14 @@ export interface WSLocationUpdate {
   accuracy?: number;
 }
 
-/** Server → Client: another user's position update */
+/** Server → Client: another device's position update */
 export interface WSLocationBroadcast {
   user_id: string;
   username: string;
   display_name: string;
+  device_id: string;
+  device_name: string;
+  is_primary: boolean;
   group_id: string;
   lat: number;
   lng: number;
@@ -387,6 +391,7 @@ export interface LatestLocationEntry {
   user_id: string;
   device_id: string;
   device_name: string;
+  is_primary: boolean;
   username: string;
   display_name: string;
   lat: number;

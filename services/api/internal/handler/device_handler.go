@@ -243,6 +243,10 @@ func (h *DeviceHandler) Update(w http.ResponseWriter, r *http.Request) {
 		HandleError(w, err)
 		return
 	}
+	if err := req.Validate(); err != nil {
+		HandleError(w, err)
+		return
+	}
 
 	if req.Name != nil {
 		device.Name = *req.Name
@@ -253,6 +257,43 @@ func (h *DeviceHandler) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	JSON(w, http.StatusOK, device.ToResponse())
+}
+
+// SetPrimary handles PUT /api/v1/users/me/devices/{id}/primary (authenticated).
+//
+// Sets the given device as the user's primary device.
+func (h *DeviceHandler) SetPrimary(w http.ResponseWriter, r *http.Request) {
+	claims, ok := middleware.ClaimsFromContext(r.Context())
+	if !ok {
+		Error(w, http.StatusUnauthorized, "unauthorized", "missing auth context")
+		return
+	}
+
+	id, err := uuid.Parse(r.PathValue("id"))
+	if err != nil {
+		Error(w, http.StatusBadRequest, "validation_error", "invalid device id")
+		return
+	}
+
+	device, err := h.deviceRepo.GetByID(r.Context(), id)
+	if err != nil {
+		HandleError(w, err)
+		return
+	}
+
+	if device.UserID != claims.UserID {
+		Error(w, http.StatusForbidden, "forbidden", "you can only set your own devices as primary")
+		return
+	}
+
+	if err := h.deviceRepo.SetPrimary(r.Context(), claims.UserID, id); err != nil {
+		HandleError(w, err)
+		return
+	}
+
+	device.IsPrimary = true
+	slog.Info("device set as primary", "device_id", id, "user_id", claims.UserID)
 	JSON(w, http.StatusOK, device.ToResponse())
 }
 

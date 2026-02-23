@@ -166,6 +166,9 @@ func (h *Hub) routeMessage(msg pubsub.Message) {
 			UserID:      broadcast.UserID,
 			Username:    broadcast.Username,
 			DisplayName: broadcast.DisplayName,
+			DeviceID:    broadcast.DeviceID,
+			DeviceName:  broadcast.DeviceName,
+			IsPrimary:   broadcast.IsPrimary,
 			GroupID:     broadcast.GroupID,
 			Lat:         broadcast.Lat,
 			Lng:         broadcast.Lng,
@@ -354,7 +357,8 @@ func (h *Hub) handleLocationUpdate(ctx context.Context, c *Client, payload *Loca
 	accepted, err := h.locationSvc.Update(
 		ctx,
 		c.userID, c.deviceID,
-		c.username, displayName,
+		c.username, displayName, c.deviceName,
+		c.isPrimary,
 		payload.Lat, payload.Lng,
 		payload.Altitude, payload.Heading, payload.Speed, payload.Accuracy,
 		c.groups,
@@ -426,18 +430,25 @@ func (h *Hub) SendSnapshot(ctx context.Context, client *Client) {
 
 		locations := make([]LocationBroadcastPayload, 0, len(records))
 		for _, rec := range records {
-			// Don't include the client's own location in the snapshot
-			if rec.UserID == client.userID {
+			// Don't include the client's own device in the snapshot
+			if rec.DeviceID == client.deviceID {
 				continue
 			}
 			dn := ""
 			if rec.DisplayName != nil {
 				dn = *rec.DisplayName
 			}
+			devName := ""
+			if rec.DeviceName != nil {
+				devName = *rec.DeviceName
+			}
 			locations = append(locations, LocationBroadcastPayload{
 				UserID:      rec.UserID,
 				Username:    rec.Username,
 				DisplayName: dn,
+				DeviceID:    rec.DeviceID,
+				DeviceName:  devName,
+				IsPrimary:   rec.IsPrimary,
 				GroupID:     groupID,
 				Lat:         rec.Lat,
 				Lng:         rec.Lng,

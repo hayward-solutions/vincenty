@@ -18,6 +18,9 @@ type LocationBroadcast struct {
 	UserID      uuid.UUID `json:"user_id"`
 	Username    string    `json:"username"`
 	DisplayName string    `json:"display_name"`
+	DeviceID    uuid.UUID `json:"device_id"`
+	DeviceName  string    `json:"device_name"`
+	IsPrimary   bool      `json:"is_primary"`
 	GroupID     uuid.UUID `json:"group_id"`
 	Lat         float64   `json:"lat"`
 	Lng         float64   `json:"lng"`
@@ -59,7 +62,8 @@ func NewLocationService(
 func (s *LocationService) Update(
 	ctx context.Context,
 	userID, deviceID uuid.UUID,
-	username, displayName string,
+	username, displayName, deviceName string,
+	isPrimary bool,
 	lat, lng float64,
 	altitude, heading, speed, accuracy *float64,
 	groups []uuid.UUID,
@@ -111,6 +115,9 @@ func (s *LocationService) Update(
 		UserID:      userID,
 		Username:    username,
 		DisplayName: displayName,
+		DeviceID:    deviceID,
+		DeviceName:  deviceName,
+		IsPrimary:   isPrimary,
 		Lat:         lat,
 		Lng:         lng,
 		Altitude:    altitude,
@@ -209,8 +216,9 @@ func (s *LocationService) GetGroupHistory(ctx context.Context, groupID, callerID
 }
 
 // GetMyHistory returns location history for the calling user within a time range.
-func (s *LocationService) GetMyHistory(ctx context.Context, callerID uuid.UUID, from, to time.Time) ([]LocationHistoryEntry, error) {
-	records, err := s.locationRepo.GetUserHistory(ctx, callerID, from, to)
+// If deviceID is non-nil, results are filtered to that specific device.
+func (s *LocationService) GetMyHistory(ctx context.Context, callerID uuid.UUID, from, to time.Time, deviceID *uuid.UUID) ([]LocationHistoryEntry, error) {
+	records, err := s.locationRepo.GetUserHistory(ctx, callerID, from, to, deviceID)
 	if err != nil {
 		return nil, err
 	}
@@ -248,7 +256,8 @@ func (s *LocationService) GetVisibleHistory(ctx context.Context, callerID uuid.U
 
 // GetUserHistory returns location history for a specific user.
 // Admins can query any user; non-admins can only query users who share a group.
-func (s *LocationService) GetUserHistory(ctx context.Context, targetUserID, callerID uuid.UUID, callerIsAdmin bool, from, to time.Time) ([]LocationHistoryEntry, error) {
+// If deviceID is non-nil, results are filtered to that specific device.
+func (s *LocationService) GetUserHistory(ctx context.Context, targetUserID, callerID uuid.UUID, callerIsAdmin bool, from, to time.Time, deviceID *uuid.UUID) ([]LocationHistoryEntry, error) {
 	// Permission check: must be admin, the user themselves, or share a group
 	if !callerIsAdmin && targetUserID != callerID {
 		shared, err := s.locationRepo.UsersShareGroup(ctx, callerID, targetUserID)
@@ -260,7 +269,7 @@ func (s *LocationService) GetUserHistory(ctx context.Context, targetUserID, call
 		}
 	}
 
-	records, err := s.locationRepo.GetUserHistory(ctx, targetUserID, from, to)
+	records, err := s.locationRepo.GetUserHistory(ctx, targetUserID, from, to, deviceID)
 	if err != nil {
 		return nil, err
 	}
@@ -273,11 +282,12 @@ func (s *LocationService) GetUserHistory(ctx context.Context, targetUserID, call
 	return entries, nil
 }
 
-// LatestLocationEntry is a single user's latest known position.
+// LatestLocationEntry is a single device's latest known position.
 type LatestLocationEntry struct {
 	UserID      uuid.UUID `json:"user_id"`
 	DeviceID    uuid.UUID `json:"device_id"`
 	DeviceName  string    `json:"device_name"`
+	IsPrimary   bool      `json:"is_primary"`
 	Username    string    `json:"username"`
 	DisplayName string    `json:"display_name"`
 	Lat         float64   `json:"lat"`
@@ -309,6 +319,7 @@ func (s *LocationService) GetAllLatest(ctx context.Context) ([]LatestLocationEnt
 			UserID:      rec.UserID,
 			DeviceID:    rec.DeviceID,
 			DeviceName:  devName,
+			IsPrimary:   rec.IsPrimary,
 			Username:    rec.Username,
 			DisplayName: dn,
 			Lat:         rec.Lat,

@@ -8,9 +8,10 @@ import { createMarkerSVG } from "./marker-shapes";
 
 interface LocationMarkersProps {
   map: maplibregl.Map;
+  /** Map keyed by device_id */
   locations: Map<string, UserLocation>;
-  /** Current user's ID — their marker is excluded */
-  currentUserId?: string;
+  /** Current device ID — its marker is excluded (rendered by SelfMarker instead) */
+  currentDeviceId?: string;
   /** Group config lookup by group_id — provides marker_icon and marker_color */
   groups?: Map<string, Group>;
 }
@@ -57,16 +58,17 @@ function resolveMarkerStyle(
 }
 
 /**
- * LocationMarkers manages MapLibre markers for all tracked user locations.
+ * LocationMarkers manages MapLibre markers for all tracked device locations.
  * It creates/updates/removes markers as the locations map changes.
  *
+ * The locations map is keyed by device_id, so each device gets its own marker.
  * When a `groups` map is provided, markers are rendered using each group's
  * configured icon shape and color. Otherwise, falls back to colored circles.
  */
 export function LocationMarkers({
   map,
   locations,
-  currentUserId,
+  currentDeviceId,
   groups,
 }: LocationMarkersProps) {
   const markersRef = useRef<Map<string, maplibregl.Marker>>(new Map());
@@ -78,26 +80,27 @@ export function LocationMarkers({
   useEffect(() => {
     const existingIds = new Set(markersRef.current.keys());
 
-    for (const [userId, loc] of locations) {
-      // Skip current user
-      if (userId === currentUserId) continue;
+    for (const [deviceId, loc] of locations) {
+      // Skip current device (handled by SelfMarker)
+      if (deviceId === currentDeviceId) continue;
 
-      existingIds.delete(userId);
+      existingIds.delete(deviceId);
 
-      // Assign a stable fallback color index per user
-      if (!colorIndexRef.current.has(userId)) {
-        colorIndexRef.current.set(userId, nextColorRef.current++);
+      // Assign a stable fallback color index per user (not per device)
+      // so all devices of the same user share a color
+      if (!colorIndexRef.current.has(loc.user_id)) {
+        colorIndexRef.current.set(loc.user_id, nextColorRef.current++);
       }
 
       const { icon, color } = resolveMarkerStyle(
         loc,
         groups,
-        colorIndexRef.current.get(userId)!
+        colorIndexRef.current.get(loc.user_id)!
       );
       const styleKey = `${icon}:${color}`;
 
-      const existing = markersRef.current.get(userId);
-      const prevStyle = styleRef.current.get(userId);
+      const existing = markersRef.current.get(deviceId);
+      const prevStyle = styleRef.current.get(deviceId);
 
       if (existing && prevStyle === styleKey) {
         // Same style — just update position and popup
@@ -115,7 +118,7 @@ export function LocationMarkers({
         // Style changed or new marker — (re)create
         if (existing) {
           existing.remove();
-          markersRef.current.delete(userId);
+          markersRef.current.delete(deviceId);
         }
 
         const el = createMarkerElement(
@@ -139,21 +142,21 @@ export function LocationMarkers({
           marker.setRotation(loc.heading);
         }
 
-        markersRef.current.set(userId, marker);
-        styleRef.current.set(userId, styleKey);
+        markersRef.current.set(deviceId, marker);
+        styleRef.current.set(deviceId, styleKey);
       }
     }
 
-    // Remove markers for users no longer in the locations map
-    for (const userId of existingIds) {
-      const marker = markersRef.current.get(userId);
+    // Remove markers for devices no longer in the locations map
+    for (const deviceId of existingIds) {
+      const marker = markersRef.current.get(deviceId);
       if (marker) {
         marker.remove();
-        markersRef.current.delete(userId);
-        styleRef.current.delete(userId);
+        markersRef.current.delete(deviceId);
+        styleRef.current.delete(deviceId);
       }
     }
-  }, [map, locations, currentUserId, groups]);
+  }, [map, locations, currentDeviceId, groups]);
 
   // Cleanup on unmount
   useEffect(() => {
@@ -204,10 +207,20 @@ function buildPopupHTML(loc: UserLocation, color: string): string {
   const parts = [
     `<div style="font-weight:600;color:${color};margin-bottom:4px">${escapeHtml(name)}</div>`,
     `<div style="font-size:12px;color:#aaa">@${escapeHtml(loc.username)}</div>`,
+  ];
+
+  // Show device name in popup
+  if (loc.device_name) {
+    parts.push(
+      `<div style="font-size:12px;color:#bbb;margin-top:2px">${escapeHtml(loc.device_name)}${loc.is_primary ? ' <span style="color:#22c55e;font-size:10px">(primary)</span>' : ""}</div>`
+    );
+  }
+
+  parts.push(
     `<div style="font-size:12px;margin-top:4px">`,
     `${loc.lat.toFixed(5)}, ${loc.lng.toFixed(5)}`,
-    `</div>`,
-  ];
+    `</div>`
+  );
 
   if (loc.speed != null) {
     parts.push(

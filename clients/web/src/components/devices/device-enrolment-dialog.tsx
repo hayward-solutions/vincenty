@@ -11,6 +11,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import type { Device } from "@/types/api";
@@ -81,11 +82,16 @@ export function DeviceEnrolmentDialog({
   const { claimDevice, isLoading: isClaiming } = useClaimDevice();
   const [claimingId, setClaimingId] = useState<string | null>(null);
 
+  // Auto-detect a sensible default name from the browser UA
+  const [defaultName] = useState(() => parseBrowserName(navigator.userAgent));
+  const [deviceName, setDeviceName] = useState("");
+
   const busy = isCreating || isClaiming;
 
   async function handleRegisterNew() {
     try {
-      const device = await createDevice();
+      const name = deviceName.trim() || defaultName;
+      const device = await createDevice(name);
       onResolved(device.id);
     } catch (err) {
       toast.error(
@@ -155,13 +161,26 @@ export function DeviceEnrolmentDialog({
           </div>
         )}
 
-        <div className="pt-2">
+        <div className="space-y-2 pt-2">
+          <p className="text-sm font-medium">Register as new device</p>
+          <Input
+            placeholder={defaultName}
+            value={deviceName}
+            onChange={(e) => setDeviceName(e.target.value)}
+            maxLength={50}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !busy) handleRegisterNew();
+            }}
+          />
+          <p className="text-xs text-muted-foreground">
+            Give this device a name, or leave blank to use &quot;{defaultName}&quot;.
+          </p>
           <Button
             className="w-full"
             disabled={busy}
             onClick={handleRegisterNew}
           >
-            {isCreating ? "Registering..." : "Register as new device"}
+            {isCreating ? "Registering..." : "Register"}
           </Button>
         </div>
       </DialogContent>

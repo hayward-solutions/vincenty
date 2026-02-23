@@ -21,6 +21,19 @@ func NewLocationHandler(locationService *service.LocationService) *LocationHandl
 	return &LocationHandler{locationService: locationService}
 }
 
+// parseOptionalDeviceID parses the optional device_id query parameter.
+func parseOptionalDeviceID(r *http.Request) (*uuid.UUID, error) {
+	v := r.URL.Query().Get("device_id")
+	if v == "" {
+		return nil, nil
+	}
+	id, err := uuid.Parse(v)
+	if err != nil {
+		return nil, fmt.Errorf("invalid device_id")
+	}
+	return &id, nil
+}
+
 // GetGroupHistory handles GET /api/v1/groups/{id}/locations/history?from=&to=
 // Returns location history for a group within a time range.
 func (h *LocationHandler) GetGroupHistory(w http.ResponseWriter, r *http.Request) {
@@ -73,8 +86,9 @@ func (h *LocationHandler) GetGroupHistory(w http.ResponseWriter, r *http.Request
 	JSON(w, http.StatusOK, records)
 }
 
-// GetMyHistory handles GET /api/v1/users/me/locations/history?from=&to=
+// GetMyHistory handles GET /api/v1/users/me/locations/history?from=&to=&device_id=
 // Returns the caller's own location history within a time range.
+// Optional device_id param filters to a single device.
 func (h *LocationHandler) GetMyHistory(w http.ResponseWriter, r *http.Request) {
 	claims, ok := middleware.ClaimsFromContext(r.Context())
 	if !ok {
@@ -108,7 +122,13 @@ func (h *LocationHandler) GetMyHistory(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	records, err := h.locationService.GetMyHistory(r.Context(), claims.UserID, from, to)
+	deviceID, err := parseOptionalDeviceID(r)
+	if err != nil {
+		Error(w, http.StatusBadRequest, "validation_error", err.Error())
+		return
+	}
+
+	records, err := h.locationService.GetMyHistory(r.Context(), claims.UserID, from, to, deviceID)
 	if err != nil {
 		HandleError(w, err)
 		return
@@ -117,8 +137,9 @@ func (h *LocationHandler) GetMyHistory(w http.ResponseWriter, r *http.Request) {
 	JSON(w, http.StatusOK, records)
 }
 
-// ExportGPX handles GET /api/v1/users/me/locations/export?from=&to=
+// ExportGPX handles GET /api/v1/users/me/locations/export?from=&to=&device_id=
 // Returns the caller's own location history as a GPX file download.
+// Optional device_id param filters to a single device.
 func (h *LocationHandler) ExportGPX(w http.ResponseWriter, r *http.Request) {
 	claims, ok := middleware.ClaimsFromContext(r.Context())
 	if !ok {
@@ -152,7 +173,13 @@ func (h *LocationHandler) ExportGPX(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	records, err := h.locationService.GetMyHistory(r.Context(), claims.UserID, from, to)
+	deviceID, err := parseOptionalDeviceID(r)
+	if err != nil {
+		Error(w, http.StatusBadRequest, "validation_error", err.Error())
+		return
+	}
+
+	records, err := h.locationService.GetMyHistory(r.Context(), claims.UserID, from, to, deviceID)
 	if err != nil {
 		HandleError(w, err)
 		return
@@ -232,9 +259,10 @@ func (h *LocationHandler) GetVisibleHistory(w http.ResponseWriter, r *http.Reque
 	JSON(w, http.StatusOK, records)
 }
 
-// GetUserHistory handles GET /api/v1/users/{userId}/locations/history?from=&to=
+// GetUserHistory handles GET /api/v1/users/{userId}/locations/history?from=&to=&device_id=
 // Returns location history for a specific user.
 // Admins can query any user; non-admins can only query users who share a group.
+// Optional device_id param filters to a single device.
 func (h *LocationHandler) GetUserHistory(w http.ResponseWriter, r *http.Request) {
 	claims, ok := middleware.ClaimsFromContext(r.Context())
 	if !ok {
@@ -274,7 +302,13 @@ func (h *LocationHandler) GetUserHistory(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	records, err := h.locationService.GetUserHistory(r.Context(), targetUserID, claims.UserID, claims.IsAdmin, from, to)
+	deviceID, err := parseOptionalDeviceID(r)
+	if err != nil {
+		Error(w, http.StatusBadRequest, "validation_error", err.Error())
+		return
+	}
+
+	records, err := h.locationService.GetUserHistory(r.Context(), targetUserID, claims.UserID, claims.IsAdmin, from, to, deviceID)
 	if err != nil {
 		HandleError(w, err)
 		return
@@ -284,7 +318,7 @@ func (h *LocationHandler) GetUserHistory(w http.ResponseWriter, r *http.Request)
 }
 
 // GetAllLocations handles GET /api/v1/locations (admin only)
-// Returns the latest location for every user across all groups.
+// Returns the latest location for every device across all groups.
 func (h *LocationHandler) GetAllLocations(w http.ResponseWriter, r *http.Request) {
 	records, err := h.locationService.GetAllLatest(r.Context())
 	if err != nil {

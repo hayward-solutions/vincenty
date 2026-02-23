@@ -1,6 +1,7 @@
 package model
 
 import (
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -14,6 +15,7 @@ type Device struct {
 	DeviceType string     `json:"-"`
 	DeviceUID  *string    `json:"-"`
 	UserAgent  *string    `json:"-"`
+	IsPrimary  bool       `json:"-"`
 	LastSeenAt *time.Time `json:"-"`
 	CreatedAt  time.Time  `json:"-"`
 	UpdatedAt  time.Time  `json:"-"`
@@ -27,6 +29,7 @@ type DeviceResponse struct {
 	DeviceType string     `json:"device_type"`
 	DeviceUID  string     `json:"device_uid,omitempty"`
 	UserAgent  string     `json:"user_agent,omitempty"`
+	IsPrimary  bool       `json:"is_primary"`
 	LastSeenAt *time.Time `json:"last_seen_at,omitempty"`
 	CreatedAt  time.Time  `json:"created_at"`
 	UpdatedAt  time.Time  `json:"updated_at"`
@@ -49,6 +52,7 @@ func (d *Device) ToResponse() DeviceResponse {
 		DeviceType: d.DeviceType,
 		DeviceUID:  uid,
 		UserAgent:  ua,
+		IsPrimary:  d.IsPrimary,
 		LastSeenAt: d.LastSeenAt,
 		CreatedAt:  d.CreatedAt,
 		UpdatedAt:  d.UpdatedAt,
@@ -89,4 +93,19 @@ type DeviceResolveResponse struct {
 // UpdateDeviceRequest is the expected body for updating a device.
 type UpdateDeviceRequest struct {
 	Name *string `json:"name"`
+}
+
+// Validate checks that the supplied fields are valid.
+func (r *UpdateDeviceRequest) Validate() error {
+	if r.Name != nil {
+		trimmed := strings.TrimSpace(*r.Name)
+		if trimmed == "" {
+			return ErrValidation("name must not be empty")
+		}
+		if len(trimmed) > 50 {
+			return ErrValidation("name must not exceed 50 characters")
+		}
+		*r.Name = trimmed
+	}
+	return nil
 }

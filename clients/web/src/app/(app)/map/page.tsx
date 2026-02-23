@@ -43,6 +43,7 @@ import {
   useUnshareDrawing,
 } from "@/lib/hooks/use-drawings";
 import { useAuth } from "@/lib/auth-context";
+import { useWebSocket } from "@/lib/websocket-context";
 import { api } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -58,6 +59,7 @@ const API_BASE = process.env.NEXT_PUBLIC_API_URL || "";
 
 export default function MapPage() {
   const { user, isAdmin } = useAuth();
+  const { deviceId: currentDeviceId } = useWebSocket();
   const { settings, isLoading, error } = useMapSettings();
   const { locations } = useLocations();
   const { lastPosition } = useLocationSharing();
@@ -120,6 +122,7 @@ export default function MapPage() {
   );
   const [showSelf, setShowSelf] = useState(true);
   const [showDrawings, setShowDrawings] = useState(true);
+  const [primaryOnly, setPrimaryOnly] = useState(false);
   const [filterPanelOpen, setFilterPanelOpen] = useState(false);
 
   // Measure tool state
@@ -520,14 +523,18 @@ export default function MapPage() {
   }
 
   // Merge admin-fetched locations into the WS-provided locations.
+  // Both are keyed by device_id.
   let displayLocations = new Map(locations);
   if (isAdmin && adminLocations.length > 0) {
     for (const loc of adminLocations) {
-      if (!displayLocations.has(loc.user_id)) {
-        displayLocations.set(loc.user_id, {
+      if (!displayLocations.has(loc.device_id)) {
+        displayLocations.set(loc.device_id, {
           user_id: loc.user_id,
           username: loc.username,
           display_name: loc.display_name,
+          device_id: loc.device_id,
+          device_name: loc.device_name,
+          is_primary: loc.is_primary,
           group_id: "",
           lat: loc.lat,
           lng: loc.lng,
@@ -540,30 +547,53 @@ export default function MapPage() {
     }
   }
 
-  // Derive the full list of visible users (before filtering) for the filter panel
-  const allVisibleUsers = Array.from(displayLocations.values()).map((loc) => ({
-    user_id: loc.user_id,
-    display_name: loc.display_name,
-    username: loc.username,
-  }));
+  // Derive the full list of visible users (before filtering) for the filter panel.
+  // Deduplicate by user_id since a user may have multiple devices.
+  const allVisibleUsers = (() => {
+    const seen = new Set<string>();
+    const result: Array<{ user_id: string; display_name: string; username: string }> = [];
+    for (const loc of displayLocations.values()) {
+      if (!seen.has(loc.user_id)) {
+        seen.add(loc.user_id);
+        result.push({
+          user_id: loc.user_id,
+          display_name: loc.display_name,
+          username: loc.username,
+        });
+      }
+    }
+    return result;
+  })();
 
-  // Apply live group filter — when groups are selected, only show their users
-  if (selectedLiveGroupIds.size > 0) {
+  // Apply primary-only filter — when active, only show primary devices
+  // (plus the current user's own devices which are always eligible)
+  if (primaryOnly) {
     const filtered = new Map(displayLocations);
-    for (const [userId, loc] of filtered) {
-      if (!loc.group_id || !selectedLiveGroupIds.has(loc.group_id)) {
-        filtered.delete(userId);
+    for (const [deviceId, loc] of filtered) {
+      if (!loc.is_primary && deviceId !== currentDeviceId) {
+        filtered.delete(deviceId);
       }
     }
     displayLocations = filtered;
   }
 
-  // Apply live user filter — when users are selected, only show those users
+  // Apply live group filter — when groups are selected, only show their devices
+  if (selectedLiveGroupIds.size > 0) {
+    const filtered = new Map(displayLocations);
+    for (const [deviceId, loc] of filtered) {
+      if (!loc.group_id || !selectedLiveGroupIds.has(loc.group_id)) {
+        filtered.delete(deviceId);
+      }
+    }
+    displayLocations = filtered;
+  }
+
+  // Apply live user filter — when users are selected, only show those users' devices
   if (selectedLiveUserIds.size > 0) {
     const filtered = new Map(displayLocations);
-    for (const [userId] of filtered) {
-      if (!selectedLiveUserIds.has(userId)) {
-        filtered.delete(userId);
+    for (const [deviceId, loc] of filtered) {
+      if (!selectedLiveUserIds.has(loc.user_id)) {
+        filtered.delete(deviceId);
       }
     }
     displayLocations = filtered;
@@ -573,6 +603,7 @@ export default function MapPage() {
   const filterActive =
     selectedLiveGroupIds.size > 0 ||
     selectedLiveUserIds.size > 0 ||
+    primaryOnly ||
     !showSelf ||
     !showDrawings;
 
@@ -592,7 +623,7 @@ export default function MapPage() {
             <LocationMarkers
               map={mapRef.current}
               locations={displayLocations}
-              currentUserId={user?.id}
+              currentDeviceId={currentDeviceId ?? undefined}
               groups={groupConfigMap}
             />
             <GpxOverlay map={mapRef.current} message={gpxMessage} />
@@ -677,6 +708,8 @@ export default function MapPage() {
             onShowSelfChange={setShowSelf}
             showDrawings={showDrawings}
             onShowDrawingsChange={setShowDrawings}
+            primaryOnly={primaryOnly}
+            onPrimaryOnlyChange={setPrimaryOnly}
             groups={myGroups}
             selectedGroupIds={selectedLiveGroupIds}
             onGroupToggle={(groupId) => {
