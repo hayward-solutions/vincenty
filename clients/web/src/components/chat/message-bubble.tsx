@@ -2,7 +2,7 @@
 
 import { cn } from "@/lib/utils";
 import type { MessageResponse } from "@/types/api";
-import { Download, MapPin, FileText, Info } from "lucide-react";
+import { Download, MapPin, FileText, Pencil, Info } from "lucide-react";
 import Link from "next/link";
 import {
   Popover,
@@ -54,6 +54,8 @@ function MessageTypeLabel(type: string): string {
       return "File";
     case "gpx":
       return "GPX Track";
+    case "drawing":
+      return "Drawing";
     default:
       return type;
   }
@@ -64,8 +66,10 @@ export function MessageBubble({ message, isOwn }: MessageBubbleProps) {
     message.attachments != null && message.attachments.length > 0;
   const hasLocation = message.lat != null && message.lng != null;
   const isGpx = message.message_type === "gpx" && message.metadata != null;
+  const isDrawing = message.message_type === "drawing" && message.metadata != null;
+  const drawingId = isDrawing ? message.metadata?.drawing_id : null;
   const hasText = !!message.content;
-  const hasTrailingContent = isGpx;
+  const hasTrailingContent = isGpx || (isDrawing && drawingId);
 
   // EXIF location from metadata (primary display source)
   const exifLocations = message.metadata?.exif_locations;
@@ -174,6 +178,22 @@ export function MessageBubble({ message, isOwn }: MessageBubbleProps) {
           >
             <FileText className="h-3.5 w-3.5" />
             View GPX on Map
+          </Link>
+        )}
+
+        {/* Drawing "View on Map" link */}
+        {isDrawing && drawingId && (
+          <Link
+            href={`/map?drawing=${drawingId}`}
+            className={cn(
+              "flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium",
+              isOwn
+                ? "text-primary-foreground/80 hover:text-primary-foreground"
+                : "text-primary hover:underline"
+            )}
+          >
+            <Pencil className="h-3.5 w-3.5" />
+            View Drawing on Map
           </Link>
         )}
       </div>

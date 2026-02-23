@@ -20,6 +20,9 @@ import { MapToolbar } from "@/components/map/map-toolbar";
 import { FilterPanel } from "@/components/map/filter-panel";
 import { MeasureTool, type MeasureResult } from "@/components/map/measure-tool";
 import { MeasurePanel } from "@/components/map/measure-panel";
+import { DrawTool, type DrawMode, type DrawStyle, type CompletedShape } from "@/components/map/draw-tool";
+import { DrawPanel, type ShareTarget } from "@/components/map/draw-panel";
+import { DrawingOverlay } from "@/components/map/drawing-overlay";
 import { useMapSettings } from "@/lib/hooks/use-map-settings";
 import { useLocations } from "@/lib/hooks/use-locations";
 import { useLocationSharing } from "@/lib/hooks/use-location-sharing";
@@ -30,6 +33,15 @@ import {
   useUserLocationHistory,
   useMyGroups,
 } from "@/lib/hooks/use-location-history";
+import {
+  useDrawings,
+  useCreateDrawing,
+  useUpdateDrawing,
+  useDeleteDrawing,
+  useShareDrawing,
+  useDrawingShares,
+  useUnshareDrawing,
+} from "@/lib/hooks/use-drawings";
 import { useAuth } from "@/lib/auth-context";
 import { api } from "@/lib/api";
 import { Button } from "@/components/ui/button";
@@ -37,6 +49,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import type {
   MessageResponse,
   LocationHistoryEntry,
+  DrawingResponse,
   Group,
   GroupMember,
 } from "@/types/api";
@@ -74,10 +87,14 @@ export default function MapPage() {
   const searchParams = useSearchParams();
 
   const mapRef = useRef<maplibregl.Map | null>(null);
+  const [mapReady, setMapReady] = useState(false);
 
   // GPX overlay support: ?gpx=<messageId>
   const gpxMessageId = searchParams.get("gpx");
   const [gpxMessage, setGpxMessage] = useState<MessageResponse | null>(null);
+
+  // Drawing deep-link support: ?drawing=<drawingId>
+  const drawingDeepLinkId = searchParams.get("drawing");
 
   // Replay state
   const [replayActive, setReplayActive] = useState(false);
@@ -102,6 +119,7 @@ export default function MapPage() {
     new Set()
   );
   const [showSelf, setShowSelf] = useState(true);
+  const [showDrawings, setShowDrawings] = useState(true);
   const [filterPanelOpen, setFilterPanelOpen] = useState(false);
 
   // Measure tool state
@@ -112,6 +130,45 @@ export default function MapPage() {
     total: 0,
   });
   const measureResetRef = useRef(0);
+
+  // Draw tool state
+  const [drawActive, setDrawActive] = useState(false);
+  const [drawMode, setDrawMode] = useState<DrawMode>("line");
+  const [drawStyle, setDrawStyle] = useState<DrawStyle>({
+    stroke: "#3b82f6",
+    fill: "transparent",
+    strokeWidth: 3,
+  });
+  const drawResetRef = useRef(0);
+  const [drawShapes, setDrawShapes] = useState<CompletedShape[]>([]);
+  const drawCompletedFeatures = useMemo(
+    () => drawShapes.map((s) => s.feature),
+    [drawShapes]
+  );
+  const [drawingName, setDrawingName] = useState("");
+  const [savedDrawingId, setSavedDrawingId] = useState<string | null>(null);
+
+  // Drawings data + visibility
+  const { ownDrawings, sharedDrawings, refetch: refetchDrawings } = useDrawings();
+  const { createDrawing, isLoading: isCreating } = useCreateDrawing();
+  const { updateDrawing, isLoading: isUpdating } = useUpdateDrawing();
+  const { shareDrawing, isLoading: isSharing } = useShareDrawing();
+  const { deleteDrawing, isLoading: isDeleting } = useDeleteDrawing();
+  const { unshareDrawing, isLoading: isUnsharing } = useUnshareDrawing();
+  const [hiddenDrawingIds, setHiddenDrawingIds] = useState<Set<string>>(new Set());
+  const [managingDrawingId, setManagingDrawingId] = useState<string | null>(null);
+  const { shares: drawingShares, isLoading: drawingSharesLoading, refetch: refetchShares } = useDrawingShares(managingDrawingId);
+
+  // Deep-link: ensure the linked drawing is visible (un-hide it)
+  useEffect(() => {
+    if (!drawingDeepLinkId) return;
+    setHiddenDrawingIds((prev) => {
+      if (!prev.has(drawingDeepLinkId)) return prev;
+      const next = new Set(prev);
+      next.delete(drawingDeepLinkId);
+      return next;
+    });
+  }, [drawingDeepLinkId]);
 
   // Build a group config lookup map from the user's groups
   const groupConfigMap = useMemo(() => {
@@ -139,6 +196,7 @@ export default function MapPage() {
   const handleMapReady = useCallback(
     (map: maplibregl.Map) => {
       mapRef.current = map;
+      setMapReady(true);
       if (isAdmin) {
         fetchAll();
       }
@@ -324,6 +382,122 @@ export default function MapPage() {
   );
 
   // ---------------------------------------------------------------------------
+  // Draw tool callbacks
+  // ---------------------------------------------------------------------------
+
+  const handleShapeComplete = useCallback((shape: CompletedShape) => {
+    setDrawShapes((prev) => [...prev, shape]);
+  }, []);
+
+  const handleDrawSave = useCallback(async () => {
+    if (!drawingName.trim() || drawShapes.length === 0) return;
+
+    const geojson: GeoJSON.FeatureCollection = {
+      type: "FeatureCollection",
+      features: drawShapes.map((s) => s.feature),
+    };
+
+    try {
+      if (savedDrawingId) {
+        await updateDrawing(savedDrawingId, { name: drawingName.trim(), geojson });
+        toast.success("Drawing updated");
+      } else {
+        const created = await createDrawing({ name: drawingName.trim(), geojson });
+        setSavedDrawingId(created.id);
+        toast.success("Drawing saved");
+      }
+      refetchDrawings();
+    } catch {
+      toast.error("Failed to save drawing");
+    }
+  }, [drawingName, drawShapes, savedDrawingId, createDrawing, updateDrawing, refetchDrawings]);
+
+  const handleDrawShare = useCallback(
+    async (target: ShareTarget) => {
+      if (!savedDrawingId) return;
+      try {
+        await shareDrawing(savedDrawingId, {
+          group_id: target.type === "group" ? target.id : undefined,
+          recipient_id: target.type === "user" ? target.id : undefined,
+        });
+        toast.success(`Shared to ${target.name}`);
+      } catch {
+        toast.error("Failed to share drawing");
+      }
+    },
+    [savedDrawingId, shareDrawing]
+  );
+
+  const handleDrawClose = useCallback(() => {
+    setDrawActive(false);
+    setDrawShapes([]);
+    setDrawingName("");
+    setSavedDrawingId(null);
+    drawResetRef.current += 1;
+  }, []);
+
+  // ---------------------------------------------------------------------------
+  // Drawing management callbacks (filter panel)
+  // ---------------------------------------------------------------------------
+
+  const handleDrawingDelete = useCallback(
+    async (drawingId: string) => {
+      if (!window.confirm("Delete this drawing? This cannot be undone.")) return;
+      try {
+        await deleteDrawing(drawingId);
+        toast.success("Drawing deleted");
+        refetchDrawings();
+        // If we were managing this drawing's shares, close the popover
+        if (managingDrawingId === drawingId) setManagingDrawingId(null);
+      } catch {
+        toast.error("Failed to delete drawing");
+      }
+    },
+    [deleteDrawing, refetchDrawings, managingDrawingId]
+  );
+
+  const handleFilterPanelShare = useCallback(
+    async (drawingId: string, groupId: string, groupName: string) => {
+      try {
+        await shareDrawing(drawingId, { group_id: groupId });
+        toast.success(`Shared to ${groupName}`);
+        refetchShares();
+      } catch {
+        toast.error("Failed to share drawing");
+      }
+    },
+    [shareDrawing, refetchShares]
+  );
+
+  const handleDrawingUnshare = useCallback(
+    async (drawingId: string, messageId: string) => {
+      try {
+        await unshareDrawing(drawingId, messageId);
+        toast.success("Drawing unshared");
+        refetchShares();
+        refetchDrawings();
+      } catch {
+        toast.error("Failed to unshare drawing");
+      }
+    },
+    [unshareDrawing, refetchShares, refetchDrawings]
+  );
+
+  // Compute visible drawings — all drawings are visible unless explicitly hidden
+  // or the master showDrawings toggle is off
+  const visibleDrawingIds = useMemo(() => {
+    if (!showDrawings) return new Set<string>();
+    const all = [...ownDrawings, ...sharedDrawings];
+    return new Set(all.filter((d) => !hiddenDrawingIds.has(d.id)).map((d) => d.id));
+  }, [showDrawings, ownDrawings, sharedDrawings, hiddenDrawingIds]);
+
+  const visibleDrawings = useMemo(() => {
+    if (!showDrawings) return [];
+    const all = [...ownDrawings, ...sharedDrawings];
+    return all.filter((d) => !hiddenDrawingIds.has(d.id));
+  }, [showDrawings, ownDrawings, sharedDrawings, hiddenDrawingIds]);
+
+  // ---------------------------------------------------------------------------
   // Render
   // ---------------------------------------------------------------------------
 
@@ -399,12 +573,13 @@ export default function MapPage() {
   const filterActive =
     selectedLiveGroupIds.size > 0 ||
     selectedLiveUserIds.size > 0 ||
-    !showSelf;
+    !showSelf ||
+    !showDrawings;
 
   return (
     <div className="relative h-[calc(100vh-3.5rem)]">
       <MapView settings={settings} onMapReady={handleMapReady}>
-        {mapRef.current && (
+        {mapReady && mapRef.current && (
           <>
             <MapControls map={mapRef.current} terrainAvailable={!!settings.terrain_url} position={lastPosition} />
             <SelfMarker
@@ -435,6 +610,19 @@ export default function MapPage() {
               resetKey={measureResetRef.current}
               onMeasurementsChange={setMeasureResult}
             />
+            <DrawTool
+              map={mapRef.current}
+              active={drawActive}
+              mode={drawMode}
+              style={drawStyle}
+              resetKey={drawResetRef.current}
+              completedFeatures={drawCompletedFeatures}
+              onShapeComplete={handleShapeComplete}
+            />
+            <DrawingOverlay
+              map={mapRef.current}
+              drawings={visibleDrawings}
+            />
           </>
         )}
       </MapView>
@@ -446,6 +634,7 @@ export default function MapPage() {
             setReplayPanelOpen((v) => !v);
             setFilterPanelOpen(false);
             setMeasureActive(false);
+            setDrawActive(false);
           }}
           replayActive={replayActive}
           filterActive={filterActive}
@@ -453,12 +642,21 @@ export default function MapPage() {
             setFilterPanelOpen((v) => !v);
             setReplayPanelOpen(false);
             setMeasureActive(false);
+            setDrawActive(false);
           }}
           measureActive={measureActive}
           onMeasureClick={() => {
             setMeasureActive((v) => !v);
             setFilterPanelOpen(false);
             setReplayPanelOpen(false);
+            setDrawActive(false);
+          }}
+          drawActive={drawActive}
+          onDrawClick={() => {
+            setDrawActive((v) => !v);
+            setFilterPanelOpen(false);
+            setReplayPanelOpen(false);
+            setMeasureActive(false);
           }}
         />
 
@@ -473,10 +671,12 @@ export default function MapPage() {
         )}
 
         {/* Filter panel */}
-        {filterPanelOpen && !replayPanelOpen && !measureActive && (
+        {filterPanelOpen && !replayPanelOpen && !measureActive && !drawActive && (
           <FilterPanel
             showSelf={showSelf}
             onShowSelfChange={setShowSelf}
+            showDrawings={showDrawings}
+            onShowDrawingsChange={setShowDrawings}
             groups={myGroups}
             selectedGroupIds={selectedLiveGroupIds}
             onGroupToggle={(groupId) => {
@@ -510,7 +710,7 @@ export default function MapPage() {
         )}
 
         {/* Measure panel */}
-        {measureActive && (
+        {measureActive && !drawActive && (
           <MeasurePanel
             mode={measureMode}
             onModeChange={(m) => {
@@ -524,6 +724,57 @@ export default function MapPage() {
               setMeasureResult({ segments: [], total: 0 });
             }}
             onClose={() => setMeasureActive(false)}
+          />
+        )}
+
+        {/* Draw panel */}
+        {drawActive && (
+          <DrawPanel
+            mode={drawMode}
+            onModeChange={(m) => {
+              setDrawMode(m);
+              drawResetRef.current += 1;
+            }}
+            style={drawStyle}
+            onStyleChange={setDrawStyle}
+            shapes={drawShapes}
+            onRemoveShape={(i) => {
+              setDrawShapes((prev) => prev.filter((_, idx) => idx !== i));
+            }}
+            onClearShapes={() => {
+              setDrawShapes([]);
+              drawResetRef.current += 1;
+            }}
+            drawingName={drawingName}
+            onDrawingNameChange={setDrawingName}
+            onSave={handleDrawSave}
+            isSaving={isCreating || isUpdating}
+            groups={myGroups}
+            onShare={handleDrawShare}
+            isSharing={isSharing}
+            savedDrawingId={savedDrawingId}
+            onClose={handleDrawClose}
+            ownDrawings={ownDrawings}
+            sharedDrawings={sharedDrawings}
+            visibleDrawingIds={visibleDrawingIds}
+            onDrawingToggle={(drawingId) => {
+              setHiddenDrawingIds((prev) => {
+                const next = new Set(prev);
+                if (next.has(drawingId)) {
+                  next.delete(drawingId);
+                } else {
+                  next.add(drawingId);
+                }
+                return next;
+              });
+            }}
+            onDrawingDelete={handleDrawingDelete}
+            onDrawingShare={handleFilterPanelShare}
+            onDrawingUnshare={handleDrawingUnshare}
+            managingDrawingId={managingDrawingId}
+            onManagingDrawingChange={setManagingDrawingId}
+            drawingShares={drawingShares}
+            drawingSharesLoading={drawingSharesLoading}
           />
         )}
       </div>

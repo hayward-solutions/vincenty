@@ -12,6 +12,10 @@ interface FilterPanelProps {
   showSelf: boolean;
   onShowSelfChange: (show: boolean) => void;
 
+  /** Master toggle for all drawing overlays. */
+  showDrawings: boolean;
+  onShowDrawingsChange: (show: boolean) => void;
+
   /** Available groups the user belongs to. */
   groups: Group[];
   selectedGroupIds: Set<string>;
@@ -38,6 +42,8 @@ const SEARCH_THRESHOLD = 5;
 export function FilterPanel({
   showSelf,
   onShowSelfChange,
+  showDrawings,
+  onShowDrawingsChange,
   groups,
   selectedGroupIds,
   onGroupToggle,
@@ -76,6 +82,17 @@ export function FilterPanel({
           className="h-3.5 w-3.5"
         />
         <span>Show self</span>
+      </label>
+
+      {/* Show drawings */}
+      <label className="flex items-center gap-2 text-sm cursor-pointer">
+        <input
+          type="checkbox"
+          checked={showDrawings}
+          onChange={() => onShowDrawingsChange(!showDrawings)}
+          className="h-3.5 w-3.5"
+        />
+        <span>Show drawings</span>
       </label>
 
       {/* Groups */}
