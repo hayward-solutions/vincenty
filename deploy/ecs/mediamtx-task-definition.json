@@ -14,7 +14,18 @@
       "portMappings": [
         {
           "containerPort": 8889,
-          "protocol": "tcp"
+          "protocol": "tcp",
+          "name": "whip-whep"
+        },
+        {
+          "containerPort": 8554,
+          "protocol": "tcp",
+          "name": "rtsp"
+        },
+        {
+          "containerPort": 1935,
+          "protocol": "tcp",
+          "name": "rtmp"
         }
       ],
       "healthCheck": {

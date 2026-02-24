@@ -38,12 +38,32 @@
     "namespace": "sitaware.local",
     "services": [
       {
-        "portName": "mediamtx",
+        "portName": "whip-whep",
         "discoveryName": "mediamtx",
         "clientAliases": [
           {
             "port": 8889,
             "dnsName": "mediamtx.sitaware.local"
+          }
+        ]
+      },
+      {
+        "portName": "rtsp",
+        "discoveryName": "mediamtx-rtsp",
+        "clientAliases": [
+          {
+            "port": 8554,
+            "dnsName": "mediamtx-rtsp.sitaware.local"
+          }
+        ]
+      },
+      {
+        "portName": "rtmp",
+        "discoveryName": "mediamtx-rtmp",
+        "clientAliases": [
+          {
+            "port": 1935,
+            "dnsName": "mediamtx-rtmp.sitaware.local"
           }
         ]
       }

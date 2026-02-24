@@ -1,0 +1,49 @@
+{
+  "family": "sitaware-coturn",
+  "networkMode": "awsvpc",
+  "requiresCompatibilities": ["FARGATE"],
+  "cpu": "256",
+  "memory": "512",
+  "executionRoleArn": "arn:aws:iam::ACCOUNT_ID:role/sitaware-ecs-execution-role",
+  "taskRoleArn": "arn:aws:iam::ACCOUNT_ID:role/sitaware-coturn-task-role",
+  "containerDefinitions": [
+    {
+      "name": "coturn",
+      "image": "coturn/coturn:latest",
+      "essential": true,
+      "portMappings": [
+        {
+          "containerPort": 3478,
+          "protocol": "udp",
+          "name": "turn-udp"
+        },
+        {
+          "containerPort": 3478,
+          "protocol": "tcp",
+          "name": "turn-tcp"
+        }
+      ],
+      "entryPoint": ["sh", "-c"],
+      "command": [
+        "turnserver -n --realm=sitaware --listening-port=3478 --min-port=49152 --max-port=65535 --lt-cred-mech --user=sitaware:$TURN_PASSWORD --external-ip=$EXTERNAL_IP --fingerprint --no-cli --no-tlsv1 --no-tlsv1_1 --log-file=stdout --verbose"
+      ],
+      "secrets": [
+        {
+          "name": "TURN_PASSWORD",
+          "valueFrom": "arn:aws:ssm:REGION:ACCOUNT_ID:parameter/sitaware/turn-password"
+        }
+      ],
+      "environment": [
+        { "name": "EXTERNAL_IP", "value": "NLB_ELASTIC_IP" }
+      ],
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/ecs/sitaware-coturn",
+          "awslogs-region": "REGION",
+          "awslogs-stream-prefix": "coturn"
+        }
+      }
+    }
+  ]
+}

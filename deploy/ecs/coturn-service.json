@@ -1,0 +1,57 @@
+{
+  "serviceName": "sitaware-coturn",
+  "cluster": "sitaware",
+  "taskDefinition": "sitaware-coturn",
+  "desiredCount": 1,
+  "launchType": "FARGATE",
+  "platformVersion": "LATEST",
+  "networkConfiguration": {
+    "awsvpcConfiguration": {
+      "subnets": [
+        "subnet-PRIVATE_1",
+        "subnet-PRIVATE_2"
+      ],
+      "securityGroups": [
+        "sg-COTURN_SG"
+      ],
+      "assignPublicIp": "DISABLED"
+    }
+  },
+  "loadBalancers": [
+    {
+      "targetGroupArn": "arn:aws:elasticloadbalancing:REGION:ACCOUNT_ID:targetgroup/sitaware-coturn-udp/xxxx",
+      "containerName": "coturn",
+      "containerPort": 3478
+    },
+    {
+      "targetGroupArn": "arn:aws:elasticloadbalancing:REGION:ACCOUNT_ID:targetgroup/sitaware-coturn-tcp/xxxx",
+      "containerName": "coturn",
+      "containerPort": 3478
+    }
+  ],
+  "deploymentConfiguration": {
+    "minimumHealthyPercent": 0,
+    "maximumPercent": 100,
+    "deploymentCircuitBreaker": {
+      "enable": true,
+      "rollback": true
+    }
+  },
+  "serviceConnectConfiguration": {
+    "enabled": true,
+    "namespace": "sitaware.local",
+    "services": [
+      {
+        "portName": "turn-udp",
+        "discoveryName": "coturn",
+        "clientAliases": [
+          {
+            "port": 3478,
+            "dnsName": "coturn.sitaware.local"
+          }
+        ]
+      }
+    ]
+  },
+  "enableExecuteCommand": true
+}
