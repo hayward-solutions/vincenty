@@ -240,6 +240,29 @@ cp .env.example .env
 | `MAP_DEFAULT_CENTER_LNG` | `0` | Default map center longitude |
 | `MAP_DEFAULT_ZOOM` | `2` | Default map zoom level |
 
+## Documentation
+
+### Guides
+
+| Guide | Description |
+|---|---|
+| [Getting Started](docs/guides/getting-started.md) | First login, navigation overview, key concepts |
+| [Using the Map](docs/guides/map.md) | Location markers, drawing tools, replay, measurement, terrain |
+| [Messaging](docs/guides/messaging.md) | Group chat, direct messages, file attachments |
+| [Location Sharing](docs/guides/location-sharing.md) | Enabling location sharing, privacy, GPX export |
+| [MFA Setup](docs/guides/mfa-setup.md) | TOTP, WebAuthn/passkeys, recovery codes |
+| [Account Settings](docs/guides/account-settings.md) | Profile, avatar, devices, map marker customization |
+| [Admin Guide](docs/guides/admin-guide.md) | User/group management, map config, security, audit logs |
+
+### Reference
+
+| Document | Description |
+|---|---|
+| [Architecture](ARCHITECTURE.md) | System design, data flow, database schema, deployment targets |
+| [Features](FEATURES.md) | Complete feature reference |
+| [Contributing](CONTRIBUTING.md) | Development setup, code conventions, PR process |
+| [ECS Deployment](deploy/ecs/README.md) | Step-by-step AWS ECS Fargate deployment guide |
+
 ## Deployment
 
 SitAware supports multiple deployment targets. See the [Architecture Guide](ARCHITECTURE.md) for details.
