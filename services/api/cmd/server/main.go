@@ -486,9 +486,9 @@ func main() {
 	slog.Info("server stopped gracefully")
 }
 
-// mfaSetupChecker adapts ServerSettingsRepository to the middleware.MFASetupChecker interface.
+// mfaSetupChecker adapts ServerSettingsRepo to the middleware.MFASetupChecker interface.
 type mfaSetupChecker struct {
-	settingsRepo *repository.ServerSettingsRepository
+	settingsRepo repository.ServerSettingsRepo
 }
 
 func (c *mfaSetupChecker) IsMFARequired(ctx context.Context) bool {

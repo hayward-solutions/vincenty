@@ -43,17 +43,17 @@ type SendMessageRequest struct {
 
 // MessageService handles messaging business logic.
 type MessageService struct {
-	messageRepo *repository.MessageRepository
-	groupRepo   *repository.GroupRepository
-	storage     *storage.StorageService
+	messageRepo repository.MessageRepo
+	groupRepo   repository.GroupRepo
+	storage     storage.Storage
 	ps          pubsub.PubSub
 }
 
 // NewMessageService creates a new MessageService.
 func NewMessageService(
-	messageRepo *repository.MessageRepository,
-	groupRepo *repository.GroupRepository,
-	storage *storage.StorageService,
+	messageRepo repository.MessageRepo,
+	groupRepo repository.GroupRepo,
+	storage storage.Storage,
 	ps pubsub.PubSub,
 ) *MessageService {
 	return &MessageService{

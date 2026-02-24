@@ -25,16 +25,16 @@ type Hub struct {
 
 	ps          pubsub.PubSub
 	locationSvc *service.LocationService
-	groupRepo   *repository.GroupRepository
-	userRepo    *repository.UserRepository
+	groupRepo   repository.GroupRepo
+	userRepo    repository.UserRepo
 }
 
 // NewHub creates a new Hub.
 func NewHub(
 	ps pubsub.PubSub,
 	locationSvc *service.LocationService,
-	groupRepo *repository.GroupRepository,
-	userRepo *repository.UserRepository,
+	groupRepo repository.GroupRepo,
+	userRepo repository.UserRepo,
 ) *Hub {
 	return &Hub{
 		clients:     make(map[uuid.UUID]map[*Client]struct{}),

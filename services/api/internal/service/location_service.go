@@ -33,8 +33,8 @@ type LocationBroadcast struct {
 // LocationService handles location update logic including throttling,
 // persistence, and pub/sub broadcasting.
 type LocationService struct {
-	locationRepo *repository.LocationRepository
-	groupRepo    *repository.GroupRepository
+	locationRepo repository.LocationRepo
+	groupRepo    repository.GroupRepo
 	ps           pubsub.PubSub
 	throttle     time.Duration
 
@@ -44,8 +44,8 @@ type LocationService struct {
 
 // NewLocationService creates a new LocationService.
 func NewLocationService(
-	locationRepo *repository.LocationRepository,
-	groupRepo *repository.GroupRepository,
+	locationRepo repository.LocationRepo,
+	groupRepo repository.GroupRepo,
 	ps pubsub.PubSub,
 	throttle time.Duration,
 ) *LocationService {

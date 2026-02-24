@@ -39,8 +39,8 @@ const (
 
 // MFAService handles MFA business logic including TOTP, WebAuthn, and recovery codes.
 type MFAService struct {
-	mfaRepo    *repository.MFARepository
-	userRepo   *repository.UserRepository
+	mfaRepo    repository.MFARepo
+	userRepo   repository.UserRepo
 	encryptor  auth.SecretEncryptor
 	rdb        *redis.Client
 	webAuthn   *webauthn.WebAuthn
@@ -48,8 +48,8 @@ type MFAService struct {
 
 // NewMFAService creates a new MFAService.
 func NewMFAService(
-	mfaRepo *repository.MFARepository,
-	userRepo *repository.UserRepository,
+	mfaRepo repository.MFARepo,
+	userRepo repository.UserRepo,
 	encryptor auth.SecretEncryptor,
 	rdb *redis.Client,
 	wa *webauthn.WebAuthn,
@@ -464,7 +464,10 @@ func (s *MFAService) GenerateRecoveryCodes(ctx context.Context, userID uuid.UUID
 	for i := range recoveryCodeCount {
 		code := generateRecoveryCode()
 		codes[i] = code
-		hash, err := bcrypt.GenerateFromPassword([]byte(code), bcrypt.DefaultCost)
+		// Normalize before hashing: strip dashes and lowercase, matching
+		// the normalization in ValidateRecoveryCode.
+		normalized := strings.ReplaceAll(strings.ToLower(code), "-", "")
+		hash, err := bcrypt.GenerateFromPassword([]byte(normalized), bcrypt.DefaultCost)
 		if err != nil {
 			return nil, fmt.Errorf("hash recovery code: %w", err)
 		}

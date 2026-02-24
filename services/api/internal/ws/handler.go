@@ -15,12 +15,12 @@ import (
 type Handler struct {
 	hub        *Hub
 	jwt        *auth.JWTService
-	deviceRepo *repository.DeviceRepository
-	groupRepo  *repository.GroupRepository
+	deviceRepo repository.DeviceRepo
+	groupRepo  repository.GroupRepo
 }
 
 // NewHandler creates a new WebSocket Handler.
-func NewHandler(hub *Hub, jwt *auth.JWTService, deviceRepo *repository.DeviceRepository, groupRepo *repository.GroupRepository) *Handler {
+func NewHandler(hub *Hub, jwt *auth.JWTService, deviceRepo repository.DeviceRepo, groupRepo repository.GroupRepo) *Handler {
 	return &Handler{
 		hub:        hub,
 		jwt:        jwt,

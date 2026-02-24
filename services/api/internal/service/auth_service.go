@@ -15,16 +15,16 @@ import (
 
 // AuthService handles authentication business logic.
 type AuthService struct {
-	userRepo   *repository.UserRepository
-	tokenRepo  *repository.TokenRepository
+	userRepo   repository.UserRepo
+	tokenRepo  repository.TokenRepo
 	jwt        *auth.JWTService
 	mfaService *MFAService
 }
 
 // NewAuthService creates a new AuthService.
 func NewAuthService(
-	userRepo *repository.UserRepository,
-	tokenRepo *repository.TokenRepository,
+	userRepo repository.UserRepo,
+	tokenRepo repository.TokenRepo,
 	jwt *auth.JWTService,
 	mfaService *MFAService,
 ) *AuthService {

@@ -12,12 +12,12 @@ import (
 
 // TerrainConfigService handles terrain configuration business logic.
 type TerrainConfigService struct {
-	repo        *repository.TerrainConfigRepository
+	repo        repository.TerrainConfigRepo
 	mapDefaults config.MapConfig
 }
 
 // NewTerrainConfigService creates a new TerrainConfigService.
-func NewTerrainConfigService(repo *repository.TerrainConfigRepository, mapDefaults config.MapConfig) *TerrainConfigService {
+func NewTerrainConfigService(repo repository.TerrainConfigRepo, mapDefaults config.MapConfig) *TerrainConfigService {
 	return &TerrainConfigService{repo: repo, mapDefaults: mapDefaults}
 }
 

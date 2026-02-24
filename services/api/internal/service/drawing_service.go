@@ -33,17 +33,17 @@ type ShareDrawingRequest struct {
 
 // DrawingService handles drawing business logic.
 type DrawingService struct {
-	drawingRepo *repository.DrawingRepository
-	messageRepo *repository.MessageRepository
-	groupRepo   *repository.GroupRepository
+	drawingRepo repository.DrawingRepo
+	messageRepo repository.MessageRepo
+	groupRepo   repository.GroupRepo
 	ps          pubsub.PubSub
 }
 
 // NewDrawingService creates a new DrawingService.
 func NewDrawingService(
-	drawingRepo *repository.DrawingRepository,
-	messageRepo *repository.MessageRepository,
-	groupRepo *repository.GroupRepository,
+	drawingRepo repository.DrawingRepo,
+	messageRepo repository.MessageRepo,
+	groupRepo repository.GroupRepo,
 	ps pubsub.PubSub,
 ) *DrawingService {
 	return &DrawingService{
