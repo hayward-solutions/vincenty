@@ -464,7 +464,10 @@ func (s *MFAService) GenerateRecoveryCodes(ctx context.Context, userID uuid.UUID
 	for i := range recoveryCodeCount {
 		code := generateRecoveryCode()
 		codes[i] = code
-		hash, err := bcrypt.GenerateFromPassword([]byte(code), bcrypt.DefaultCost)
+		// Normalize before hashing: strip dashes and lowercase, matching
+		// the normalization in ValidateRecoveryCode.
+		normalized := strings.ReplaceAll(strings.ToLower(code), "-", "")
+		hash, err := bcrypt.GenerateFromPassword([]byte(normalized), bcrypt.DefaultCost)
 		if err != nil {
 			return nil, fmt.Errorf("hash recovery code: %w", err)
 		}
