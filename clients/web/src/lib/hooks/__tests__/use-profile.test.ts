@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { renderHook, act, waitFor } from "@testing-library/react";
+import { renderHook, act } from "@testing-library/react";
 import { http, HttpResponse } from "msw";
 import { server } from "@/test/msw-server";
 import "@/test/test-utils"; // activate mocks
@@ -37,12 +37,16 @@ describe("useUpdateMe", () => {
 
     const { result } = renderHook(() => useUpdateMe());
 
-    await expect(
-      act(async () => {
+    let error: unknown;
+    await act(async () => {
+      try {
         await result.current.updateMe({ display_name: "" });
-      })
-    ).rejects.toThrow();
+      } catch (e) {
+        error = e;
+      }
+    });
 
+    expect(error).toBeDefined();
     expect(result.current.isLoading).toBe(false);
   });
 });
@@ -52,11 +56,6 @@ describe("useChangePassword", () => {
     localStorage.setItem("access_token", "test-token");
 
     const { result } = renderHook(() => useChangePassword());
-
-    // Wait for the hook to be fully mounted before calling its method
-    await waitFor(() => {
-      expect(result.current).not.toBeNull();
-    });
 
     await act(async () => {
       await result.current.changePassword({
@@ -75,10 +74,6 @@ describe("useUploadAvatar", () => {
 
     const { result } = renderHook(() => useUploadAvatar());
 
-    await waitFor(() => {
-      expect(result.current).not.toBeNull();
-    });
-
     const file = new File(["fake-image"], "avatar.jpg", { type: "image/jpeg" });
 
     let user: unknown;
@@ -96,10 +91,6 @@ describe("useDeleteAvatar", () => {
     localStorage.setItem("access_token", "test-token");
 
     const { result } = renderHook(() => useDeleteAvatar());
-
-    await waitFor(() => {
-      expect(result.current).not.toBeNull();
-    });
 
     let user: unknown;
     await act(async () => {
