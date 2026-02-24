@@ -169,27 +169,61 @@ On SIGINT/SIGTERM:
 
 ## Database Schema
 
-PostgreSQL 16 with PostGIS for spatial operations.
+PostgreSQL 16 with PostGIS for spatial operations. The schema contains 17 tables across core, auth, MFA, messaging, spatial, and configuration domains.
 
 ```
 users ──────< devices
+  │              └── is_primary (unique partial index, one per user)
   │
   ├────────< group_members >──────── groups
+  │                                    └── marker_icon, marker_color
   │
   ├────────< messages ────────────── attachments
   │              │
-  │              └── (group_id OR recipient_id)
+  │              └── (group_id OR recipient_id — CHECK constraint)
   │
   ├────────< location_history
   │
   ├────────< refresh_tokens
   │
-  └────────< audit_logs
-                 │
-                 └── (optional group_id)
+  ├────────< audit_logs
+  │              └── (optional group_id)
+  │
+  ├────────< user_totp_methods        (encrypted TOTP secrets)
+  │
+  ├────────< webauthn_credentials     (FIDO2 / passkey public keys)
+  │
+  ├────────< recovery_codes           (bcrypt-hashed one-time codes)
+  │
+  └────────< drawings                 (GeoJSON map annotations)
 
-map_configs (standalone, admin-managed)
+cot_events         (Cursor on Target — ATAK/iTAK ingestion)
+map_configs        (tile source configurations, admin-managed)
+terrain_configs    (terrain/elevation sources, admin-managed)
+server_settings    (key-value server configuration, e.g. mfa_required)
 ```
+
+### Table Summary
+
+| Table | Purpose | Key Spatial Fields |
+|---|---|---|
+| `users` | User accounts, roles, avatar, marker style, MFA flag | — |
+| `devices` | Registered devices per user, primary device flag | `last_location` GEOMETRY(POINT, 4326) |
+| `groups` | Teams/units with marker customization | — |
+| `group_members` | User-group membership with granular permissions | — |
+| `messages` | Group and direct messages with sender location | `location` GEOMETRY(POINT, 4326) |
+| `attachments` | File attachments stored in S3 | — |
+| `location_history` | Every location update for replay/export | `location` GEOMETRY(POINT, 4326) |
+| `refresh_tokens` | SHA-256 hashed rotating refresh tokens | — |
+| `audit_logs` | Automatic API action audit trail | `location` GEOMETRY(POINT, 4326) |
+| `cot_events` | Cursor on Target XML events from ATAK/iTAK | `location` GEOMETRY(POINT, 4326) |
+| `user_totp_methods` | Encrypted TOTP secrets (AES-256-GCM or KMS) | — |
+| `webauthn_credentials` | WebAuthn/FIDO2 public keys and metadata | — |
+| `recovery_codes` | One-time bcrypt-hashed recovery codes | — |
+| `drawings` | GeoJSON map annotations (lines, circles, rects) | — |
+| `map_configs` | Map tile source configurations | — |
+| `terrain_configs` | Terrain/elevation source configurations | — |
+| `server_settings` | Key-value server settings (e.g. `mfa_required`) | — |
 
 ### Spatial Data
 
@@ -203,9 +237,21 @@ Migrations are embedded in the Go binary via `//go:embed` and run automatically 
 |---|---|
 | 000001 | Enable PostGIS and uuid-ossp extensions |
 | 000002 | Create core tables (users, devices, groups, members, messages, attachments, locations, map_configs, audit_logs) |
-| 000003 | Create indexes (spatial, temporal, foreign key) |
-| 000004 | Create refresh_tokens table |
-| 000005 | Create cot_events table (CoT support) |
+| 000003 | Create indexes (spatial GIST, temporal DESC, foreign key — 14 indexes total) |
+| 000004 | Create refresh_tokens table with token_hash unique index |
+| 000005 | Create cot_events table with 8 indexes (spatial, temporal, UID lookup) |
+| 000006 | Add avatar_url column to users |
+| 000007 | Add user_agent to devices with partial index for heuristic device recognition |
+| 000008 | Add marker_icon and marker_color to groups |
+| 000009 | Add marker_icon and marker_color to users |
+| 000010 | Add MFA support: user_totp_methods, webauthn_credentials, recovery_codes tables; server_settings table; mfa_enabled flag on users |
+| 000011 | Add WebAuthn backup_eligible and backup_state flags (go-webauthn v0.15+ compat) |
+| 000012 | Add terrain_url and terrain_encoding to map_configs |
+| 000013 | Extract terrain into separate terrain_configs table, migrate data, drop terrain columns from map_configs |
+| 000014 | Add source_type to terrain_configs |
+| 000015 | Add is_builtin and is_enabled flags to map_configs and terrain_configs |
+| 000016 | Create drawings table for GeoJSON map annotations |
+| 000017 | Add is_primary flag to devices with unique partial index (one primary per user), backfill oldest device |
 
 ## Pub/Sub Interface
 
@@ -247,15 +293,21 @@ Implementation uses AWS SDK v2, which works with both AWS S3 and Minio. In devel
 
 | Route | Auth | Description |
 |---|---|---|
-| `/login` | Public | Login form |
-| `/dashboard` | Authenticated | Overview, quick stats |
-| `/map` | Authenticated | Real-time map with location markers, replay |
-| `/messages` | Authenticated | Group and direct messaging |
-| `/audit-logs` | Authenticated | User's own audit trail |
-| `/admin/users` | Admin | User management |
-| `/admin/groups` | Admin | Group and membership management |
-| `/admin/map-configs` | Admin | Map tile source configuration |
-| `/admin/audit-logs` | Admin | Full audit log viewer |
+| `/login` | Public | Login form (password + passkey) |
+| `/dashboard` | Authenticated | Overview, connection status, quick links |
+| `/map` | Authenticated | Real-time map with location markers, drawing, replay, measurement |
+| `/messages` | Authenticated | Group and direct messaging with file attachments |
+| `/settings/account/general` | Authenticated | Profile, avatar upload, map marker customization |
+| `/settings/account/security` | Authenticated | Password change, MFA setup (TOTP, WebAuthn, recovery codes) |
+| `/settings/account/devices` | Authenticated | Device management, primary device |
+| `/settings/account/activity` | Authenticated | Personal audit log |
+| `/settings/account/groups` | Authenticated | View own group memberships |
+| `/settings/server/map` | Admin | Map tile and terrain source configuration, API keys |
+| `/settings/server/users` | Admin | User CRUD, role assignment, MFA status |
+| `/settings/server/groups` | Admin | Group CRUD, membership management |
+| `/settings/server/groups/[id]` | Admin | Group detail with member list |
+| `/settings/server/security` | Admin | Server-wide MFA enforcement policy |
+| `/settings/server/audit-logs` | Admin | Full audit log viewer with filters and export |
 
 ### Data Flow
 
@@ -330,15 +382,116 @@ Task definitions and service configs in `deploy/ecs/`. Uses ALB for TLS terminat
 - **Secret management** — in Docker Compose: `.env` file. In Kubernetes: Secrets. In ECS: SSM Parameter Store
 - **Migrations are automatic** — the API runs migrations on startup. No separate migration step needed
 
+## Multi-Factor Authentication
+
+SitAware supports three MFA methods, all optional per-user unless the admin enables server-wide enforcement.
+
+```
+┌─────────────────────────────────────────────────────┐
+│                   MFA Methods                       │
+├──────────────────┬──────────────────┬───────────────┤
+│  TOTP            │  WebAuthn/FIDO2  │  Recovery     │
+│  (Authenticator  │  (Security Keys, │  Codes        │
+│   Apps)          │   Passkeys)      │  (8 one-time) │
+├──────────────────┴──────────────────┴───────────────┤
+│             Server-wide enforcement                  │
+│  server_settings.mfa_required = true/false           │
+│  MFA middleware blocks access until MFA is set up    │
+└─────────────────────────────────────────────────────┘
+```
+
+### TOTP Flow
+
+1. User calls `POST /api/v1/mfa/totp/setup` — server generates a secret, encrypts it (AES-256-GCM via HKDF from `JWT_SECRET`, or AWS KMS), stores in `user_totp_methods`, returns QR code URI
+2. User scans QR with authenticator app, submits code to `POST /api/v1/mfa/totp/verify`
+3. Server validates the code, marks method as `verified`, enables `mfa_enabled` on user, generates 8 recovery codes (bcrypt-hashed, stored in `recovery_codes`)
+4. On login, if MFA is enabled: login returns `mfa_required: true` with a short-lived MFA token. User submits TOTP code to `POST /api/v1/auth/mfa/totp` to complete login
+
+### WebAuthn / Passkey Flow
+
+1. User calls `POST /api/v1/mfa/webauthn/register/begin` — server generates a challenge via `go-webauthn/webauthn`
+2. Browser prompts for security key / biometric, returns attestation to `POST /api/v1/mfa/webauthn/register/finish`
+3. Server stores the public key in `webauthn_credentials` with transport hints, AAGUID, sign count
+4. Passkey login (passwordless): `POST /api/v1/auth/passkey/begin` → browser assertion → `POST /api/v1/auth/passkey/finish`
+
+### TOTP Secret Encryption
+
+TOTP secrets are never stored in plaintext. Two encryption backends are supported:
+
+- **Default (local)**: AES-256-GCM with a key derived from `JWT_SECRET` via HKDF-SHA256
+- **AWS KMS**: When `MFA_KMS_KEY_ARN` is set, secrets are encrypted/decrypted via the KMS `Encrypt`/`Decrypt` API
+
+The encryption interface is abstracted so additional backends (HashiCorp Vault, etc.) can be added.
+
+### MFA Enforcement
+
+When `server_settings.mfa_required` is `true`, the MFA enforcement middleware blocks all authenticated requests (except MFA setup endpoints) for users without `mfa_enabled`. This forces users to configure MFA before accessing any feature.
+
+## Cursor on Target (CoT) Ingestion
+
+SitAware can ingest Cursor on Target XML events, making it compatible with ATAK, iTAK, and other TAK ecosystem devices.
+
+```
+ATAK/iTAK Device
+      │
+      │  HTTP POST (CoT XML)
+      ▼
+POST /api/v1/cot/events
+      │
+      ├── Parse CoT XML (event UID, type, location, callsign, detail)
+      ├── Store in cot_events table (spatial GEOMETRY column)
+      └── Optionally link to user/device via event UID resolution
+```
+
+CoT events are stored with full XML detail for round-trip fidelity, along with parsed fields (location, callsign, event type, timestamps) for efficient querying. The `stale_time` field supports CoT's built-in event expiry semantics.
+
+## Map Drawings
+
+Users can create map annotations (lines, circles, rectangles) that are stored as GeoJSON and can be shared with group members.
+
+```
+Draw Panel (browser)
+      │
+      ├── Line: click to place vertices, double-click to finish
+      ├── Circle: click center, drag radius
+      └── Rectangle: click corner, drag to opposite corner
+      │
+      ▼
+GeoJSON FeatureCollection
+      │
+      ├── Feature.properties: stroke, strokeWidth, fill, shape type
+      └── Feature.geometry: LineString, Polygon (circle approximated as polygon)
+      │
+      ▼
+POST /api/v1/drawings → stored in drawings table (JSONB)
+      │
+      ▼
+Other clients receive via WebSocket → rendered as MapLibre layers
+```
+
+Each drawing is owned by a user and stored as a GeoJSON `FeatureCollection` in a JSONB column. Drawings can be shared to groups, and the drawing overlay component renders them as MapLibre sources/layers with per-feature styling.
+
+## Terrain and Elevation
+
+Terrain rendering is managed separately from map tiles via `terrain_configs`:
+
+- Terrain sources provide elevation data (DEM tiles) in either `terrarium` or `mapbox` encoding
+- The built-in default is AWS Terrarium tiles
+- Admin can add custom terrain sources (e.g., self-hosted DEM tiles for air-gapped deployments)
+- The map toggle enables/disables 3D terrain exaggeration on the MapLibre canvas
+- Terrain configs support `remote` and `local` source types (local served from S3/Minio)
+
 ## Security Model
 
 | Layer | Mechanism |
 |---|---|
 | Transport | TLS via reverse proxy (Caddy / ALB / Ingress) |
 | Authentication | JWT access tokens (short-lived) + rotating refresh tokens |
+| MFA | TOTP (authenticator apps), WebAuthn/FIDO2 (security keys, passkeys), recovery codes |
 | Authorization | Role-based: admin, group_admin, member. Per-group permissions (can_read, can_write) |
 | Password storage | bcrypt (cost 12) |
 | Token storage | SHA-256 hashed refresh tokens in DB |
+| TOTP secret storage | AES-256-GCM (HKDF-derived key) or AWS KMS envelope encryption |
 | Rate limiting | Per-IP token bucket algorithm |
 | Input validation | Request body size limits, handler-level validation |
 | Audit | Every API action logged with user, resource, IP, timestamp |

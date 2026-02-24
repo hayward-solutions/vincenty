@@ -20,7 +20,29 @@
 ### Device Management
 - Users register devices (named endpoints — phones, tablets, radios)
 - Devices inherit permissions from their owning user
-- Update or remove devices at any time
+- Primary device flag — one device per user designated as primary
+- Automatic device detection via User-Agent heuristics (web browsers auto-registered on login)
+- Rename, remove, or set primary on any device
+- Device type classification (web, mobile, radio, tablet)
+
+### Multi-Factor Authentication (MFA)
+- **TOTP (Authenticator Apps)** — scan QR code to link Google Authenticator, Authy, 1Password, etc.
+- **WebAuthn / FIDO2** — register hardware security keys (YubiKey, Titan) or platform authenticators (Touch ID, Windows Hello)
+- **Passkey Login** — passwordless authentication via WebAuthn discoverable credentials
+- **Recovery Codes** — 8 one-time backup codes generated when MFA is first enabled (bcrypt-hashed)
+- Multiple methods can be active simultaneously (TOTP + WebAuthn)
+- Admin MFA reset — administrators can clear a user's MFA if they lose access
+- **Server-wide enforcement** — `mfa_required` setting forces all users to configure MFA before accessing any feature
+
+### Avatar and Profile
+- Upload a profile picture (JPEG, PNG, or WebP up to 5 MB)
+- Avatar stored in S3-compatible object storage
+- Avatars displayed in the navigation header and user listings
+
+### User and Group Marker Customization
+- **User markers** — choose from 10 shapes (circle, square, triangle, diamond, star, crosshair, pentagon, hexagon, arrow, plus) and 10 preset colors or custom hex
+- **Group markers** — admin sets a default marker icon and color for each group
+- Marker customization reflected in real-time on the map for all group members
 
 ## Groups and Permissions
 
@@ -68,19 +90,61 @@
 
 ### Map Configuration (Admin)
 - Create and manage multiple tile source configurations
-- Set the active tile source
+- Set the active (default) tile source
+- Built-in tile sources: OpenStreetMap, Satellite (ESRI) — marked as non-deletable
 - Support for local tile serving (tiles uploaded to S3/Minio)
 - Custom tile URL templates with `{z}/{x}/{y}` placeholders
+- Configurable min/max zoom levels per source
+- Enable/disable tile sources without deleting them
+- API key management for MapBox and Google Maps tile sources
+- Terrain source management (separate from tile configs)
+- Built-in terrain source: AWS Terrarium elevation tiles
 
 ### GPX Support
 - Upload GPX files as message attachments
 - GPX tracks, routes, and waypoints rendered as overlays on the map
 - Parse points, lines, and polygons from GPX XML
 
+### Drawing Tools
+- Draw lines, circles, and rectangles directly on the map
+- Choose stroke color from 10 presets or custom hex
+- Choose fill color (with optional no-fill for outlines only)
+- Drawings stored as GeoJSON FeatureCollections in the database
+- Share drawings with group members — overlays render in real-time
+- Edit or delete existing drawings
+- Per-feature styling (stroke width, color, fill) stored in GeoJSON properties
+
+### Measurement Tools
+- **Distance mode** — click points on the map to measure path distance
+- **Radius mode** — click a center point and measure radius distance
+- Measurements displayed with appropriate units (meters / kilometers)
+- Clear measurements and switch modes without leaving the tool
+
+### Terrain and 3D Elevation
+- Toggle terrain rendering for 3D map visualization
+- Admin-managed terrain sources (separate from tile configs)
+- Built-in AWS Terrarium elevation tiles
+- Support for Mapbox and Terrarium DEM encoding formats
+- Custom terrain sources for air-gapped deployments (upload DEM tiles to S3/Minio)
+- Toggle globe projection for a 3D globe view
+
+### Filter Panel
+- Show/hide map layers and user markers
+- Filter which users and groups are visible on the map
+
 ### Air-Gap Tile Serving
 - Upload map tiles to the S3-compatible object store
 - Configure `MAP_DEFAULT_TILE_URL` to point to the local tile endpoint
+- Upload terrain DEM tiles for offline 3D terrain
 - Full map functionality with zero internet connectivity
+
+### Cursor on Target (CoT) / ATAK Integration
+- Ingest CoT XML events from ATAK, iTAK, and TAK-compatible devices
+- Parse event UID, type, location, callsign, and detail XML
+- Store events with spatial indexing for efficient querying
+- Query CoT events by time range, event type, or spatial bounding box
+- Support for CoT stale time (automatic event expiry semantics)
+- Link CoT events to SitAware users/devices via event UID resolution
 
 ## Messaging
 
