@@ -1,0 +1,46 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mediamtx
+  namespace: sitaware
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mediamtx
+  template:
+    metadata:
+      labels:
+        app: mediamtx
+    spec:
+      containers:
+        - name: mediamtx
+          image: bluenviron/mediamtx:latest-ffmpeg
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8889
+            - containerPort: 8554
+          envFrom:
+            - configMapRef:
+                name: sitaware-config
+          volumeMounts:
+            - name: mediamtx-config
+              mountPath: /mediamtx.yml
+              subPath: mediamtx.yml
+          resources:
+            requests:
+              memory: 64Mi
+              cpu: 100m
+            limits:
+              memory: 512Mi
+              cpu: 500m
+          readinessProbe:
+            exec:
+              command: ["wget", "--quiet", "--tries=1", "--spider", "http://localhost:9997/v3/paths/list"]
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 3
+      volumes:
+        - name: mediamtx-config
+          configMap:
+            name: mediamtx-config

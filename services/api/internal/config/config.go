@@ -49,6 +49,9 @@ type Config struct {
 	// Security
 	Security SecurityConfig
 
+	// Media / Streaming
+	Media MediaConfig
+
 	// Token cleanup
 	TokenCleanupInterval time.Duration
 }
@@ -147,6 +150,17 @@ type SecurityConfig struct {
 	MaxRequestBodyBytes int64
 }
 
+type MediaConfig struct {
+	// MediaMTXURL is the base URL for MediaMTX WebRTC endpoints (WHIP/WHEP).
+	MediaMTXURL string
+	// TURNHost is the TURN server address for WebRTC NAT traversal.
+	TURNHost string
+	// TURNUsername is the TURN server credential.
+	TURNUsername string
+	// TURNPassword is the TURN server credential.
+	TURNPassword string
+}
+
 // Load reads configuration from environment variables with sensible defaults.
 func Load() (*Config, error) {
 	cfg := &Config{
@@ -215,6 +229,12 @@ func Load() (*Config, error) {
 		},
 		Security: SecurityConfig{
 			MaxRequestBodyBytes: envInt64("MAX_REQUEST_BODY_BYTES", 10<<20), // 10MB
+		},
+		Media: MediaConfig{
+			MediaMTXURL:  envStr("MEDIAMTX_URL", "http://localhost:8889"),
+			TURNHost:     envStr("TURN_HOST", ""),
+			TURNUsername: envStr("TURN_USERNAME", "sitaware"),
+			TURNPassword: envStr("TURN_PASSWORD", ""),
 		},
 		TokenCleanupInterval: envDuration("TOKEN_CLEANUP_INTERVAL", 1*time.Hour),
 	}

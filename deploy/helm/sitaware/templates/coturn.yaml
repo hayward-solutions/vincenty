@@ -1,0 +1,59 @@
+{{- if .Values.coturn.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: coturn
+  labels:
+    {{- include "sitaware.labels" . | nindent 4 }}
+spec:
+  type: LoadBalancer
+  selector:
+    app: coturn
+  ports:
+    - name: turn-udp
+      port: 3478
+      targetPort: 3478
+      protocol: UDP
+    - name: turn-tcp
+      port: 3478
+      targetPort: 3478
+      protocol: TCP
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-coturn
+  labels:
+    {{- include "sitaware.labels" . | nindent 4 }}
+    app: coturn
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: coturn
+  template:
+    metadata:
+      labels:
+        app: coturn
+        {{- include "sitaware.labels" . | nindent 8 }}
+    spec:
+      containers:
+        - name: coturn
+          image: "{{ .Values.coturn.image.repository }}:{{ .Values.coturn.image.tag }}"
+          imagePullPolicy: {{ .Values.coturn.image.pullPolicy }}
+          ports:
+            - containerPort: 3478
+              protocol: UDP
+            - containerPort: 3478
+              protocol: TCP
+          volumeMounts:
+            - name: coturn-config
+              mountPath: /etc/turnserver.conf
+              subPath: turnserver.conf
+          resources:
+            {{- toYaml .Values.coturn.resources | nindent 12 }}
+      volumes:
+        - name: coturn-config
+          configMap:
+            name: coturn-config
+{{- end }}

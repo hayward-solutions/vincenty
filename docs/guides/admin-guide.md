@@ -9,7 +9,7 @@ Server Settings are only visible to users with the **Admin** role.
 1. Click your avatar in the top-right corner of the navigation bar.
 2. Select **Server Settings**.
 
-The settings are organized into sections in the left sidebar: Map, Users, Groups, Security, and Audit Logs.
+The settings are organized into sections in the left sidebar: Map, Users, Groups, Stream Keys, Security, and Audit Logs.
 
 ## User Management
 
@@ -213,6 +213,59 @@ The **Require MFA for all users** policy forces every user to set up multi-facto
 **Disabling MFA enforcement:**
 
 Click **Disable** to remove the requirement. Users who already have MFA set up keep it active. Users without MFA can now access the system freely.
+
+## Stream Key Management
+
+![Stream keys](../screenshots/admin-stream-keys.png)
+
+Stream keys allow hardware devices (CCTV cameras, body cams, drones, vehicle cameras) to publish live video via RTSP or RTMP without a user account.
+
+Navigate to **Server Settings > Stream Keys**.
+
+### Creating a Stream Key
+
+1. Click **Create Stream Key**.
+2. Enter a **Label** -- a descriptive name for the device (e.g., "Front Gate Camera").
+3. Select **Default Groups** -- streams from this key will be automatically shared with these groups. Click group badges to toggle selection.
+4. Click **Create**.
+
+After creation, the plain-text stream key is displayed **once**. Copy it immediately -- it cannot be retrieved later.
+
+> **Important:** Store the stream key securely. Anyone with the key can publish video to the configured groups.
+
+### Configuring a Hardware Device
+
+Provide the device with:
+- **RTSP URL**: `rtsp://<server>:8554/<path>`
+- **RTMP URL**: `rtmp://<server>:1935/<path>`
+- **Username**: any value (e.g., `device`)
+- **Password**: the stream key
+
+The `<path>` can be any unique identifier (e.g., `front-gate-cam`, `drone-1`).
+
+### Viewing Stream Keys
+
+The Stream Keys table shows:
+- **Label** -- device/key name
+- **Groups** -- which groups streams from this key are shared with
+- **Status** -- Active or Inactive
+- **Created** -- when the key was created
+
+### Deactivating a Stream Key
+
+1. Click the action menu (**...**) on the key's row.
+2. Select **Deactivate**.
+3. Devices using this key will no longer be able to publish video.
+
+To reactivate, click **Activate** from the same menu.
+
+### Deleting a Stream Key
+
+1. Click the action menu (**...**) on the key's row.
+2. Select **Delete**.
+3. Confirm the deletion.
+
+The key is permanently removed. Devices using this key will lose streaming access immediately.
 
 ## Audit Logs
 

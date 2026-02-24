@@ -23,6 +23,8 @@ import { MeasurePanel } from "@/components/map/measure-panel";
 import { DrawTool, type DrawMode, type DrawStyle, type CompletedShape } from "@/components/map/draw-tool";
 import { DrawPanel, type ShareTarget } from "@/components/map/draw-panel";
 import { DrawingOverlay } from "@/components/map/drawing-overlay";
+import { StreamMarkers } from "@/components/map/stream-markers";
+import { StreamPanel } from "@/components/streams/stream-panel";
 import { useMapSettings } from "@/lib/hooks/use-map-settings";
 import { useLocations } from "@/lib/hooks/use-locations";
 import { useLocationSharing } from "@/lib/hooks/use-location-sharing";
@@ -654,6 +656,7 @@ export default function MapPage() {
               map={mapRef.current}
               drawings={visibleDrawings}
             />
+            <StreamMarkers map={mapRef.current} />
           </>
         )}
       </MapView>
@@ -810,6 +813,11 @@ export default function MapPage() {
             drawingSharesLoading={drawingSharesLoading}
           />
         )}
+      </div>
+
+      {/* Stream panel (top-right) */}
+      <div className="absolute top-3 right-3 z-10">
+        <StreamPanel />
       </div>
 
       {/* Replay controls bar (bottom) */}

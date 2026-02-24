@@ -57,6 +57,44 @@ services:
           memory: 256m
 
   # ---------------------------------------------------------------------------
+  # Media Server (live video streaming)
+  # ---------------------------------------------------------------------------
+  mediamtx:
+    image: bluenviron/mediamtx:latest-ffmpeg
+    volumes:
+      - ./deploy/mediamtx/mediamtx.yml:/mediamtx.yml:ro
+      - recordings:/recordings
+    environment:
+      TURN_PASSWORD: ${TURN_PASSWORD}
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://localhost:9997/v3/paths/list"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 512m
+    depends_on:
+      - api
+
+  coturn:
+    image: coturn/coturn:latest
+    ports:
+      - "3478:3478/udp"
+      - "3478:3478/tcp"
+    volumes:
+      - ./deploy/coturn/turnserver.conf:/etc/coturn/turnserver.conf:ro
+    environment:
+      TURN_PASSWORD: ${TURN_PASSWORD}
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 128m
+
+  # ---------------------------------------------------------------------------
   # Application
   # ---------------------------------------------------------------------------
   api:
@@ -109,6 +147,11 @@ services:
       RATE_LIMIT_BURST: "20"
       MAX_REQUEST_BODY_BYTES: "10485760"
       TOKEN_CLEANUP_INTERVAL: "1h"
+      # Media / Streaming
+      MEDIAMTX_URL: "http://mediamtx:8889"
+      TURN_HOST: "coturn:3478"
+      TURN_USERNAME: "sitaware"
+      TURN_PASSWORD: ${TURN_PASSWORD}
       # MFA / WebAuthn
       WEBAUTHN_RP_ID: ${WEBAUTHN_RP_ID}
       WEBAUTHN_RP_DISPLAY_NAME: ${WEBAUTHN_RP_DISPLAY_NAME:-SitAware}
@@ -152,5 +195,6 @@ services:
 volumes:
   pgdata:
   redisdata:
+  recordings:
   caddy_data:
   caddy_config:

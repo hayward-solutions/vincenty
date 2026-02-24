@@ -65,6 +65,40 @@ services:
       MINIO_ROOT_PASSWORD: ${S3_SECRET_KEY:-sitaware123}
 
   # ---------------------------------------------------------------------------
+  # Media Server (live video streaming)
+  # ---------------------------------------------------------------------------
+  mediamtx:
+    image: bluenviron/mediamtx:latest-ffmpeg
+    ports:
+      - "8554:8554"   # RTSP
+      - "1935:1935"   # RTMP
+      - "8888:8888"   # HLS
+      - "8889:8889"   # WebRTC (WHIP/WHEP)
+      - "9997:9997"   # API
+    volumes:
+      - ./deploy/mediamtx/mediamtx.yml:/mediamtx.yml:ro
+      - recordings:/recordings
+    environment:
+      TURN_PASSWORD: ${TURN_PASSWORD:-changeme}
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://localhost:9997/v3/paths/list"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    depends_on:
+      - api
+
+  coturn:
+    image: coturn/coturn:latest
+    ports:
+      - "3478:3478/udp"
+      - "3478:3478/tcp"
+    volumes:
+      - ./deploy/coturn/turnserver.conf:/etc/coturn/turnserver.conf:ro
+    environment:
+      TURN_PASSWORD: ${TURN_PASSWORD:-changeme}
+
+  # ---------------------------------------------------------------------------
   # Application
   # ---------------------------------------------------------------------------
   api:
@@ -113,3 +147,4 @@ volumes:
   pgdata:
   redisdata:
   miniodata:
+  recordings:

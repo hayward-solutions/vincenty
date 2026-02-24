@@ -1,0 +1,66 @@
+{{- if .Values.mediamtx.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: mediamtx
+  labels:
+    {{- include "sitaware.labels" . | nindent 4 }}
+spec:
+  selector:
+    app: mediamtx
+  ports:
+    - name: webrtc
+      port: {{ .Values.mediamtx.ports.webrtc }}
+      targetPort: {{ .Values.mediamtx.ports.webrtc }}
+    - name: rtsp
+      port: {{ .Values.mediamtx.ports.rtsp }}
+      targetPort: {{ .Values.mediamtx.ports.rtsp }}
+    - name: api
+      port: {{ .Values.mediamtx.ports.api }}
+      targetPort: {{ .Values.mediamtx.ports.api }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-mediamtx
+  labels:
+    {{- include "sitaware.labels" . | nindent 4 }}
+    app: mediamtx
+spec:
+  replicas: {{ .Values.mediamtx.replicas }}
+  selector:
+    matchLabels:
+      app: mediamtx
+  template:
+    metadata:
+      labels:
+        app: mediamtx
+        {{- include "sitaware.labels" . | nindent 8 }}
+    spec:
+      containers:
+        - name: mediamtx
+          image: "{{ .Values.mediamtx.image.repository }}:{{ .Values.mediamtx.image.tag }}"
+          imagePullPolicy: {{ .Values.mediamtx.image.pullPolicy }}
+          ports:
+            - containerPort: {{ .Values.mediamtx.ports.webrtc }}
+            - containerPort: {{ .Values.mediamtx.ports.rtsp }}
+          envFrom:
+            - configMapRef:
+                name: {{ .Release.Name }}-config
+          volumeMounts:
+            - name: mediamtx-config
+              mountPath: /mediamtx.yml
+              subPath: mediamtx.yml
+          resources:
+            {{- toYaml .Values.mediamtx.resources | nindent 12 }}
+          readinessProbe:
+            exec:
+              command: ["wget", "--quiet", "--tries=1", "--spider", "http://localhost:9997/v3/paths/list"]
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 3
+      volumes:
+        - name: mediamtx-config
+          configMap:
+            name: mediamtx-config
+{{- end }}

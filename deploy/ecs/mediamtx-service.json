@@ -1,0 +1,53 @@
+{
+  "serviceName": "sitaware-mediamtx",
+  "cluster": "sitaware",
+  "taskDefinition": "sitaware-mediamtx",
+  "desiredCount": 1,
+  "launchType": "FARGATE",
+  "platformVersion": "LATEST",
+  "networkConfiguration": {
+    "awsvpcConfiguration": {
+      "subnets": [
+        "subnet-PRIVATE_1",
+        "subnet-PRIVATE_2"
+      ],
+      "securityGroups": [
+        "sg-MEDIAMTX_SG"
+      ],
+      "assignPublicIp": "DISABLED"
+    }
+  },
+  "loadBalancers": [
+    {
+      "targetGroupArn": "arn:aws:elasticloadbalancing:REGION:ACCOUNT_ID:targetgroup/sitaware-mediamtx/xxxx",
+      "containerName": "mediamtx",
+      "containerPort": 8889
+    }
+  ],
+  "healthCheckGracePeriodSeconds": 30,
+  "deploymentConfiguration": {
+    "minimumHealthyPercent": 50,
+    "maximumPercent": 200,
+    "deploymentCircuitBreaker": {
+      "enable": true,
+      "rollback": true
+    }
+  },
+  "serviceConnectConfiguration": {
+    "enabled": true,
+    "namespace": "sitaware.local",
+    "services": [
+      {
+        "portName": "mediamtx",
+        "discoveryName": "mediamtx",
+        "clientAliases": [
+          {
+            "port": 8889,
+            "dnsName": "mediamtx.sitaware.local"
+          }
+        ]
+      }
+    ]
+  },
+  "enableExecuteCommand": true
+}

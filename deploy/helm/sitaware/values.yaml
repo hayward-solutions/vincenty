@@ -42,6 +42,45 @@ web:
       cpu: 250m
 
 # ---------------------------------------------------------------------------
+# MediaMTX (live video streaming)
+# ---------------------------------------------------------------------------
+mediamtx:
+  enabled: true
+  image:
+    repository: bluenviron/mediamtx
+    tag: latest-ffmpeg
+    pullPolicy: IfNotPresent
+  replicas: 1
+  resources:
+    requests:
+      memory: 64Mi
+      cpu: 100m
+    limits:
+      memory: 512Mi
+      cpu: 500m
+  ports:
+    webrtc: 8889
+    rtsp: 8554
+    api: 9997
+
+# ---------------------------------------------------------------------------
+# Coturn (TURN/STUN server for WebRTC NAT traversal)
+# ---------------------------------------------------------------------------
+coturn:
+  enabled: true
+  image:
+    repository: coturn/coturn
+    tag: latest
+    pullPolicy: IfNotPresent
+  resources:
+    requests:
+      memory: 32Mi
+      cpu: 50m
+    limits:
+      memory: 128Mi
+      cpu: 250m
+
+# ---------------------------------------------------------------------------
 # Ingress
 # ---------------------------------------------------------------------------
 ingress:
@@ -125,3 +164,4 @@ secrets:
   s3AccessKey: CHANGE_ME
   s3SecretKey: CHANGE_ME
   corsAllowedOrigins: "https://sitaware.example.com"
+  turnPassword: CHANGE_ME

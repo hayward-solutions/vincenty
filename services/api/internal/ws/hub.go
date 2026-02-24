@@ -25,6 +25,7 @@ type Hub struct {
 
 	ps          pubsub.PubSub
 	locationSvc *service.LocationService
+	streamSvc   *service.StreamService
 	groupRepo   *repository.GroupRepository
 	userRepo    *repository.UserRepository
 }
@@ -33,6 +34,7 @@ type Hub struct {
 func NewHub(
 	ps pubsub.PubSub,
 	locationSvc *service.LocationService,
+	streamSvc *service.StreamService,
 	groupRepo *repository.GroupRepository,
 	userRepo *repository.UserRepository,
 ) *Hub {
@@ -42,6 +44,7 @@ func NewHub(
 		unregister:  make(chan *Client),
 		ps:          ps,
 		locationSvc: locationSvc,
+		streamSvc:   streamSvc,
 		groupRepo:   groupRepo,
 		userRepo:    userRepo,
 	}
@@ -56,6 +59,8 @@ func (h *Hub) Run(ctx context.Context) {
 		"group:*:location",
 		"group:*:messages",
 		"group:*:drawings",
+		"group:*:streams",
+		"group:*:stream_locations",
 		"user:*:direct",
 		"user:*:drawings",
 	)
@@ -247,6 +252,70 @@ func (h *Hub) routeMessage(msg pubsub.Message) {
 			"target_user_id", userID,
 		)
 		h.sendToUser(userID, data)
+
+	case strings.HasSuffix(channel, ":streams"):
+		// channel format: group:<uuid>:streams
+		// Payload is a StreamResponse JSON or a stream_ended payload.
+		groupID := extractID(channel)
+		if groupID == uuid.Nil {
+			return
+		}
+
+		// Determine if this is a stream_started or stream_ended event.
+		// Both are forwarded to group members.
+		var partial struct {
+			BroadcasterID *uuid.UUID `json:"broadcaster_id"`
+			Status        string     `json:"status"`
+			StreamID      *uuid.UUID `json:"stream_id"`
+		}
+		if err := json.Unmarshal(msg.Payload, &partial); err != nil {
+			slog.Warn("failed to unmarshal stream event", "error", err)
+			return
+		}
+
+		// Choose the WS message type based on payload shape
+		wsType := TypeStreamStarted
+		if partial.StreamID != nil && partial.Status == "" {
+			wsType = TypeStreamEnded
+		}
+
+		data, err := json.Marshal(Envelope{
+			Type:    wsType,
+			Payload: msg.Payload,
+		})
+		if err != nil {
+			slog.Warn("failed to marshal stream envelope", "error", err)
+			return
+		}
+
+		var excludeID uuid.UUID
+		if partial.BroadcasterID != nil {
+			excludeID = *partial.BroadcasterID
+		}
+		recipientCount := h.broadcastToGroup(groupID, excludeID, data)
+		slog.Debug("routeMessage: stream event broadcast",
+			"group_id", groupID,
+			"type", wsType,
+			"recipients", recipientCount,
+		)
+
+	case strings.HasSuffix(channel, ":stream_locations"):
+		// channel format: group:<uuid>:stream_locations
+		groupID := extractID(channel)
+		if groupID == uuid.Nil {
+			return
+		}
+
+		data, err := json.Marshal(Envelope{
+			Type:    TypeStreamLocationBroadcast,
+			Payload: msg.Payload,
+		})
+		if err != nil {
+			slog.Warn("failed to marshal stream location envelope", "error", err)
+			return
+		}
+
+		h.broadcastToGroup(groupID, uuid.Nil, data)
 
 	case strings.HasSuffix(channel, ":drawings"):
 		// channel format: group:<uuid>:drawings OR user:<uuid>:drawings
@@ -466,6 +535,31 @@ func (h *Hub) SendSnapshot(ctx context.Context, client *Client) {
 			})
 		}
 	}
+}
+
+// handleStreamLocation processes an incoming stream_location from a broadcasting client.
+func (h *Hub) handleStreamLocation(ctx context.Context, c *Client, payload *StreamLocationPayload) {
+	streamID, err := uuid.Parse(payload.StreamID)
+	if err != nil {
+		c.sendError("invalid stream_id")
+		return
+	}
+
+	slog.Debug("stream_location received",
+		"user_id", c.userID,
+		"stream_id", streamID,
+		"lat", payload.Lat,
+		"lng", payload.Lng,
+	)
+
+	// Store the location telemetry
+	if err := h.streamSvc.RecordLocation(ctx, streamID, payload.Lat, payload.Lng, payload.Altitude, payload.Heading, payload.Speed); err != nil {
+		slog.Warn("failed to record stream location", "error", err, "stream_id", streamID)
+		// Non-fatal: continue to broadcast even if storage fails
+	}
+
+	// Broadcast the location update to viewers via Redis pub/sub
+	h.streamSvc.BroadcastStreamLocation(ctx, streamID, payload.Lat, payload.Lng, payload.Altitude, payload.Heading)
 }
 
 // SendConnected sends the initial "connected" acknowledgement.

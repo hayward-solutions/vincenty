@@ -537,3 +537,84 @@ export interface AuditFilters {
   page?: number;
   page_size?: number;
 }
+
+// ---------------------------------------------------------------------------
+// Streams
+// ---------------------------------------------------------------------------
+
+export interface StreamResponse {
+  id: string;
+  title: string;
+  broadcaster_id?: string;
+  username?: string;
+  display_name?: string;
+  source_type: string; // "browser" | "rtsp" | "rtmp"
+  status: string; // "live" | "ended"
+  media_path: string;
+  recording_url?: string;
+  groups: string[];
+  started_at: string;
+  ended_at?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CreateStreamRequest {
+  title: string;
+  group_ids: string[];
+}
+
+export interface ShareStreamRequest {
+  group_ids: string[];
+}
+
+export interface StreamLocationResponse {
+  lat: number;
+  lng: number;
+  altitude?: number;
+  heading?: number;
+  speed?: number;
+  recorded_at: string;
+}
+
+/** Server → Client: a new stream started */
+export interface WSStreamStarted extends StreamResponse {}
+
+/** Server → Client: a stream ended */
+export interface WSStreamEnded {
+  stream_id: string;
+}
+
+/** Server → Client: a stream's map location changed */
+export interface WSStreamLocationBroadcast {
+  stream_id: string;
+  lat: number;
+  lng: number;
+  altitude?: number;
+  heading?: number;
+}
+
+// ---------------------------------------------------------------------------
+// Stream Keys (admin)
+// ---------------------------------------------------------------------------
+
+export interface StreamKeyResponse {
+  id: string;
+  label: string;
+  group_ids: string[];
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+  key?: string; // Only returned on creation
+}
+
+export interface CreateStreamKeyRequest {
+  label: string;
+  group_ids: string[];
+}
+
+export interface UpdateStreamKeyRequest {
+  label?: string;
+  is_active?: boolean;
+  group_ids?: string[];
+}

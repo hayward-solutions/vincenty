@@ -11,14 +11,18 @@ import (
 const (
 	// Client → Server
 	TypeLocationUpdate = "location_update"
+	TypeStreamLocation = "stream_location"
 
 	// Server → Client
-	TypeLocationBroadcast = "location_broadcast"
-	TypeLocationSnapshot  = "location_snapshot"
-	TypeMessageNew        = "message_new"
-	TypeDrawingUpdated    = "drawing_updated"
-	TypeConnected         = "connected"
-	TypeError             = "error"
+	TypeLocationBroadcast         = "location_broadcast"
+	TypeLocationSnapshot          = "location_snapshot"
+	TypeMessageNew                = "message_new"
+	TypeDrawingUpdated            = "drawing_updated"
+	TypeStreamStarted             = "stream_started"
+	TypeStreamEnded               = "stream_ended"
+	TypeStreamLocationBroadcast   = "stream_location_broadcast"
+	TypeConnected                 = "connected"
+	TypeError                     = "error"
 )
 
 // Envelope is the outer JSON wrapper for all WebSocket messages.
@@ -93,4 +97,34 @@ type ConnectedGroup struct {
 // ErrorPayload is sent when the server encounters an error.
 type ErrorPayload struct {
 	Message string `json:"message"`
+}
+
+// ---------------------------------------------------------------------------
+// Stream payloads
+// ---------------------------------------------------------------------------
+
+// StreamLocationPayload is sent by a broadcasting client to report its GPS
+// position while a live stream is active.
+type StreamLocationPayload struct {
+	StreamID string   `json:"stream_id"`
+	Lat      float64  `json:"lat"`
+	Lng      float64  `json:"lng"`
+	Altitude *float64 `json:"altitude,omitempty"`
+	Heading  *float64 `json:"heading,omitempty"`
+	Speed    *float64 `json:"speed,omitempty"`
+}
+
+// StreamLocationBroadcastPayload is sent to viewers when a stream's map
+// marker position changes.
+type StreamLocationBroadcastPayload struct {
+	StreamID uuid.UUID `json:"stream_id"`
+	Lat      float64   `json:"lat"`
+	Lng      float64   `json:"lng"`
+	Altitude *float64  `json:"altitude,omitempty"`
+	Heading  *float64  `json:"heading,omitempty"`
+}
+
+// StreamEndedPayload is sent when a live stream ends.
+type StreamEndedPayload struct {
+	StreamID uuid.UUID `json:"stream_id"`
 }

@@ -35,6 +35,22 @@ spec:
                 name: api
                 port:
                   number: 8080
+          {{- if .Values.mediamtx.enabled }}
+          - path: /whip
+            pathType: Prefix
+            backend:
+              service:
+                name: mediamtx
+                port:
+                  number: {{ .Values.mediamtx.ports.webrtc }}
+          - path: /whep
+            pathType: Prefix
+            backend:
+              service:
+                name: mediamtx
+                port:
+                  number: {{ .Values.mediamtx.ports.webrtc }}
+          {{- end }}
           - path: /healthz
             pathType: Exact
             backend:

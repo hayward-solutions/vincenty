@@ -114,3 +114,15 @@ Users customize their own marker in [Account Settings > General](account-setting
 Click the **Terrain** toggle to enable 3D terrain rendering. The map will display elevation data, giving a sense of the physical landscape. Click the **Globe** toggle to switch to a 3D globe projection.
 
 Terrain sources are managed by administrators in [Server Settings > Map](admin-guide.md#map-configuration).
+
+## Live Stream Markers
+
+Active live streams with GPS data appear as pulsing red markers on the map. Each marker shows the stream title and moves in real-time as the broadcaster's position updates.
+
+- **Click** a stream marker to open the live viewer.
+- **Hover** to see a popup with the stream title, broadcaster name, and source type.
+- Markers are automatically removed when the stream ends.
+
+The **Live Streams** panel on the right side of the map lists all active streams with a count badge. Click any stream in the list to open the viewer, or click **Go Live** to start your own broadcast.
+
+For more details, see [Live Streaming](live-streaming.md).

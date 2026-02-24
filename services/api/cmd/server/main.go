@@ -106,6 +106,8 @@ func main() {
 	terrainConfigRepo := repository.NewTerrainConfigRepository(db)
 	messageRepo := repository.NewMessageRepository(db)
 	drawingRepo := repository.NewDrawingRepository(db)
+	streamRepo := repository.NewStreamRepository(db)
+	streamKeyRepo := repository.NewStreamKeyRepository(db)
 	auditRepo := repository.NewAuditRepository(db)
 	cotRepo := repository.NewCotRepository(db)
 	mfaRepo := repository.NewMFARepository(db)
@@ -166,6 +168,7 @@ func main() {
 	terrainConfigService := service.NewTerrainConfigService(terrainConfigRepo, cfg.Map)
 	messageService := service.NewMessageService(messageRepo, groupRepo, storageSvc, ps)
 	drawingService := service.NewDrawingService(drawingRepo, messageRepo, groupRepo, ps)
+	streamService := service.NewStreamService(streamRepo, streamKeyRepo, groupRepo, storageSvc, ps, cfg.Media.MediaMTXURL)
 	auditService := service.NewAuditService(auditRepo, groupRepo)
 	cotService := service.NewCotService(cotRepo, deviceRepo, userRepo, groupRepo, locationService)
 
@@ -202,6 +205,7 @@ func main() {
 	messageHandler := handler.NewMessageHandler(messageService)
 	drawingHandler := handler.NewDrawingHandler(drawingService)
 	auditHandler := handler.NewAuditHandler(auditService)
+	streamHandler := handler.NewStreamHandler(streamService)
 	cotHandler := handler.NewCotHandler(cotService)
 	mfaHandler := handler.NewMFAHandler(mfaService, authService)
 	serverSettingsHandler := handler.NewServerSettingsHandler(serverSettingsRepo)
@@ -209,7 +213,7 @@ func main() {
 	// -----------------------------------------------------------------------
 	// WebSocket Hub
 	// -----------------------------------------------------------------------
-	hub := ws.NewHub(ps, locationService, groupRepo, userRepo)
+	hub := ws.NewHub(ps, locationService, streamService, groupRepo, userRepo)
 	hubCtx, hubCancel := context.WithCancel(context.Background())
 	defer hubCancel()
 	go hub.Run(hubCtx)
@@ -417,6 +421,26 @@ func main() {
 	mux.Handle("POST /api/v1/cot/events", authMW.Authenticate(http.HandlerFunc(cotHandler.IngestEvents)))
 	mux.Handle("GET /api/v1/cot/events", authMW.Authenticate(http.HandlerFunc(cotHandler.ListEvents)))
 	mux.Handle("GET /api/v1/cot/events/{uid}", authMW.Authenticate(http.HandlerFunc(cotHandler.GetLatestByUID)))
+
+	// Streams (authenticated, permission checked in service)
+	mux.Handle("POST /api/v1/streams", authMW.Authenticate(http.HandlerFunc(streamHandler.Create)))
+	mux.Handle("GET /api/v1/streams", authMW.Authenticate(http.HandlerFunc(streamHandler.List)))
+	mux.Handle("GET /api/v1/streams/{id}", authMW.Authenticate(http.HandlerFunc(streamHandler.Get)))
+	mux.Handle("POST /api/v1/streams/{id}/share", authMW.Authenticate(http.HandlerFunc(streamHandler.Share)))
+	mux.Handle("DELETE /api/v1/streams/{id}/groups/{groupId}", authMW.Authenticate(http.HandlerFunc(streamHandler.Unshare)))
+	mux.Handle("POST /api/v1/streams/{id}/end", authMW.Authenticate(http.HandlerFunc(streamHandler.End)))
+	mux.Handle("DELETE /api/v1/streams/{id}", authMW.Authenticate(http.HandlerFunc(streamHandler.DeleteStream)))
+	mux.Handle("GET /api/v1/streams/{id}/locations", authMW.Authenticate(http.HandlerFunc(streamHandler.GetLocations)))
+
+	// Media server hooks (internal — called by MediaMTX, not by end users)
+	mux.HandleFunc("POST /api/v1/media/auth", streamHandler.AuthenticateMedia)
+	mux.HandleFunc("POST /api/v1/media/recording-complete", streamHandler.RecordingComplete)
+
+	// Stream keys (admin)
+	mux.Handle("POST /api/v1/admin/stream-keys", authMW.RequireAdmin(http.HandlerFunc(streamHandler.CreateKey)))
+	mux.Handle("GET /api/v1/admin/stream-keys", authMW.RequireAdmin(http.HandlerFunc(streamHandler.ListKeys)))
+	mux.Handle("PUT /api/v1/admin/stream-keys/{id}", authMW.RequireAdmin(http.HandlerFunc(streamHandler.UpdateKey)))
+	mux.Handle("DELETE /api/v1/admin/stream-keys/{id}", authMW.RequireAdmin(http.HandlerFunc(streamHandler.DeleteKey)))
 
 	// -----------------------------------------------------------------------
 	// Apply global middleware and start server

@@ -26,6 +26,11 @@ data:
   RATE_LIMIT_BURST: {{ .Values.api.env.rateLimitBurst | quote }}
   MAX_REQUEST_BODY_BYTES: {{ .Values.api.env.maxRequestBodyBytes | quote }}
   TOKEN_CLEANUP_INTERVAL: {{ .Values.api.env.tokenCleanupInterval | quote }}
+  {{- if .Values.mediamtx.enabled }}
+  MEDIAMTX_URL: "http://mediamtx:{{ .Values.mediamtx.ports.webrtc }}"
+  TURN_HOST: "coturn"
+  TURN_USERNAME: "sitaware"
+  {{- end }}
   MAP_DEFAULT_TILE_URL: {{ .Values.map.defaultTileURL | quote }}
   MAP_DEFAULT_CENTER_LAT: {{ .Values.map.defaultCenterLat | quote }}
   MAP_DEFAULT_CENTER_LNG: {{ .Values.map.defaultCenterLng | quote }}

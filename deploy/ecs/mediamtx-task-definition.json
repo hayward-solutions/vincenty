@@ -1,0 +1,48 @@
+{
+  "family": "sitaware-mediamtx",
+  "networkMode": "awsvpc",
+  "requiresCompatibilities": ["FARGATE"],
+  "cpu": "512",
+  "memory": "1024",
+  "executionRoleArn": "arn:aws:iam::ACCOUNT_ID:role/sitaware-ecs-execution-role",
+  "taskRoleArn": "arn:aws:iam::ACCOUNT_ID:role/sitaware-mediamtx-task-role",
+  "containerDefinitions": [
+    {
+      "name": "mediamtx",
+      "image": "bluenviron/mediamtx:latest-ffmpeg",
+      "essential": true,
+      "portMappings": [
+        {
+          "containerPort": 8889,
+          "protocol": "tcp"
+        }
+      ],
+      "healthCheck": {
+        "command": ["CMD-SHELL", "wget --quiet --tries=1 --spider http://localhost:9997/v3/paths/list || exit 1"],
+        "interval": 30,
+        "timeout": 5,
+        "retries": 3,
+        "startPeriod": 60
+      },
+      "secrets": [
+        {
+          "name": "TURN_PASSWORD",
+          "valueFrom": "arn:aws:ssm:REGION:ACCOUNT_ID:parameter/sitaware/turn-password"
+        }
+      ],
+      "environment": [
+        { "name": "MEDIAMTX_URL", "value": "http://localhost:8889" },
+        { "name": "TURN_HOST", "value": "coturn.sitaware.local" },
+        { "name": "TURN_USERNAME", "value": "sitaware" }
+      ],
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/ecs/sitaware-mediamtx",
+          "awslogs-region": "REGION",
+          "awslogs-stream-prefix": "mediamtx"
+        }
+      }
+    }
+  ]
+}

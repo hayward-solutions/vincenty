@@ -154,6 +154,14 @@ func (c *Client) handleMessage(ctx context.Context, env *Envelope) {
 		}
 		c.hub.handleLocationUpdate(ctx, c, &payload)
 
+	case TypeStreamLocation:
+		var payload StreamLocationPayload
+		if err := json.Unmarshal(env.Payload, &payload); err != nil {
+			c.sendError("invalid stream_location payload")
+			return
+		}
+		c.hub.handleStreamLocation(ctx, c, &payload)
+
 	default:
 		c.sendError("unknown message type: " + env.Type)
 	}

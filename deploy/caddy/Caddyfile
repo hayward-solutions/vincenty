@@ -18,6 +18,14 @@
 		reverse_proxy api:8080
 	}
 
+	# MediaMTX WebRTC (WHIP publish / WHEP playback)
+	handle /whip/* {
+		reverse_proxy mediamtx:8889
+	}
+	handle /whep/* {
+		reverse_proxy mediamtx:8889
+	}
+
 	# Web client (catch-all)
 	handle {
 		reverse_proxy web:3000

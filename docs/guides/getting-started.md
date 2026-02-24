@@ -39,11 +39,12 @@ The top navigation bar is always visible and provides access to the main section
 |---|---|
 | **Dashboard** | Overview and quick stats |
 | **Map** | Real-time situational awareness map |
+| **Streams** | Live video streams and recordings |
 | **Messages** | Group and direct messaging |
 
 Your avatar/initials appear in the top-right corner. Click it to access:
 - **Account Settings** -- profile, security, devices, activity, groups
-- **Server Settings** -- (admin only) users, groups, map config, security, audit logs
+- **Server Settings** -- (admin only) users, groups, map config, stream keys, security, audit logs
 - **Sign Out**
 
 ## Connection Status
@@ -72,6 +73,7 @@ A device represents an endpoint you use to access SitAware (e.g., your laptop br
 - [Using the Map](map.md) -- learn about location markers, drawing tools, replay, and measurement
 - [Messaging](messaging.md) -- send group and direct messages with file attachments
 - [Location Sharing](location-sharing.md) -- enable and manage real-time location sharing
+- [Live Streaming](live-streaming.md) -- broadcast and watch live video, GPS-synced recordings
 - [MFA Setup](mfa-setup.md) -- secure your account with multi-factor authentication
 - [Account Settings](account-settings.md) -- customize your profile, avatar, and map marker
-- [Admin Guide](admin-guide.md) -- (admins) manage users, groups, map sources, and audit logs
+- [Admin Guide](admin-guide.md) -- (admins) manage users, groups, map sources, stream keys, and audit logs

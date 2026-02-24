@@ -1,0 +1,69 @@
+###############################################
+# MediaMTX Configuration for SitAware
+# https://github.com/bluenviron/mediamtx
+###############################################
+
+# ---------------------------------------------------------------------------
+# Authentication — delegate to SitAware API
+# ---------------------------------------------------------------------------
+authMethod: http
+authHTTPAddress: http://api:8080/api/v1/media/auth
+
+# ---------------------------------------------------------------------------
+# Protocols
+# ---------------------------------------------------------------------------
+# RTSP — for hardware devices (drones, CCTV, body cams)
+rtsp: true
+rtspAddress: :8554
+
+# RTMP — alternative ingest for hardware/OBS
+rtmp: true
+rtmpAddress: :1935
+
+# HLS — fallback playback for browsers that can't do WebRTC
+hls: true
+hlsAddress: :8888
+hlsAlwaysRemux: false
+
+# WebRTC — primary browser protocol (WHIP for publish, WHEP for playback)
+webrtc: true
+webrtcAddress: :8889
+
+# SRT — low-latency transport (optional, disabled by default)
+srt: false
+
+# ---------------------------------------------------------------------------
+# Recording
+# ---------------------------------------------------------------------------
+record: true
+recordPath: /recordings/%path/%Y-%m-%d_%H-%M-%S
+recordFormat: fmp4
+
+# Notify SitAware API when a recording segment is complete
+runOnRecordSegmentComplete: >-
+  wget -q -O /dev/null --post-data='{"path":"$MTX_PATH","filePath":"$MTX_SEGMENT_PATH"}'
+  --header='Content-Type: application/json'
+  http://api:8080/api/v1/media/recording-complete
+
+# ---------------------------------------------------------------------------
+# WebRTC ICE Configuration
+# ---------------------------------------------------------------------------
+# Point browsers at the coturn TURN server for NAT traversal.
+# In air-gapped deployments, this is the only way peers behind
+# firewalls can establish WebRTC connections.
+webrtcICEServers2:
+  - url: turn:coturn:3478
+    username: sitaware
+    password: "${TURN_PASSWORD:-changeme}"
+
+# ---------------------------------------------------------------------------
+# API (for health checks and management)
+# ---------------------------------------------------------------------------
+api: true
+apiAddress: :9997
+
+# ---------------------------------------------------------------------------
+# Logging
+# ---------------------------------------------------------------------------
+logLevel: info
+logDestinations: [stdout]

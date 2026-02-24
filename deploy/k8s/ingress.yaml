@@ -31,6 +31,20 @@ spec:
                 name: api
                 port:
                   number: 8080
+          - path: /whip
+            pathType: Prefix
+            backend:
+              service:
+                name: mediamtx
+                port:
+                  number: 8889
+          - path: /whep
+            pathType: Prefix
+            backend:
+              service:
+                name: mediamtx
+                port:
+                  number: 8889
           - path: /healthz
             pathType: Exact
             backend:
