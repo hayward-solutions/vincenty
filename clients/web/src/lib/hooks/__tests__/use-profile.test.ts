@@ -14,7 +14,7 @@ describe("useUpdateMe", () => {
 
     expect(result.current.isLoading).toBe(false);
 
-    let updated;
+    let updated: unknown;
     await act(async () => {
       updated = await result.current.updateMe({ display_name: "New Name" });
     });
@@ -53,6 +53,11 @@ describe("useChangePassword", () => {
 
     const { result } = renderHook(() => useChangePassword());
 
+    // Wait for the hook to be fully mounted before calling its method
+    await waitFor(() => {
+      expect(result.current).not.toBeNull();
+    });
+
     await act(async () => {
       await result.current.changePassword({
         current_password: "old",
@@ -70,9 +75,13 @@ describe("useUploadAvatar", () => {
 
     const { result } = renderHook(() => useUploadAvatar());
 
+    await waitFor(() => {
+      expect(result.current).not.toBeNull();
+    });
+
     const file = new File(["fake-image"], "avatar.jpg", { type: "image/jpeg" });
 
-    let user;
+    let user: unknown;
     await act(async () => {
       user = await result.current.uploadAvatar(file);
     });
@@ -88,7 +97,11 @@ describe("useDeleteAvatar", () => {
 
     const { result } = renderHook(() => useDeleteAvatar());
 
-    let user;
+    await waitFor(() => {
+      expect(result.current).not.toBeNull();
+    });
+
+    let user: unknown;
     await act(async () => {
       user = await result.current.deleteAvatar();
     });
