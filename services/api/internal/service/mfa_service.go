@@ -39,8 +39,8 @@ const (
 
 // MFAService handles MFA business logic including TOTP, WebAuthn, and recovery codes.
 type MFAService struct {
-	mfaRepo    *repository.MFARepository
-	userRepo   *repository.UserRepository
+	mfaRepo    repository.MFARepo
+	userRepo   repository.UserRepo
 	encryptor  auth.SecretEncryptor
 	rdb        *redis.Client
 	webAuthn   *webauthn.WebAuthn
@@ -48,8 +48,8 @@ type MFAService struct {
 
 // NewMFAService creates a new MFAService.
 func NewMFAService(
-	mfaRepo *repository.MFARepository,
-	userRepo *repository.UserRepository,
+	mfaRepo repository.MFARepo,
+	userRepo repository.UserRepo,
 	encryptor auth.SecretEncryptor,
 	rdb *redis.Client,
 	wa *webauthn.WebAuthn,

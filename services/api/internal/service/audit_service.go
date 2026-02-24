@@ -29,12 +29,12 @@ type CreateAuditParams struct {
 
 // AuditService handles audit log business logic.
 type AuditService struct {
-	auditRepo *repository.AuditRepository
-	groupRepo *repository.GroupRepository
+	auditRepo repository.AuditRepo
+	groupRepo repository.GroupRepo
 }
 
 // NewAuditService creates a new AuditService.
-func NewAuditService(auditRepo *repository.AuditRepository, groupRepo *repository.GroupRepository) *AuditService {
+func NewAuditService(auditRepo repository.AuditRepo, groupRepo repository.GroupRepo) *AuditService {
 	return &AuditService{auditRepo: auditRepo, groupRepo: groupRepo}
 }
 

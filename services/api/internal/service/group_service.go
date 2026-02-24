@@ -10,12 +10,12 @@ import (
 
 // GroupService handles group management business logic.
 type GroupService struct {
-	groupRepo *repository.GroupRepository
-	userRepo  *repository.UserRepository
+	groupRepo repository.GroupRepo
+	userRepo  repository.UserRepo
 }
 
 // NewGroupService creates a new GroupService.
-func NewGroupService(groupRepo *repository.GroupRepository, userRepo *repository.UserRepository) *GroupService {
+func NewGroupService(groupRepo repository.GroupRepo, userRepo repository.UserRepo) *GroupService {
 	return &GroupService{groupRepo: groupRepo, userRepo: userRepo}
 }
 

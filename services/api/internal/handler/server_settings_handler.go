@@ -10,11 +10,11 @@ import (
 
 // ServerSettingsHandler handles server settings endpoints.
 type ServerSettingsHandler struct {
-	settingsRepo *repository.ServerSettingsRepository
+	settingsRepo repository.ServerSettingsRepo
 }
 
 // NewServerSettingsHandler creates a new ServerSettingsHandler.
-func NewServerSettingsHandler(settingsRepo *repository.ServerSettingsRepository) *ServerSettingsHandler {
+func NewServerSettingsHandler(settingsRepo repository.ServerSettingsRepo) *ServerSettingsHandler {
 	return &ServerSettingsHandler{settingsRepo: settingsRepo}
 }
 

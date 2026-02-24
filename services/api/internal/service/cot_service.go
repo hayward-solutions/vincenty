@@ -13,19 +13,19 @@ import (
 
 // CotService handles CoT event ingestion, storage, and bridging to internal systems.
 type CotService struct {
-	cotRepo     *repository.CotRepository
-	deviceRepo  *repository.DeviceRepository
-	userRepo    *repository.UserRepository
-	groupRepo   *repository.GroupRepository
+	cotRepo     repository.CotRepo
+	deviceRepo  repository.DeviceRepo
+	userRepo    repository.UserRepo
+	groupRepo   repository.GroupRepo
 	locationSvc *LocationService
 }
 
 // NewCotService creates a new CotService.
 func NewCotService(
-	cotRepo *repository.CotRepository,
-	deviceRepo *repository.DeviceRepository,
-	userRepo *repository.UserRepository,
-	groupRepo *repository.GroupRepository,
+	cotRepo repository.CotRepo,
+	deviceRepo repository.DeviceRepo,
+	userRepo repository.UserRepo,
+	groupRepo repository.GroupRepo,
 	locationSvc *LocationService,
 ) *CotService {
 	return &CotService{

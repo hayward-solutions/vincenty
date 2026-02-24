@@ -14,13 +14,13 @@ import (
 
 // UserService handles user management business logic.
 type UserService struct {
-	userRepo   *repository.UserRepository
-	tokenRepo  *repository.TokenRepository
-	storageSvc *storage.StorageService
+	userRepo   repository.UserRepo
+	tokenRepo  repository.TokenRepo
+	storageSvc storage.Storage
 }
 
 // NewUserService creates a new UserService.
-func NewUserService(userRepo *repository.UserRepository, tokenRepo *repository.TokenRepository, storageSvc *storage.StorageService) *UserService {
+func NewUserService(userRepo repository.UserRepo, tokenRepo repository.TokenRepo, storageSvc storage.Storage) *UserService {
 	return &UserService{userRepo: userRepo, tokenRepo: tokenRepo, storageSvc: storageSvc}
 }
 

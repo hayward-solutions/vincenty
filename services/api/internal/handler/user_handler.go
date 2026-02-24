@@ -28,11 +28,11 @@ var allowedAvatarTypes = map[string]bool{
 // UserHandler handles user management endpoints.
 type UserHandler struct {
 	userService *service.UserService
-	storageSvc  *storage.StorageService
+	storageSvc  storage.Storage
 }
 
 // NewUserHandler creates a new UserHandler.
-func NewUserHandler(userService *service.UserService, storageSvc *storage.StorageService) *UserHandler {
+func NewUserHandler(userService *service.UserService, storageSvc storage.Storage) *UserHandler {
 	return &UserHandler{userService: userService, storageSvc: storageSvc}
 }
 

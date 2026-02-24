@@ -12,14 +12,14 @@ import (
 
 // MapConfigService handles map configuration business logic.
 type MapConfigService struct {
-	repo         *repository.MapConfigRepository
-	terrainRepo  *repository.TerrainConfigRepository
-	settingsRepo *repository.ServerSettingsRepository
+	repo         repository.MapConfigRepo
+	terrainRepo  repository.TerrainConfigRepo
+	settingsRepo repository.ServerSettingsRepo
 	mapDefaults  config.MapConfig
 }
 
 // NewMapConfigService creates a new MapConfigService.
-func NewMapConfigService(repo *repository.MapConfigRepository, terrainRepo *repository.TerrainConfigRepository, settingsRepo *repository.ServerSettingsRepository, mapDefaults config.MapConfig) *MapConfigService {
+func NewMapConfigService(repo repository.MapConfigRepo, terrainRepo repository.TerrainConfigRepo, settingsRepo repository.ServerSettingsRepo, mapDefaults config.MapConfig) *MapConfigService {
 	return &MapConfigService{repo: repo, terrainRepo: terrainRepo, settingsRepo: settingsRepo, mapDefaults: mapDefaults}
 }
 

@@ -12,11 +12,11 @@ import (
 
 // DeviceHandler handles device management endpoints.
 type DeviceHandler struct {
-	deviceRepo *repository.DeviceRepository
+	deviceRepo repository.DeviceRepo
 }
 
 // NewDeviceHandler creates a new DeviceHandler.
-func NewDeviceHandler(deviceRepo *repository.DeviceRepository) *DeviceHandler {
+func NewDeviceHandler(deviceRepo repository.DeviceRepo) *DeviceHandler {
 	return &DeviceHandler{deviceRepo: deviceRepo}
 }
 

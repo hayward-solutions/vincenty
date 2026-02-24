@@ -52,8 +52,11 @@ jobs:
       - name: Build
         run: CGO_ENABLED=0 go build -o /dev/null ./cmd/server
 
+      - name: Test
+        run: go test -count=1 -timeout 300s ./...
+
   # ---------------------------------------------------------------------------
-  # Next.js Web — build
+  # Next.js Web — build & test
   # ---------------------------------------------------------------------------
   web:
     needs: changes
@@ -76,3 +79,6 @@ jobs:
 
       - name: Build
         run: npm run build
+
+      - name: Test
+        run: npm test
