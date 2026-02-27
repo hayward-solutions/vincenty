@@ -19,6 +19,7 @@ jobs:
     outputs:
       api: ${{ steps.filter.outputs.api }}
       web: ${{ steps.filter.outputs.web }}
+      cli: ${{ steps.filter.outputs.cli }}
     steps:
       - uses: actions/checkout@v4
 
@@ -30,9 +31,11 @@ jobs:
               - 'services/api/**'
             web:
               - 'clients/web/**'
+            cli:
+              - 'clients/cli/**'
 
   # ---------------------------------------------------------------------------
-  # Go API — build
+  # Go API — build & test
   # ---------------------------------------------------------------------------
   api:
     needs: changes
@@ -54,6 +57,33 @@ jobs:
 
       - name: Test
         run: go test -count=1 -timeout 300s ./...
+
+  # ---------------------------------------------------------------------------
+  # CLI — build & test
+  # ---------------------------------------------------------------------------
+  cli:
+    needs: changes
+    if: needs.changes.outputs.cli == 'true'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: clients/cli
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: clients/cli/go.mod
+          cache-dependency-path: clients/cli/go.sum
+
+      - name: Vet
+        run: go vet ./...
+
+      - name: Build
+        run: CGO_ENABLED=0 go build -o /dev/null .
+
+      - name: Test
+        run: go test -count=1 -timeout 120s ./...
 
   # ---------------------------------------------------------------------------
   # Next.js Web — build & test

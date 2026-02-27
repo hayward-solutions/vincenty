@@ -18,17 +18,17 @@ import (
 
 // UserRepo is a mock implementation of repository.UserRepo.
 type UserRepo struct {
-	CreateFn          func(ctx context.Context, user *model.User) error
-	GetByIDFn         func(ctx context.Context, id uuid.UUID) (*model.User, error)
-	GetByUsernameFn   func(ctx context.Context, username string) (*model.User, error)
-	GetByEmailFn      func(ctx context.Context, email string) (*model.User, error)
-	ListFn            func(ctx context.Context, page, pageSize int) ([]model.User, int, error)
-	UpdateFn          func(ctx context.Context, user *model.User) error
-	DeleteFn          func(ctx context.Context, id uuid.UUID) error
-	CountAdminsFn     func(ctx context.Context) (int, error)
-	SetMFAEnabledFn   func(ctx context.Context, id uuid.UUID, enabled bool) error
+	CreateFn           func(ctx context.Context, user *model.User) error
+	GetByIDFn          func(ctx context.Context, id uuid.UUID) (*model.User, error)
+	GetByUsernameFn    func(ctx context.Context, username string) (*model.User, error)
+	GetByEmailFn       func(ctx context.Context, email string) (*model.User, error)
+	ListFn             func(ctx context.Context, page, pageSize int) ([]model.User, int, error)
+	UpdateFn           func(ctx context.Context, user *model.User) error
+	DeleteFn           func(ctx context.Context, id uuid.UUID) error
+	CountAdminsFn      func(ctx context.Context) (int, error)
+	SetMFAEnabledFn    func(ctx context.Context, id uuid.UUID, enabled bool) error
 	ExistsByUsernameFn func(ctx context.Context, username string) (bool, error)
-	ExistsByEmailFn   func(ctx context.Context, email string) (bool, error)
+	ExistsByEmailFn    func(ctx context.Context, email string) (bool, error)
 }
 
 func (m *UserRepo) Create(ctx context.Context, user *model.User) error {
@@ -104,20 +104,20 @@ var _ repository.TokenRepo = (*TokenRepo)(nil)
 
 // GroupRepo is a mock implementation of repository.GroupRepo.
 type GroupRepo struct {
-	CreateFn       func(ctx context.Context, group *model.Group) error
-	GetByIDFn      func(ctx context.Context, id uuid.UUID) (*model.Group, error)
-	ListFn         func(ctx context.Context, page, pageSize int) ([]model.Group, []int, int, error)
-	ListByUserIDFn func(ctx context.Context, userID uuid.UUID) ([]model.Group, []int, error)
-	UpdateFn       func(ctx context.Context, group *model.Group) error
-	UpdateMarkerFn func(ctx context.Context, id uuid.UUID, markerIcon, markerColor string) (*model.Group, error)
-	DeleteFn       func(ctx context.Context, id uuid.UUID) error
-	MemberCountFn  func(ctx context.Context, groupID uuid.UUID) (int, error)
-	AddMemberFn    func(ctx context.Context, member *model.GroupMember) error
-	GetMemberFn    func(ctx context.Context, groupID, userID uuid.UUID) (*model.GroupMember, error)
+	CreateFn        func(ctx context.Context, group *model.Group) error
+	GetByIDFn       func(ctx context.Context, id uuid.UUID) (*model.Group, error)
+	ListFn          func(ctx context.Context, page, pageSize int) ([]model.Group, []int, int, error)
+	ListByUserIDFn  func(ctx context.Context, userID uuid.UUID) ([]model.Group, []int, error)
+	UpdateFn        func(ctx context.Context, group *model.Group) error
+	UpdateMarkerFn  func(ctx context.Context, id uuid.UUID, markerIcon, markerColor string) (*model.Group, error)
+	DeleteFn        func(ctx context.Context, id uuid.UUID) error
+	MemberCountFn   func(ctx context.Context, groupID uuid.UUID) (int, error)
+	AddMemberFn     func(ctx context.Context, member *model.GroupMember) error
+	GetMemberFn     func(ctx context.Context, groupID, userID uuid.UUID) (*model.GroupMember, error)
 	GetMemberByIDFn func(ctx context.Context, memberID uuid.UUID) (*model.GroupMember, error)
-	ListMembersFn  func(ctx context.Context, groupID uuid.UUID) ([]model.GroupMemberWithUser, error)
-	UpdateMemberFn func(ctx context.Context, member *model.GroupMember) error
-	RemoveMemberFn func(ctx context.Context, groupID, userID uuid.UUID) error
+	ListMembersFn   func(ctx context.Context, groupID uuid.UUID) ([]model.GroupMemberWithUser, error)
+	UpdateMemberFn  func(ctx context.Context, member *model.GroupMember) error
+	RemoveMemberFn  func(ctx context.Context, groupID, userID uuid.UUID) error
 }
 
 func (m *GroupRepo) Create(ctx context.Context, group *model.Group) error {
@@ -539,11 +539,11 @@ type MFARepo struct {
 	DeleteAllWebAuthnForUserFn    func(ctx context.Context, userID uuid.UUID) error
 
 	// Recovery codes
-	CreateRecoveryCodesFn          func(ctx context.Context, userID uuid.UUID, hashes []string) error
-	ListUnusedRecoveryCodesFn      func(ctx context.Context, userID uuid.UUID) ([]model.RecoveryCode, error)
-	MarkRecoveryCodeUsedFn         func(ctx context.Context, id uuid.UUID) error
+	CreateRecoveryCodesFn           func(ctx context.Context, userID uuid.UUID, hashes []string) error
+	ListUnusedRecoveryCodesFn       func(ctx context.Context, userID uuid.UUID) ([]model.RecoveryCode, error)
+	MarkRecoveryCodeUsedFn          func(ctx context.Context, id uuid.UUID) error
 	DeleteAllRecoveryCodesForUserFn func(ctx context.Context, userID uuid.UUID) error
-	CountUnusedRecoveryCodesFn     func(ctx context.Context, userID uuid.UUID) (int, error)
+	CountUnusedRecoveryCodesFn      func(ctx context.Context, userID uuid.UUID) (int, error)
 
 	// Aggregate helpers
 	CountVerifiedMethodsFn func(ctx context.Context, userID uuid.UUID) (int, error)
@@ -625,3 +625,38 @@ func (m *MFARepo) HasWebAuthn(ctx context.Context, userID uuid.UUID) (bool, erro
 }
 
 var _ repository.MFARepo = (*MFARepo)(nil)
+
+// ---------------------------------------------------------------------------
+// APITokenRepo
+// ---------------------------------------------------------------------------
+
+// APITokenRepo is a mock implementation of repository.APITokenRepo.
+type APITokenRepo struct {
+	CreateFn         func(ctx context.Context, token *model.APIToken) error
+	GetByTokenHashFn func(ctx context.Context, hash string) (*model.APIToken, *model.User, error)
+	ListByUserIDFn   func(ctx context.Context, userID uuid.UUID) ([]model.APIToken, error)
+	DeleteFn         func(ctx context.Context, userID, tokenID uuid.UUID) error
+	TouchLastUsedFn  func(ctx context.Context, id uuid.UUID) error
+	DeleteExpiredFn  func(ctx context.Context) (int64, error)
+}
+
+func (m *APITokenRepo) Create(ctx context.Context, token *model.APIToken) error {
+	return m.CreateFn(ctx, token)
+}
+func (m *APITokenRepo) GetByTokenHash(ctx context.Context, hash string) (*model.APIToken, *model.User, error) {
+	return m.GetByTokenHashFn(ctx, hash)
+}
+func (m *APITokenRepo) ListByUserID(ctx context.Context, userID uuid.UUID) ([]model.APIToken, error) {
+	return m.ListByUserIDFn(ctx, userID)
+}
+func (m *APITokenRepo) Delete(ctx context.Context, userID, tokenID uuid.UUID) error {
+	return m.DeleteFn(ctx, userID, tokenID)
+}
+func (m *APITokenRepo) TouchLastUsed(ctx context.Context, id uuid.UUID) error {
+	return m.TouchLastUsedFn(ctx, id)
+}
+func (m *APITokenRepo) DeleteExpired(ctx context.Context) (int64, error) {
+	return m.DeleteExpiredFn(ctx)
+}
+
+var _ repository.APITokenRepo = (*APITokenRepo)(nil)

@@ -51,7 +51,7 @@ func buildMinimalEXIF(lat, lng float64) []byte {
 
 	// TIFF header (little-endian)
 	tiffStart := app1.Len()
-	app1.Write([]byte("II"))             // little-endian
+	app1.Write([]byte("II"))                             // little-endian
 	binary.Write(&app1, binary.LittleEndian, uint16(42)) // magic
 	binary.Write(&app1, binary.LittleEndian, uint32(8))  // offset to IFD0
 
@@ -60,7 +60,7 @@ func buildMinimalEXIF(lat, lng float64) []byte {
 	binary.Write(&app1, binary.LittleEndian, uint16(1)) // 1 entry
 
 	// GPSInfo IFD entry: tag=0x8825, type=LONG(4), count=1, value=offset to GPS IFD
-	gpsIFDOffset := uint32(8 + 2 + 12 + 4) // IFD0 header(2) + 1 entry(12) + next IFD(4)
+	gpsIFDOffset := uint32(8 + 2 + 12 + 4)                   // IFD0 header(2) + 1 entry(12) + next IFD(4)
 	binary.Write(&app1, binary.LittleEndian, uint16(0x8825)) // tag
 	binary.Write(&app1, binary.LittleEndian, uint16(4))      // LONG
 	binary.Write(&app1, binary.LittleEndian, uint32(1))      // count
@@ -97,17 +97,17 @@ func buildMinimalEXIF(lat, lng float64) []byte {
 	if lat < 0 {
 		latRef = byte('S')
 	}
-	binary.Write(&app1, binary.LittleEndian, uint16(1))    // tag
-	binary.Write(&app1, binary.LittleEndian, uint16(2))    // ASCII
-	binary.Write(&app1, binary.LittleEndian, uint32(2))    // count
+	binary.Write(&app1, binary.LittleEndian, uint16(1)) // tag
+	binary.Write(&app1, binary.LittleEndian, uint16(2)) // ASCII
+	binary.Write(&app1, binary.LittleEndian, uint32(2)) // count
 	app1.WriteByte(latRef)
 	app1.WriteByte(0)
 	app1.Write([]byte{0, 0}) // padding to 4 bytes
 
 	// Entry 2: GPSLatitude (tag 2, RATIONAL, count 3)
-	binary.Write(&app1, binary.LittleEndian, uint16(2))               // tag
-	binary.Write(&app1, binary.LittleEndian, uint16(5))               // RATIONAL
-	binary.Write(&app1, binary.LittleEndian, uint32(3))               // count
+	binary.Write(&app1, binary.LittleEndian, uint16(2))                  // tag
+	binary.Write(&app1, binary.LittleEndian, uint16(5))                  // RATIONAL
+	binary.Write(&app1, binary.LittleEndian, uint32(3))                  // count
 	binary.Write(&app1, binary.LittleEndian, uint32(rationalDataOffset)) // offset to data
 
 	// Entry 3: GPSLongitudeRef (tag 3, ASCII, count 2)
@@ -115,18 +115,18 @@ func buildMinimalEXIF(lat, lng float64) []byte {
 	if lng < 0 {
 		lngRef = byte('W')
 	}
-	binary.Write(&app1, binary.LittleEndian, uint16(3))    // tag
-	binary.Write(&app1, binary.LittleEndian, uint16(2))    // ASCII
-	binary.Write(&app1, binary.LittleEndian, uint32(2))    // count
+	binary.Write(&app1, binary.LittleEndian, uint16(3)) // tag
+	binary.Write(&app1, binary.LittleEndian, uint16(2)) // ASCII
+	binary.Write(&app1, binary.LittleEndian, uint32(2)) // count
 	app1.WriteByte(lngRef)
 	app1.WriteByte(0)
 	app1.Write([]byte{0, 0}) // padding
 
 	// Entry 4: GPSLongitude (tag 4, RATIONAL, count 3)
-	binary.Write(&app1, binary.LittleEndian, uint16(4))                       // tag
-	binary.Write(&app1, binary.LittleEndian, uint16(5))                       // RATIONAL
-	binary.Write(&app1, binary.LittleEndian, uint32(3))                       // count
-	binary.Write(&app1, binary.LittleEndian, uint32(rationalDataOffset+24))    // offset
+	binary.Write(&app1, binary.LittleEndian, uint16(4))                     // tag
+	binary.Write(&app1, binary.LittleEndian, uint16(5))                     // RATIONAL
+	binary.Write(&app1, binary.LittleEndian, uint32(3))                     // count
+	binary.Write(&app1, binary.LittleEndian, uint32(rationalDataOffset+24)) // offset
 
 	// Next IFD pointer
 	binary.Write(&app1, binary.LittleEndian, uint32(0))

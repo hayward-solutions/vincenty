@@ -11,6 +11,15 @@
 - Logout with server-side token revocation
 - Background cleanup of expired refresh tokens on a configurable interval
 
+### API Tokens
+- Long-lived tokens for CLI and programmatic access (prefixed with `sat_`)
+- Self-service: any user can create, list, and delete their own tokens
+- Stored as SHA-256 hashes in the database (plain-text token shown only at creation time)
+- Optional expiry date (tokens without expiry remain valid until deleted)
+- Works with both REST API (`Authorization: Bearer sat_...`) and WebSocket (`?token=sat_...`)
+- Auth middleware detects the `sat_` prefix and routes to token validation instead of JWT parsing
+- Background cleanup of expired tokens alongside refresh token cleanup
+
 ### User Management (Admin)
 - Create, read, update, and delete user accounts
 - Admin and regular user roles
@@ -231,6 +240,7 @@
 
 ### Container Security
 - API runs in a distroless container — no shell, no package manager
+- CLI runs in a distroless container — static binary, no shell
 - Web client runs as non-root `nextjs` user
 - Multi-stage Docker builds minimize image size and attack surface
 

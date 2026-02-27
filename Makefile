@@ -1,4 +1,4 @@
-.PHONY: dev down logs api-dev web-dev db-shell clean build prod prod-down prod-logs
+.PHONY: dev down logs api-dev web-dev cli-build cli-dev db-shell clean build prod prod-down prod-logs
 
 # ---------------------------------------------------------------------------
 # Full stack (Docker Compose)
@@ -37,6 +37,14 @@ api-dev:
 ## Run Next.js dev server locally
 web-dev:
 	cd clients/web && npm run dev
+
+## Build CLI binary
+cli-build:
+	cd clients/cli && CGO_ENABLED=0 go build -o bin/sitaware-cli .
+
+## Run CLI locally (pass args via ARGS, e.g. make cli-dev ARGS="--token=sat_... --file=track.gpx")
+cli-dev:
+	cd clients/cli && go run . $(ARGS)
 
 # ---------------------------------------------------------------------------
 # Database

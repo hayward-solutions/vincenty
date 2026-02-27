@@ -177,7 +177,7 @@ func (u *webAuthnUser) WebAuthnID() []byte {
 	return id[:]
 }
 
-func (u *webAuthnUser) WebAuthnName() string        { return u.user.Username }
+func (u *webAuthnUser) WebAuthnName() string { return u.user.Username }
 func (u *webAuthnUser) WebAuthnDisplayName() string {
 	if u.user.DisplayName != nil {
 		return *u.user.DisplayName

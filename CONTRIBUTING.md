@@ -92,6 +92,8 @@ make db-shell          # Open a psql shell to the database
 make restart s=api     # Rebuild and restart just the API container
 make clean             # Remove all containers and volumes (full reset)
 make api-build         # Build the Go API binary locally
+make cli-build         # Build the CLI binary locally
+make cli-dev ARGS="--token=sat_... --file=track.gpx"  # Run CLI locally
 ```
 
 ## Project Structure
@@ -118,6 +120,13 @@ clients/web/               # Next.js web client
     components/            # React components (ui/, map/, chat/, audit/)
     lib/                   # API client, auth context, custom hooks
     types/                 # TypeScript type definitions
+
+clients/cli/               # CLI track streamer (Go)
+  internal/
+    client/                # REST + WebSocket client
+    track/                 # GPX and GeoJSON parsers
+  main.go                  # Entry point (flag + env var config)
+  Dockerfile               # Distroless container image
 
 clients/ios/               # iOS client (SwiftUI)
   SitAware/

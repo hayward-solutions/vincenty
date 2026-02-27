@@ -45,8 +45,9 @@ For the iOS client, see [Contributing — iOS Client Setup](CONTRIBUTING.md#ios-
 | Pub/Sub | Redis (pluggable — interface supports Kafka, Apache Ignite) |
 | Object Storage | S3-compatible (Minio for dev, AWS S3 for production) |
 | Real-time | WebSocket ([nhooyr.io/websocket](https://github.com/nhooyr/websocket)) |
-| Auth | JWT access tokens + rotating opaque refresh tokens |
+| Auth | JWT access tokens + rotating refresh tokens + long-lived API tokens |
 | Web Client | Next.js (App Router, standalone output) |
+| CLI Client | Go (streams GPX/GeoJSON tracks over WebSocket) |
 | iOS Client | SwiftUI (iOS 17+, Swift 6.0, MVVM + Observation) |
 | UI (Web) | shadcn/ui, Tailwind CSS v4, Radix UI |
 | Maps | MapLibre GL JS (web), MapLibre Native SDK (iOS) |
@@ -78,6 +79,12 @@ sitaware/
 │   │   ├── lib/           # API client, auth context, hooks
 │   │   └── types/         # TypeScript definitions
 │   └── Dockerfile
+├── clients/cli/           # CLI track streamer (Go)
+│   ├── internal/
+│   │   ├── client/        # REST + WebSocket client
+│   │   └── track/         # GPX and GeoJSON parsers
+│   ├── main.go
+│   └── Dockerfile
 ├── clients/ios/           # iOS client (SwiftUI, XcodeGen)
 │   ├── SitAware/
 │   │   ├── App/           # Entry point, root views
@@ -108,6 +115,8 @@ make api-dev      # Run Go API locally (requires infra)
 make web-dev      # Run Next.js dev server locally
 make db-shell     # Open psql shell
 make api-build    # Build Go API binary
+make cli-build    # Build CLI binary
+make cli-dev      # Run CLI locally (pass ARGS="--token=... --file=...")
 make prod         # Start production stack (Caddy + TLS)
 make prod-down    # Stop production stack
 make prod-logs    # Tail production logs
@@ -173,6 +182,9 @@ All API routes are prefixed with `/api/v1/`.
 | DELETE | `/api/v1/mfa/webauthn/{id}` | Remove a WebAuthn credential |
 | PATCH | `/api/v1/mfa/webauthn/{id}` | Update credential (name, passwordless flag) |
 | POST | `/api/v1/mfa/recovery/regenerate` | Regenerate recovery codes |
+| GET | `/api/v1/users/me/api-tokens` | List own API tokens |
+| POST | `/api/v1/users/me/api-tokens` | Create an API token |
+| DELETE | `/api/v1/users/me/api-tokens/{id}` | Delete an API token |
 
 ### Admin Only
 
@@ -265,6 +277,7 @@ cp .env.example .env
 | [MFA Setup](docs/guides/mfa-setup.md) | TOTP, WebAuthn/passkeys, recovery codes |
 | [Account Settings](docs/guides/account-settings.md) | Profile, avatar, devices, map marker customization |
 | [Admin Guide](docs/guides/admin-guide.md) | User/group management, map config, security, audit logs |
+| [CLI Client](docs/guides/cli.md) | Track streaming CLI — installation, API tokens, usage |
 
 ### Reference
 
@@ -322,6 +335,7 @@ SitAware is designed to run with zero internet access:
 ## Security
 
 - JWT access tokens (15min, HMAC-SHA256) with rotating opaque refresh tokens
+- Long-lived API tokens (`sat_` prefix) for CLI and programmatic access, stored as SHA-256 hashes
 - Refresh tokens stored as SHA-256 hashes in the database
 - bcrypt password hashing (cost 12)
 - **Multi-Factor Authentication (MFA)**: TOTP (authenticator apps) and WebAuthn/FIDO2 (security keys, passkeys)

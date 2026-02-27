@@ -129,11 +129,11 @@ func (s *MessageService) Send(ctx context.Context, req SendMessageRequest) (*mod
 	// Extract EXIF GPS from image attachments (only if we don't already have GPX metadata).
 	if metadata == nil {
 		type exifEntry struct {
-			AttachmentIdx int        `json:"attachment_id"` // index, replaced with real ID after creation
-			Lat           float64    `json:"lat"`
-			Lng           float64    `json:"lng"`
-			Altitude      *float64   `json:"altitude,omitempty"`
-			TakenAt       *string    `json:"taken_at,omitempty"`
+			AttachmentIdx int      `json:"attachment_id"` // index, replaced with real ID after creation
+			Lat           float64  `json:"lat"`
+			Lng           float64  `json:"lng"`
+			Altitude      *float64 `json:"altitude,omitempty"`
+			TakenAt       *string  `json:"taken_at,omitempty"`
 		}
 
 		var exifLocs []exifEntry

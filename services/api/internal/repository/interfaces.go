@@ -242,6 +242,20 @@ type MFARepo interface {
 }
 
 // ---------------------------------------------------------------------------
+// APITokenRepo
+// ---------------------------------------------------------------------------
+
+// APITokenRepo abstracts API token persistence.
+type APITokenRepo interface {
+	Create(ctx context.Context, token *model.APIToken) error
+	GetByTokenHash(ctx context.Context, hash string) (*model.APIToken, *model.User, error)
+	ListByUserID(ctx context.Context, userID uuid.UUID) ([]model.APIToken, error)
+	Delete(ctx context.Context, userID, tokenID uuid.UUID) error
+	TouchLastUsed(ctx context.Context, id uuid.UUID) error
+	DeleteExpired(ctx context.Context) (int64, error)
+}
+
+// ---------------------------------------------------------------------------
 // Compile-time interface satisfaction checks
 // ---------------------------------------------------------------------------
 
@@ -259,4 +273,5 @@ var (
 	_ TerrainConfigRepo  = (*TerrainConfigRepository)(nil)
 	_ ServerSettingsRepo = (*ServerSettingsRepository)(nil)
 	_ MFARepo            = (*MFARepository)(nil)
+	_ APITokenRepo       = (*APITokenRepository)(nil)
 )
