@@ -12,21 +12,41 @@ import (
 )
 
 // connectRedis establishes a connection to Redis with retry logic.
-func connectRedis(ctx context.Context, cfg config.RedisConfig) (*redis.Client, error) {
-	opts := &redis.Options{
-		Addr:     cfg.Addr(),
-		Password: cfg.Password,
-		DB:       0,
+// When cfg.Cluster is true it creates a ClusterClient that discovers
+// topology via a single configuration endpoint (e.g. ElastiCache cluster
+// mode). Otherwise it creates a standalone Client.
+func connectRedis(ctx context.Context, cfg config.RedisConfig) (redis.UniversalClient, error) {
+	var rdb redis.UniversalClient
+
+	if cfg.Cluster {
+		opts := &redis.ClusterOptions{
+			Addrs:    []string{cfg.Addr()},
+			Password: cfg.Password,
+		}
+		if cfg.TLS {
+			opts.TLSConfig = &tls.Config{}
+		}
+		rdb = redis.NewClusterClient(opts)
+	} else {
+		opts := &redis.Options{
+			Addr:     cfg.Addr(),
+			Password: cfg.Password,
+			DB:       0,
+		}
+		if cfg.TLS {
+			opts.TLSConfig = &tls.Config{}
+		}
+		rdb = redis.NewClient(opts)
 	}
-	if cfg.TLS {
-		opts.TLSConfig = &tls.Config{}
-	}
-	rdb := redis.NewClient(opts)
 
 	maxRetries := 10
 	for i := range maxRetries {
 		if err := rdb.Ping(ctx).Err(); err == nil {
-			slog.Info("connected to Redis", "addr", cfg.Addr())
+			mode := "standalone"
+			if cfg.Cluster {
+				mode = "cluster"
+			}
+			slog.Info("connected to Redis", "addr", cfg.Addr(), "mode", mode)
 			return rdb, nil
 		}
 

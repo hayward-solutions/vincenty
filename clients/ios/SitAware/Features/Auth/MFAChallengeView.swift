@@ -7,12 +7,11 @@ struct MFAChallengeView: View {
     let onSuccess: (AuthResponse) -> Void
     let onCancel: () -> Void
 
+    @Environment(AuthManager.self) private var auth
     @State private var activeMethod: String
     @State private var code = ""
     @State private var isLoading = false
     @State private var error: String?
-
-    private let api = APIClient.shared
 
     init(
         challenge: MFAChallengeResponse,
@@ -187,13 +186,8 @@ struct MFAChallengeView: View {
         isLoading = true
         error = nil
         do {
-            struct Body: Encodable {
-                let mfaToken: String
-                let code: String
-            }
-            let response: AuthResponse = try await api.post(
-                Endpoints.mfaTOTP,
-                body: Body(mfaToken: challenge.mfaToken, code: code))
+            let response = try await auth.verifyTOTP(
+                mfaToken: challenge.mfaToken, code: code)
             onSuccess(response)
         } catch let apiError as APIError {
             error = apiError.message
@@ -204,21 +198,32 @@ struct MFAChallengeView: View {
     }
 
     private func verifyWebAuthn() async {
-        // WebAuthn assertion via ASAuthorization — full implementation in Phase 12
-        error = "WebAuthn MFA challenge will use ASAuthorizationPlatformPublicKeyCredentialProvider."
+        isLoading = true
+        error = nil
+        do {
+            let response = try await auth.verifyWebAuthn(
+                mfaToken: challenge.mfaToken)
+            onSuccess(response)
+        } catch let passkeyError as PasskeyError {
+            if case .canceled = passkeyError {
+                // User dismissed the system dialog — no error to show
+            } else {
+                error = passkeyError.errorDescription ?? "Security key verification failed."
+            }
+        } catch let apiError as APIError {
+            error = apiError.message
+        } catch {
+            self.error = "Verification failed."
+        }
+        isLoading = false
     }
 
     private func verifyRecovery() async {
         isLoading = true
         error = nil
         do {
-            struct Body: Encodable {
-                let mfaToken: String
-                let code: String
-            }
-            let response: AuthResponse = try await api.post(
-                Endpoints.mfaRecovery,
-                body: Body(mfaToken: challenge.mfaToken, code: code))
+            let response = try await auth.verifyRecoveryCode(
+                mfaToken: challenge.mfaToken, code: code)
             onSuccess(response)
         } catch let apiError as APIError {
             error = apiError.message

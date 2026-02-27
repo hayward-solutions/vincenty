@@ -130,3 +130,75 @@ struct WebAuthnRegisterBeginResponse: Codable, Sendable {
 struct MFAWebAuthnBeginResponse: Codable, Sendable {
     let options: PasskeyOptionsWrapper
 }
+
+// MARK: - WebAuthn Outbound Models (finish requests)
+
+/// Encoder for WebAuthn request bodies.
+///
+/// The W3C WebAuthn spec requires exact camelCase field names (`clientDataJSON`,
+/// `authenticatorData`, `rawId`, etc.), so we cannot use APIClient's default
+/// `convertToSnakeCase` encoder. Encode finish request bodies with this encoder
+/// and send via `APIClient.postRawJSON`.
+enum WebAuthnJSON {
+    static let encoder: JSONEncoder = {
+        let encoder = JSONEncoder()
+        return encoder
+    }()
+}
+
+/// Assertion response fields (used by passkey login and WebAuthn MFA finish).
+struct WebAuthnAssertionResponseData: Encodable, Sendable {
+    let authenticatorData: String
+    let clientDataJSON: String
+    let signature: String
+    let userHandle: String?
+}
+
+/// Passkey (passwordless) finish request body.
+/// Merges `session_id` with the W3C credential assertion fields.
+struct PasskeyFinishRequest: Encodable, Sendable {
+    let sessionId: String
+    let id: String
+    let rawId: String
+    let type: String
+    let response: WebAuthnAssertionResponseData
+
+    enum CodingKeys: String, CodingKey {
+        case sessionId = "session_id"
+        case id, rawId, type, response
+    }
+}
+
+/// MFA WebAuthn finish request body.
+/// Merges `mfa_token` with the W3C credential assertion fields.
+struct MFAWebAuthnFinishRequest: Encodable, Sendable {
+    let mfaToken: String
+    let id: String
+    let rawId: String
+    let type: String
+    let response: WebAuthnAssertionResponseData
+
+    enum CodingKeys: String, CodingKey {
+        case mfaToken = "mfa_token"
+        case id, rawId, type, response
+    }
+}
+
+/// Attestation response fields (used by WebAuthn registration finish).
+struct WebAuthnAttestationResponseData: Encodable, Sendable {
+    let attestationObject: String
+    let clientDataJSON: String
+}
+
+/// WebAuthn registration finish request body.
+struct WebAuthnRegistrationFinishRequest: Encodable, Sendable {
+    let id: String
+    let rawId: String
+    let type: String
+    let response: WebAuthnAttestationResponseData
+}
+
+/// Response from passwordless toggle endpoint.
+struct PasswordlessToggleResponse: Decodable, Sendable {
+    let passwordlessEnabled: Bool
+}

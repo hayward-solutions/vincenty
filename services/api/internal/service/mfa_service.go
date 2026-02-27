@@ -42,7 +42,7 @@ type MFAService struct {
 	mfaRepo    repository.MFARepo
 	userRepo   repository.UserRepo
 	encryptor  auth.SecretEncryptor
-	rdb        *redis.Client
+	rdb        redis.Cmdable
 	webAuthn   *webauthn.WebAuthn
 }
 
@@ -51,7 +51,7 @@ func NewMFAService(
 	mfaRepo repository.MFARepo,
 	userRepo repository.UserRepo,
 	encryptor auth.SecretEncryptor,
-	rdb *redis.Client,
+	rdb redis.Cmdable,
 	wa *webauthn.WebAuthn,
 ) *MFAService {
 	return &MFAService{

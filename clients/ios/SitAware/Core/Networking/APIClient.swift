@@ -55,6 +55,18 @@ final class APIClient: @unchecked Sendable {
             path: path, method: "DELETE", params: params)
     }
 
+    /// Post pre-encoded JSON data (bypasses the key encoding strategy).
+    ///
+    /// Used for WebAuthn requests where the W3C spec requires exact camelCase
+    /// keys (`clientDataJSON`, `authenticatorData`, `rawId`, etc.) that would be
+    /// mangled by the default `convertToSnakeCase` encoder.
+    func postRawJSON<T: Decodable & Sendable>(
+        _ path: String,
+        jsonData: Data
+    ) async throws -> T {
+        try await request(path: path, method: "POST", rawBody: jsonData)
+    }
+
     /// Upload multipart form data (for file uploads).
     func upload<T: Decodable & Sendable>(
         _ path: String,
@@ -164,6 +176,7 @@ final class APIClient: @unchecked Sendable {
         path: String,
         method: String,
         body: (any Encodable)? = nil,
+        rawBody: Data? = nil,
         params: [String: String]? = nil,
         retry: Bool = true
     ) async throws -> T {
@@ -177,8 +190,10 @@ final class APIClient: @unchecked Sendable {
             request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         }
 
-        // Encode body
-        if let body {
+        // Encode body — rawBody takes precedence (used by WebAuthn endpoints)
+        if let rawBody {
+            request.httpBody = rawBody
+        } else if let body {
             request.httpBody = try encoder.encode(AnyEncodable(body))
         }
 
@@ -200,7 +215,7 @@ final class APIClient: @unchecked Sendable {
             if refreshed {
                 return try await self.request(
                     path: path, method: method, body: body,
-                    params: params, retry: false)
+                    rawBody: rawBody, params: params, retry: false)
             }
             logger.warning(.api, "\(method) \(path) — token refresh failed, unauthorized")
         }

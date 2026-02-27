@@ -63,6 +63,16 @@ If your credential supports discoverable credentials (passkeys), you can enable 
 2. Toggle the **Passwordless** option.
 3. Now you can sign in from the login page by clicking **Sign in with Passkey** -- no username or password required.
 
+### iOS (Face ID / Touch ID)
+
+The iOS app has native support for passkeys and WebAuthn:
+
+- **Passkey login**: Tap **Sign in with Passkey** on the login screen. iOS will present a Face ID or Touch ID prompt. No username or password is needed.
+- **WebAuthn MFA**: When prompted for MFA after a password login, select the WebAuthn option. Face ID or Touch ID authenticates automatically.
+- **Credential registration**: In **Settings > Security > Security Keys & Passkeys**, tap **Add** to register a new credential using Face ID or Touch ID.
+
+Passkeys created on iOS are synced via iCloud Keychain and work across your Apple devices. For passkeys to work in production, the server's `WEBAUTHN_RP_ID` domain must be listed in the app's Associated Domains entitlement (`webcredentials:<domain>`).
+
 ### Using a Security Key to Sign In
 
 1. Enter your username and password as usual.

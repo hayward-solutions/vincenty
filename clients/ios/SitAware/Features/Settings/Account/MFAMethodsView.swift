@@ -21,10 +21,17 @@ struct MFAMethodsView: View {
     @State private var recoveryCodes: [String]?
     @State private var isTOTPSetupInProgress = false
 
-    // Recovery codes
+    // WebAuthn setup
+    @State private var showWebAuthnSetup = false
+    @State private var webauthnName = "Passkey"
+    @State private var isWebAuthnSetupInProgress = false
+
+    // Recovery codes (shared by TOTP setup, WebAuthn setup, and regeneration)
     @State private var showRegenerateRecovery = false
     @State private var isRegenerating = false
     @State private var regeneratedCodes: [String]?
+    @State private var showWebAuthnRecovery = false
+    @State private var webauthnRecoveryCodes: [String]?
 
     // Remove confirmation
     @State private var methodToRemove: MFAMethod?
@@ -47,7 +54,9 @@ struct MFAMethodsView: View {
         }
         .task { await loadMethods() }
         .sheet(isPresented: $showTOTPSetup) { totpSetupSheet }
+        .sheet(isPresented: $showWebAuthnSetup) { webauthnSetupSheet }
         .sheet(isPresented: $showRegenerateRecovery) { regenerateRecoverySheet }
+        .sheet(isPresented: $showWebAuthnRecovery) { webauthnRecoverySheet }
         .alert("Remove MFA Method", isPresented: $showRemoveConfirmation) {
             Button("Cancel", role: .cancel) {}
             Button("Remove", role: .destructive) {
@@ -95,10 +104,7 @@ struct MFAMethodsView: View {
                     Label("Security Keys & Passkeys", systemImage: "key.fill")
                         .font(.subheadline.weight(.medium))
                     Spacer()
-                    Button("Add") {
-                        // WebAuthn registration on iOS uses ASAuthorization
-                        // TODO: Implement WebAuthn registration via ASAuthorizationPlatformPublicKeyCredentialProvider
-                    }
+                    Button("Add") { beginWebAuthnSetup() }
                     .font(.caption)
                 }
 
@@ -156,6 +162,21 @@ struct MFAMethodsView: View {
                             .font(.caption2)
                             .foregroundStyle(.secondary)
                     }
+                }
+
+                // Passwordless toggle for WebAuthn credentials
+                if method.type == .webauthn {
+                    Toggle("Passwordless", isOn: Binding(
+                        get: { method.passwordlessEnabled ?? false },
+                        set: { newValue in
+                            // Optimistically update local state
+                            if let idx = methods.firstIndex(where: { $0.id == method.id }) {
+                                methods[idx].passwordlessEnabled = newValue
+                            }
+                            Task { await togglePasswordless(method, enabled: newValue) }
+                        }
+                    ))
+                    .font(.caption)
                 }
             }
 
@@ -479,6 +500,167 @@ struct MFAMethodsView: View {
         recoveryCodes = nil
         isTOTPSetupInProgress = false
         errorMessage = nil
+    }
+
+    // MARK: - WebAuthn Setup Sheet
+
+    @ViewBuilder
+    private var webauthnSetupSheet: some View {
+        NavigationStack {
+            Form {
+                Section("Name") {
+                    TextField("Credential name", text: $webauthnName)
+                }
+
+                Section {
+                    Button {
+                        Task { await registerWebAuthn() }
+                    } label: {
+                        if isWebAuthnSetupInProgress {
+                            ProgressView().frame(maxWidth: .infinity)
+                        } else {
+                            Label("Register Passkey", systemImage: "person.badge.key")
+                                .frame(maxWidth: .infinity)
+                        }
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .disabled(
+                        webauthnName.trimmingCharacters(in: .whitespaces).isEmpty
+                            || isWebAuthnSetupInProgress)
+                }
+
+                if let error = errorMessage {
+                    Section {
+                        Text(error)
+                            .foregroundStyle(.red)
+                            .font(.caption)
+                    }
+                }
+            }
+            .navigationTitle("Add Security Key")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") {
+                        showWebAuthnSetup = false
+                        errorMessage = nil
+                    }
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var webauthnRecoverySheet: some View {
+        NavigationStack {
+            RecoveryCodesView(
+                codes: webauthnRecoveryCodes ?? [],
+                onDone: {
+                    showWebAuthnRecovery = false
+                    webauthnRecoveryCodes = nil
+                }
+            )
+            .navigationTitle("Recovery Codes")
+            .navigationBarTitleDisplayMode(.inline)
+        }
+    }
+
+    // MARK: - WebAuthn Actions
+
+    private func beginWebAuthnSetup() {
+        webauthnName = "Passkey"
+        isWebAuthnSetupInProgress = false
+        webauthnRecoveryCodes = nil
+        errorMessage = nil
+        showWebAuthnSetup = true
+    }
+
+    private func registerWebAuthn() async {
+        isWebAuthnSetupInProgress = true
+        errorMessage = nil
+
+        do {
+            // 1. Begin — get creation options from server
+            struct RegisterBeginBody: Encodable {
+                let name: String
+            }
+            let beginResponse: WebAuthnRegisterBeginResponse = try await api.post(
+                Endpoints.usersMeMFAWebAuthnRegisterBegin,
+                body: RegisterBeginBody(name: webauthnName))
+
+            let options = beginResponse.publicKey
+
+            // 2. Extract parameters
+            guard let challengeData = Data(base64URLEncoded: options.challenge),
+                let userIDData = Data(base64URLEncoded: options.user.id)
+            else {
+                errorMessage = "Invalid registration options from server."
+                isWebAuthnSetupInProgress = false
+                return
+            }
+
+            // 3. Perform registration via ASAuthorization (Face ID / Touch ID)
+            let result = try await PasskeyManager.shared.register(
+                challenge: challengeData,
+                relyingPartyID: options.rp.id,
+                userName: options.user.name,
+                userID: userIDData)
+
+            // 4. Build finish body with exact W3C field names
+            let credentialID = result.credentialID.base64URLEncodedString()
+            let body = WebAuthnRegistrationFinishRequest(
+                id: credentialID,
+                rawId: credentialID,
+                type: "public-key",
+                response: WebAuthnAttestationResponseData(
+                    attestationObject: result.rawAttestationObject.base64URLEncodedString(),
+                    clientDataJSON: result.rawClientDataJSON.base64URLEncodedString()
+                )
+            )
+
+            let jsonData = try WebAuthnJSON.encoder.encode(body)
+            let response: WebAuthnRegisterResponse = try await api.postRawJSON(
+                Endpoints.usersMeMFAWebAuthnRegisterFinish, jsonData: jsonData)
+
+            // 5. Dismiss setup sheet and handle recovery codes
+            showWebAuthnSetup = false
+
+            if let codes = response.recoveryCodes {
+                webauthnRecoveryCodes = codes
+                showWebAuthnRecovery = true
+            }
+
+            await loadMethods()
+        } catch let passkeyError as PasskeyError {
+            if case .canceled = passkeyError {
+                // User dismissed the system dialog — no error to show
+            } else {
+                errorMessage = passkeyError.errorDescription ?? "Registration failed."
+            }
+        } catch let apiError as APIError {
+            errorMessage = apiError.message
+        } catch {
+            errorMessage = "Registration failed: \(error.localizedDescription)"
+        }
+
+        isWebAuthnSetupInProgress = false
+    }
+
+    private func togglePasswordless(_ method: MFAMethod, enabled: Bool) async {
+        do {
+            struct Body: Encodable {
+                let passwordlessEnabled: Bool
+            }
+            let _: PasswordlessToggleResponse = try await api.put(
+                Endpoints.usersMeMFAWebAuthnPasswordless(method.id),
+                body: Body(passwordlessEnabled: enabled))
+            // Refresh to get server-confirmed state
+            await loadMethods()
+        } catch {
+            errorMessage = "Failed to update: \(error.localizedDescription)"
+            // Reload to revert optimistic update
+            await loadMethods()
+        }
     }
 
     // MARK: - Helpers

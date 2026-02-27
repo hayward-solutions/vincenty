@@ -79,6 +79,8 @@ redis:
   internal: true
   # Enable TLS for Redis connections (required for ElastiCache with transit encryption)
   tls: false
+  # Enable Redis Cluster mode (required for ElastiCache with cluster mode enabled)
+  cluster: false
   external:
     host: ""
     port: "6379"

@@ -28,7 +28,8 @@
 ### Multi-Factor Authentication (MFA)
 - **TOTP (Authenticator Apps)** — scan QR code to link Google Authenticator, Authy, 1Password, etc.
 - **WebAuthn / FIDO2** — register hardware security keys (YubiKey, Titan) or platform authenticators (Touch ID, Windows Hello)
-- **Passkey Login** — passwordless authentication via WebAuthn discoverable credentials
+- **Passkey Login** — passwordless authentication via WebAuthn discoverable credentials. Supported on web (browser prompt) and iOS (Face ID / Touch ID via `ASAuthorizationController`)
+- **iOS Passkey & WebAuthn Support** — native Face ID / Touch ID integration for passkey login, WebAuthn MFA challenges, and credential registration on iOS
 - **Recovery Codes** — 8 one-time backup codes generated when MFA is first enabled (bcrypt-hashed)
 - Multiple methods can be active simultaneously (TOTP + WebAuthn)
 - Admin MFA reset — administrators can clear a user's MFA if they lose access
@@ -197,6 +198,7 @@
 ### Horizontal Scaling
 - Redis pub/sub bridges WebSocket messages across multiple API instances
 - No sticky sessions required — any client can connect to any API node
+- Redis Cluster mode supported (`REDIS_CLUSTER=true`) for Amazon ElastiCache cluster mode and other sharded Redis deployments
 
 ### Graceful Shutdown
 - Hub sends WebSocket close frames to all connected clients on shutdown
