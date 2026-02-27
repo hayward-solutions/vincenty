@@ -184,8 +184,10 @@ func (h *Hub) routeMessage(msg pubsub.Message) {
 		}
 
 		// Send to all clients who are members of this group,
-		// except the sender themselves.
-		recipientCount := h.broadcastToGroup(groupID, broadcast.UserID, data)
+		// except the sending device itself. Exclude by device ID (not user
+		// ID) so that the sender's other connected clients (e.g. their own
+		// web browser watching the CLI replay) still receive the update.
+		recipientCount := h.broadcastToGroupExcludeDevice(groupID, broadcast.DeviceID, data)
 		slog.Debug("routeMessage: location broadcast sent",
 			"group_id", groupID,
 			"recipients", recipientCount,
@@ -302,6 +304,31 @@ func (h *Hub) broadcastToGroup(groupID uuid.UUID, excludeUserID uuid.UUID, data 
 			continue
 		}
 		for client := range clients {
+			if isMember(client.groups, groupID) {
+				select {
+				case client.send <- data:
+					sent++
+				default:
+					// Buffer full, skip
+				}
+			}
+		}
+	}
+	return sent
+}
+
+// broadcastToGroupExcludeDevice sends data to all connected clients who are
+// members of the given group, excluding only the specific sending device.
+// This is used for location broadcasts so that the sender's other clients
+// (e.g. a web browser watching a CLI replay) still receive the update.
+// Returns the number of clients the message was sent to.
+func (h *Hub) broadcastToGroupExcludeDevice(groupID uuid.UUID, excludeDeviceID uuid.UUID, data []byte) int {
+	sent := 0
+	for _, clients := range h.clients {
+		for client := range clients {
+			if client.deviceID == excludeDeviceID {
+				continue
+			}
 			if isMember(client.groups, groupID) {
 				select {
 				case client.send <- data:
