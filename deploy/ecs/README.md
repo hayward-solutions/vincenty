@@ -2,6 +2,8 @@
 
 Deploy SitAware on AWS ECS Fargate with ALB, RDS (PostgreSQL + PostGIS), ElastiCache (Redis), and S3.
 
+> **Redis Cluster Mode**: If your ElastiCache cluster has cluster mode enabled, set `REDIS_CLUSTER=true` in the API task definition. The API will use a Redis Cluster client that discovers shard topology automatically via the configuration endpoint.
+
 ## Architecture
 
 ```
@@ -128,6 +130,8 @@ Before registering task definitions, replace placeholders in the JSON files:
 | `sitaware.example.com` (in `WEBAUTHN_RP_ID` and `WEBAUTHN_RP_ORIGINS`) | Your actual domain |
 
 > **Redis TLS**: The task definition sets `REDIS_TLS=true` because ElastiCache requires transit encryption. If your ElastiCache cluster has transit encryption disabled, set this to `false`.
+
+> **Redis Cluster**: The task definition defaults `REDIS_CLUSTER` to `false`. If your ElastiCache cluster has cluster mode enabled, change this to `true`. The single `REDIS_HOST` address serves as the cluster configuration endpoint.
 | `sitaware.example.com` | Your actual domain |
 | `subnet-PRIVATE_1`, `subnet-PRIVATE_2` | Your private subnet IDs |
 | `sg-API_SG`, `sg-WEB_SG` | Your security group IDs |

@@ -139,8 +139,23 @@ struct LoginView: View {
     }
 
     private func passkeyLogin() async {
-        // Passkey/WebAuthn login will be implemented in Phase 4 detail
-        // using ASAuthorizationPlatformPublicKeyCredentialProvider
-        error = "Passkey login not yet implemented."
+        isLoading = true
+        error = nil
+
+        do {
+            try await auth.passkeyLogin()
+        } catch let passkeyError as PasskeyError {
+            if case .canceled = passkeyError {
+                // User dismissed the system dialog — no error to show
+            } else {
+                error = passkeyError.errorDescription ?? "Passkey authentication failed."
+            }
+        } catch let apiError as APIError {
+            error = apiError.message
+        } catch {
+            self.error = "An unexpected error occurred."
+        }
+
+        isLoading = false
     }
 }

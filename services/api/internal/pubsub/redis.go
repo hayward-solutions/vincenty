@@ -9,12 +9,12 @@ import (
 
 // RedisPubSub implements PubSub using Redis Pub/Sub.
 type RedisPubSub struct {
-	client *redis.Client
+	client redis.UniversalClient
 	sub    *redis.PubSub
 }
 
 // NewRedisPubSub creates a new Redis-backed PubSub.
-func NewRedisPubSub(client *redis.Client) *RedisPubSub {
+func NewRedisPubSub(client redis.UniversalClient) *RedisPubSub {
 	return &RedisPubSub{client: client}
 }
 

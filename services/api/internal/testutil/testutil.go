@@ -51,7 +51,7 @@ type TestEnv struct {
 
 	// Direct access for test helpers
 	Pool   *pgxpool.Pool
-	Redis  *redis.Client
+	Redis  redis.UniversalClient
 	JWT    *auth.JWTService
 	Config *config.Config
 

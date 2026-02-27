@@ -4,8 +4,8 @@
 
 ```
 ┌──────────────┐     ┌─────────────┐     ┌─────────────┐
-│   Browser    │     │  ATAK/iTAK  │     │   Mobile    │
-│  (Next.js)   │     │  (CoT XML)  │     │  (Future)   │
+│   Browser    │     │  ATAK/iTAK  │     │   iOS App   │
+│  (Next.js)   │     │  (CoT XML)  │     │  (SwiftUI)  │
 └──────┬───────┘     └──────┬──────┘     └──────┬──────┘
        │                    │                    │
        │  HTTP/WS           │  HTTP              │  HTTP/WS
@@ -35,7 +35,7 @@
     └──────────┘          └──────────┘  └────────┘
 ```
 
-The system is composed of two application services (Go API, Next.js web client) backed by three infrastructure services (PostgreSQL with PostGIS, Redis, S3-compatible object storage). A reverse proxy (Caddy, ALB, or Ingress controller) sits in front for TLS termination and routing.
+The system is composed of three application services (Go API, Next.js web client, iOS client) backed by three infrastructure services (PostgreSQL with PostGIS, Redis, S3-compatible object storage). A reverse proxy (Caddy, ALB, or Ingress controller) sits in front for TLS termination and routing.
 
 ## API Service — Layered Architecture
 
@@ -141,6 +141,10 @@ Client A (writer)                      Client B (reader)
 ### Why Redis Pub/Sub?
 
 Multiple API instances can run behind a load balancer. When Client A sends a location update to Node 1, Redis broadcasts it to all subscribed nodes. Node 2's Hub delivers it to Client B. This enables horizontal scaling without sticky sessions for WebSocket.
+
+### Redis Cluster Mode
+
+The API supports both standalone Redis and Redis Cluster mode. Set `REDIS_CLUSTER=true` when using Amazon ElastiCache with cluster mode enabled (or any Redis Cluster deployment). In cluster mode, the client discovers shard topology automatically via the `CLUSTER SLOTS` command using a single configuration endpoint. The pub/sub and MFA session layers use `redis.UniversalClient` and `redis.Cmdable` interfaces respectively, which work transparently across both modes.
 
 ### Pub/Sub Channels
 
@@ -333,6 +337,55 @@ The `WebSocketContext` provider connects on login and disconnects on logout. It 
 - Real-time location updates (rendered as markers on the map)
 - Incoming message notifications
 - Location sharing (browser Geolocation API → WebSocket → API → group members)
+
+## iOS Client Architecture
+
+The iOS client (`clients/ios/`) is a native SwiftUI app targeting iOS 17+, built with Swift 6 and strict concurrency. It uses the MVVM pattern with the Observation framework (`@Observable` macro).
+
+### Service Layer
+
+```
+SwiftUI View → @Observable ViewModel / @Environment Service
+                     │
+                     ▼
+               APIClient.shared
+                     │
+                     ├── Attaches JWT from Keychain (via TokenManager)
+                     ├── Intercepts 401 → auto-refresh → retry
+                     │
+                     ▼
+               Go API Service
+```
+
+Key services injected via SwiftUI `.environment()`:
+
+| Service | Responsibility |
+|---|---|
+| `APIClient` | Singleton HTTP client. All network calls route through it. Token refresh is actor-isolated with single-flight deduplication |
+| `AuthManager` | Auth state (login, logout, passkey login, MFA verification). Publishes `currentUser` and `isAuthenticated` |
+| `WebSocketService` | Persistent real-time connection for location updates and messages |
+| `LocationSharingManager` | Wraps `CLLocationManager` for background location updates |
+| `SyncManager` | Offline mutation queue (SwiftData). Drains FIFO on reconnect with server-wins conflict resolution |
+| `DeviceManager` | Device registration and primary device resolution |
+| `PasskeyManager` | Singleton wrapping `ASAuthorizationController` for WebAuthn ceremonies (passkey login, MFA, credential registration) |
+
+### Authentication and Passkeys
+
+The iOS client supports three authentication flows:
+
+1. **Password login** — Standard username/password with optional MFA challenge (TOTP, WebAuthn, or recovery code)
+2. **Passkey login** — Passwordless via `ASAuthorizationPlatformPublicKeyCredentialProvider`. The app calls `POST /api/v1/auth/passkey/begin` to get a challenge, presents the system Face ID / Touch ID prompt, then sends the assertion to `POST /api/v1/auth/passkey/finish`
+3. **WebAuthn MFA** — During an MFA challenge, the app calls the WebAuthn begin/finish endpoints with the MFA token. Uses the same `PasskeyManager` singleton
+
+All WebAuthn binary fields use Base64URL encoding (RFC 4648 §5). A dedicated `WebAuthnJSON.encoder` (no key strategy) avoids the snake_case mangling that `APIClient`’s default encoder applies.
+
+### Offline Support
+
+SwiftData models in `Core/Storage/PersistentModels.swift` cache API data locally. When the device is offline, `SyncManager` queues mutations and drains them FIFO on reconnect. Conflict resolution uses server-wins semantics.
+
+### Map
+
+MapLibre Native iOS SDK wrapped in a `UIViewRepresentable`. Imperative controller classes (`LocationMarkersController`, `DrawToolController`, `MeasureToolController`) manage MapLibre sources and layers directly, keeping the SwiftUI layer declarative.
 
 ## Middleware Stack
 

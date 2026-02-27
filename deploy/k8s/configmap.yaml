@@ -19,6 +19,7 @@ data:
   REDIS_HOST: redis
   REDIS_PORT: "6379"
   REDIS_TLS: "false"
+  REDIS_CLUSTER: "false"
 
   # S3
   S3_BUCKET: sitaware

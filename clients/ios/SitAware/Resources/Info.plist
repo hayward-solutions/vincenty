@@ -28,6 +28,8 @@
 	<string>SitAware uses your location in the background to keep your team updated on your position even when the app is not in the foreground.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>SitAware uses your location to share your position with your team in real time.</string>
+	<key>NSFaceIDUsageDescription</key>
+	<string>SitAware uses Face ID to verify your identity when signing in with a passkey.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>SitAware needs photo library access to attach images to messages.</string>
 	<key>UIBackgroundModes</key>
