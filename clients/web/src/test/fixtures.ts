@@ -22,6 +22,8 @@ import type {
   ServerSettings,
   LocationHistoryEntry,
   LatestLocationEntry,
+  ApiToken,
+  CreateApiTokenResponse,
 } from "@/types/api";
 
 // ---------------------------------------------------------------------------
@@ -306,4 +308,19 @@ export const mockLatestLocation: LatestLocationEntry = {
   lat: -33.8688,
   lng: 151.2093,
   recorded_at: "2025-01-01T12:00:00Z",
+};
+
+// ---------------------------------------------------------------------------
+// API Tokens
+// ---------------------------------------------------------------------------
+
+export const mockApiToken: ApiToken = {
+  id: "token-1",
+  name: "CI Pipeline",
+  created_at: "2025-06-01T00:00:00Z",
+};
+
+export const mockCreateApiTokenResponse: CreateApiTokenResponse = {
+  ...mockApiToken,
+  token: "sat_0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
 };
