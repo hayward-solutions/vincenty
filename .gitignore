@@ -32,5 +32,19 @@ TODO.md
 # Logs
 *.log
 
+# iOS / Xcode
+xcuserdata/
+*.xcuserstate
+DerivedData/
+build/
+*.ipa
+*.dSYM.zip
+*.dSYM
+.build/
+clients/ios/SitAware.xcodeproj/
+
+# Claude Code / OpenCode
+.opencode/
+
 # OS
 Thumbs.db

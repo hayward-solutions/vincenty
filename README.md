@@ -8,7 +8,7 @@ TAK Server is powerful but heavy — complex to deploy, tightly coupled to speci
 
 - **Lightweight** — Go API with minimal dependencies, distroless container images
 - **Air-gap ready** — No CDN calls, no external fonts, local tile serving. Works on an isolated network with `docker compose up`
-- **Modern web client** — Browser-based UI with real-time maps, chat, and admin tools. No desktop client required
+- **Modern clients** — Browser-based web UI and native iOS app with real-time maps, chat, and admin tools
 - **Cloud native** — Runs on Docker Compose, Kubernetes, or AWS ECS Fargate
 - **Simple operations** — All configuration via environment variables, automatic database migrations, admin bootstrap on first start
 
@@ -34,6 +34,8 @@ This starts the full stack:
 
 Default admin credentials: `admin` / `changeme`
 
+For the iOS client, see [Contributing — iOS Client Setup](CONTRIBUTING.md#ios-client-setup).
+
 ## Tech Stack
 
 | Component | Technology |
@@ -45,8 +47,9 @@ Default admin credentials: `admin` / `changeme`
 | Real-time | WebSocket ([nhooyr.io/websocket](https://github.com/nhooyr/websocket)) |
 | Auth | JWT access tokens + rotating opaque refresh tokens |
 | Web Client | Next.js (App Router, standalone output) |
-| UI | shadcn/ui, Tailwind CSS v4, Radix UI |
-| Maps | MapLibre GL JS |
+| iOS Client | SwiftUI (iOS 17+, Swift 6.0, MVVM + Observation) |
+| UI (Web) | shadcn/ui, Tailwind CSS v4, Radix UI |
+| Maps | MapLibre GL JS (web), MapLibre Native SDK (iOS) |
 | Containers | Multi-stage Docker (distroless for API, node-slim for web) |
 
 ## Repository Structure
@@ -75,6 +78,14 @@ sitaware/
 │   │   ├── lib/           # API client, auth context, hooks
 │   │   └── types/         # TypeScript definitions
 │   └── Dockerfile
+├── clients/ios/           # iOS client (SwiftUI, XcodeGen)
+│   ├── SitAware/
+│   │   ├── App/           # Entry point, root views
+│   │   ├── Models/        # Codable API models
+│   │   ├── Core/          # Services (API, auth, WebSocket, sync)
+│   │   ├── Features/      # Feature modules (map, messages, settings, etc.)
+│   │   └── Components/    # Shared UI components
+│   └── project.yml        # XcodeGen spec (generates .xcodeproj)
 ├── deploy/
 │   ├── caddy/             # Reverse proxy config (production)
 │   ├── k8s/               # Kubernetes manifests
