@@ -15,6 +15,7 @@ import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { ApiError } from "@/lib/api";
 import { MFAMethodList } from "@/components/mfa/mfa-method-list";
+import { ApiTokenList } from "@/components/settings/api-token-list";
 
 export default function SecuritySettingsPage() {
   const { changePassword, isLoading } = useChangePassword();
@@ -128,19 +129,7 @@ export default function SecuritySettingsPage() {
 
       <MFAMethodList />
 
-      <Card>
-        <CardHeader>
-          <CardTitle>API Tokens</CardTitle>
-          <CardDescription>
-            Manage tokens for API access.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <p className="text-sm text-muted-foreground">
-            API token management coming soon.
-          </p>
-        </CardContent>
-      </Card>
+      <ApiTokenList />
     </div>
   );
 }

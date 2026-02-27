@@ -3,13 +3,13 @@
 ## System Overview
 
 ```
-┌──────────────┐     ┌─────────────┐     ┌─────────────┐
-│   Browser    │     │  ATAK/iTAK  │     │   iOS App   │
-│  (Next.js)   │     │  (CoT XML)  │     │  (SwiftUI)  │
-└──────┬───────┘     └──────┬──────┘     └──────┬──────┘
-       │                    │                    │
-       │  HTTP/WS           │  HTTP              │  HTTP/WS
-       │                    │                    │
+┌──────────────┐  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐
+│   Browser    │  │  ATAK/iTAK  │  │   iOS App   │  │     CLI     │
+│  (Next.js)   │  │  (CoT XML)  │  │  (SwiftUI)  │  │  (Go, GPX)  │
+└──────┬───────┘  └──────┬──────┘  └──────┬──────┘  └──────┬──────┘
+       │                 │                 │                 │
+       │  HTTP/WS        │  HTTP           │  HTTP/WS        │  HTTP/WS
+       │                 │                 │                 │
 ┌──────▼────────────────────▼────────────────────▼──────┐
 │              Load Balancer / Reverse Proxy             │
 │       (Caddy, ALB, Ingress — handles TLS)             │
@@ -219,6 +219,7 @@ server_settings    (key-value server configuration, e.g. mfa_required)
 | `attachments` | File attachments stored in S3 | — |
 | `location_history` | Every location update for replay/export | `location` GEOMETRY(POINT, 4326) |
 | `refresh_tokens` | SHA-256 hashed rotating refresh tokens | — |
+| `api_tokens` | Long-lived API tokens for CLI/programmatic access | — |
 | `audit_logs` | Automatic API action audit trail | `location` GEOMETRY(POINT, 4326) |
 | `cot_events` | Cursor on Target XML events from ATAK/iTAK | `location` GEOMETRY(POINT, 4326) |
 | `user_totp_methods` | Encrypted TOTP secrets (AES-256-GCM or KMS) | — |
@@ -256,6 +257,7 @@ Migrations are embedded in the Go binary via `//go:embed` and run automatically 
 | 000015 | Add is_builtin and is_enabled flags to map_configs and terrain_configs |
 | 000016 | Create drawings table for GeoJSON map annotations |
 | 000017 | Add is_primary flag to devices with unique partial index (one primary per user), backfill oldest device |
+| 000018 | Create api_tokens table with user FK, SHA-256 token hash unique index, optional expiry |
 
 ## Pub/Sub Interface
 

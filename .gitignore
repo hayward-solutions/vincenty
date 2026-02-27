@@ -3,6 +3,7 @@
 
 # Go
 services/api/bin/
+clients/cli/bin/
 services/api/tmp/
 *.exe
 *.exe~

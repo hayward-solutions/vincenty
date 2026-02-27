@@ -73,7 +73,7 @@ func (r *CreateDeviceRequest) Validate() error {
 	if r.DeviceType == "" {
 		r.DeviceType = "web"
 	}
-	validTypes := map[string]bool{"web": true, "ios": true, "android": true}
+	validTypes := map[string]bool{"web": true, "ios": true, "android": true, "cli": true}
 	if !validTypes[r.DeviceType] {
 		return ErrValidation("device_type must be web, ios, or android")
 	}

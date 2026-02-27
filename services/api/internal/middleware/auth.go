@@ -8,20 +8,38 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/sitaware/api/internal/auth"
+	"github.com/sitaware/api/internal/model"
 )
 
 type contextKey string
 
 const claimsKey contextKey = "claims"
 
+// TokenValidator validates a raw API token string and returns claims.
+// Implemented by service.APITokenService.
+type TokenValidator interface {
+	ValidateToken(ctx context.Context, raw string) (*auth.Claims, error)
+}
+
 // Auth provides authentication and authorization middleware.
 type Auth struct {
-	jwt *auth.JWTService
+	jwt      *auth.JWTService
+	tokenVal TokenValidator // optional; nil if API tokens are not configured
 }
 
 // NewAuth creates a new Auth middleware.
-func NewAuth(jwt *auth.JWTService) *Auth {
-	return &Auth{jwt: jwt}
+func NewAuth(jwt *auth.JWTService, tokenVal TokenValidator) *Auth {
+	return &Auth{jwt: jwt, tokenVal: tokenVal}
+}
+
+// resolveToken validates a bearer token string. If the token carries the API
+// token prefix it is validated against the database; otherwise it is treated
+// as a JWT.
+func (a *Auth) resolveToken(ctx context.Context, tokenStr string) (*auth.Claims, error) {
+	if a.tokenVal != nil && strings.HasPrefix(tokenStr, model.APITokenPrefix) {
+		return a.tokenVal.ValidateToken(ctx, tokenStr)
+	}
+	return a.jwt.ValidateAccessToken(tokenStr)
 }
 
 // Authenticate verifies the JWT access token in the Authorization header
@@ -40,7 +58,7 @@ func (a *Auth) Authenticate(next http.Handler) http.Handler {
 			return
 		}
 
-		claims, err := a.jwt.ValidateAccessToken(parts[1])
+		claims, err := a.resolveToken(r.Context(), parts[1])
 		if err != nil {
 			writeError(w, http.StatusUnauthorized, "unauthorized", "invalid or expired token")
 			return
@@ -77,7 +95,7 @@ func (a *Auth) AuthenticateWithQueryToken(next http.Handler) http.Handler {
 			return
 		}
 
-		claims, err := a.jwt.ValidateAccessToken(tokenStr)
+		claims, err := a.resolveToken(r.Context(), tokenStr)
 		if err != nil {
 			writeError(w, http.StatusUnauthorized, "unauthorized", "invalid or expired token")
 			return
@@ -105,6 +123,13 @@ func (a *Auth) RequireAdmin(next http.Handler) http.Handler {
 func ClaimsFromContext(ctx context.Context) (*auth.Claims, bool) {
 	claims, ok := ctx.Value(claimsKey).(*auth.Claims)
 	return claims, ok
+}
+
+// ContextWithClaims returns a new context with the given claims attached.
+// This is exported for use in handler tests that need to inject claims
+// without going through the full auth middleware.
+func ContextWithClaims(ctx context.Context, claims *auth.Claims) context.Context {
+	return context.WithValue(ctx, claimsKey, claims)
 }
 
 // MFASetupChecker provides MFA enforcement state. Implemented by ServerSettingsRepository.

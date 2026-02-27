@@ -71,10 +71,10 @@ type TestEnv struct {
 	ServerSettingsRepo *repository.ServerSettingsRepository
 
 	// Services
-	AuthService    *service.AuthService
-	UserService    *service.UserService
-	MFAService     *service.MFAService
-	LocationSvc    *service.LocationService
+	AuthService *service.AuthService
+	UserService *service.UserService
+	MFAService  *service.MFAService
+	LocationSvc *service.LocationService
 
 	// Cleanup
 	cleanup []func()
@@ -330,18 +330,21 @@ func Setup(t *testing.T) *TestEnv {
 	cotHandler := handler.NewCotHandler(cotService)
 	mfaHandler := handler.NewMFAHandler(mfaService, authService)
 	serverSettingsHandler := handler.NewServerSettingsHandler(env.ServerSettingsRepo)
+	apiTokenRepo := repository.NewAPITokenRepository(pool)
+	apiTokenService := service.NewAPITokenService(apiTokenRepo)
+	apiTokenHandler := handler.NewAPITokenHandler(apiTokenService)
 
 	// WebSocket hub
 	hub := ws.NewHub(ps, locationService, env.GroupRepo, env.UserRepo)
 	hubCtx, hubCancel := context.WithCancel(ctx)
 	env.cleanup = append(env.cleanup, hubCancel)
 	go hub.Run(hubCtx)
-	wsHandler := ws.NewHandler(hub, jwtService, env.DeviceRepo, env.GroupRepo)
+	wsHandler := ws.NewHandler(hub, jwtService, apiTokenService, env.DeviceRepo, env.GroupRepo)
 
 	// ---------------------------------------------------------------
 	// Middleware
 	// ---------------------------------------------------------------
-	authMW := middleware.NewAuth(jwtService)
+	authMW := middleware.NewAuth(jwtService, apiTokenService)
 
 	// ---------------------------------------------------------------
 	// Router (mirrors cmd/server/main.go exactly)
@@ -418,6 +421,11 @@ func Setup(t *testing.T) *TestEnv {
 	mux.Handle("PUT /api/v1/users/me/devices/{id}/primary", authMW.Authenticate(http.HandlerFunc(deviceHandler.SetPrimary)))
 	mux.Handle("PUT /api/v1/devices/{id}", authMW.Authenticate(http.HandlerFunc(deviceHandler.Update)))
 	mux.Handle("DELETE /api/v1/devices/{id}", authMW.Authenticate(http.HandlerFunc(deviceHandler.Delete)))
+
+	// API tokens - self (authenticated)
+	mux.Handle("POST /api/v1/users/me/api-tokens", authMW.Authenticate(http.HandlerFunc(apiTokenHandler.Create)))
+	mux.Handle("GET /api/v1/users/me/api-tokens", authMW.Authenticate(http.HandlerFunc(apiTokenHandler.List)))
+	mux.Handle("DELETE /api/v1/users/me/api-tokens/{id}", authMW.Authenticate(http.HandlerFunc(apiTokenHandler.Delete)))
 
 	// Users - admin
 	mux.Handle("DELETE /api/v1/users/{id}/mfa", authMW.RequireAdmin(http.HandlerFunc(mfaHandler.AdminResetMFA)))

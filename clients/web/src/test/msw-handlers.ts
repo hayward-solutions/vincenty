@@ -24,6 +24,8 @@ import {
   mockServerSettings,
   mockLocationHistory,
   mockLatestLocation,
+  mockApiToken,
+  mockCreateApiTokenResponse,
 } from "./fixtures";
 
 // All handlers use relative URLs (no base URL) since the API client
@@ -396,5 +398,20 @@ export const handlers = [
 
   http.get("/api/v1/locations", () => {
     return HttpResponse.json([mockLatestLocation]);
+  }),
+
+  // -----------------------------------------------------------------------
+  // API Tokens
+  // -----------------------------------------------------------------------
+  http.get("/api/v1/users/me/api-tokens", () => {
+    return HttpResponse.json([mockApiToken]);
+  }),
+
+  http.post("/api/v1/users/me/api-tokens", () => {
+    return HttpResponse.json(mockCreateApiTokenResponse);
+  }),
+
+  http.delete("/api/v1/users/me/api-tokens/:id", () => {
+    return new HttpResponse(null, { status: 204 });
   }),
 ];

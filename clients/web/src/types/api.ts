@@ -537,3 +537,24 @@ export interface AuditFilters {
   page?: number;
   page_size?: number;
 }
+
+// ---------------------------------------------------------------------------
+// API Tokens
+// ---------------------------------------------------------------------------
+
+export interface ApiToken {
+  id: string;
+  name: string;
+  expires_at?: string;
+  last_used_at?: string;
+  created_at: string;
+}
+
+export interface CreateApiTokenRequest {
+  name: string;
+  expires_at?: string;
+}
+
+export interface CreateApiTokenResponse extends ApiToken {
+  token: string;
+}

@@ -110,6 +110,7 @@ func main() {
 	cotRepo := repository.NewCotRepository(db)
 	mfaRepo := repository.NewMFARepository(db)
 	serverSettingsRepo := repository.NewServerSettingsRepository(db)
+	apiTokenRepo := repository.NewAPITokenRepository(db)
 
 	// -----------------------------------------------------------------------
 	// Pub/Sub
@@ -168,6 +169,7 @@ func main() {
 	drawingService := service.NewDrawingService(drawingRepo, messageRepo, groupRepo, ps)
 	auditService := service.NewAuditService(auditRepo, groupRepo)
 	cotService := service.NewCotService(cotRepo, deviceRepo, userRepo, groupRepo, locationService)
+	apiTokenService := service.NewAPITokenService(apiTokenRepo)
 
 	// -----------------------------------------------------------------------
 	// Bootstrap admin user
@@ -205,6 +207,7 @@ func main() {
 	cotHandler := handler.NewCotHandler(cotService)
 	mfaHandler := handler.NewMFAHandler(mfaService, authService)
 	serverSettingsHandler := handler.NewServerSettingsHandler(serverSettingsRepo)
+	apiTokenHandler := handler.NewAPITokenHandler(apiTokenService)
 
 	// -----------------------------------------------------------------------
 	// WebSocket Hub
@@ -214,7 +217,7 @@ func main() {
 	defer hubCancel()
 	go hub.Run(hubCtx)
 
-	wsHandler := ws.NewHandler(hub, jwtService, deviceRepo, groupRepo)
+	wsHandler := ws.NewHandler(hub, jwtService, apiTokenService, deviceRepo, groupRepo)
 
 	// -----------------------------------------------------------------------
 	// Token cleanup (purge expired refresh tokens on a schedule)
@@ -229,7 +232,13 @@ func main() {
 				if err != nil {
 					slog.Error("token cleanup failed", "error", err)
 				} else if count > 0 {
-					slog.Info("expired tokens cleaned up", "count", count)
+					slog.Info("expired refresh tokens cleaned up", "count", count)
+				}
+				apiCount, apiErr := apiTokenRepo.DeleteExpired(context.Background())
+				if apiErr != nil {
+					slog.Error("api token cleanup failed", "error", apiErr)
+				} else if apiCount > 0 {
+					slog.Info("expired api tokens cleaned up", "count", apiCount)
 				}
 			case <-hubCtx.Done():
 				return
@@ -240,7 +249,7 @@ func main() {
 	// -----------------------------------------------------------------------
 	// Middleware
 	// -----------------------------------------------------------------------
-	authMW := middleware.NewAuth(jwtService)
+	authMW := middleware.NewAuth(jwtService, apiTokenService)
 
 	// -----------------------------------------------------------------------
 	// HTTP Router
@@ -317,6 +326,11 @@ func main() {
 	mux.Handle("PUT /api/v1/users/me/devices/{id}/primary", authMW.Authenticate(http.HandlerFunc(deviceHandler.SetPrimary)))
 	mux.Handle("PUT /api/v1/devices/{id}", authMW.Authenticate(http.HandlerFunc(deviceHandler.Update)))
 	mux.Handle("DELETE /api/v1/devices/{id}", authMW.Authenticate(http.HandlerFunc(deviceHandler.Delete)))
+
+	// API tokens - self (authenticated)
+	mux.Handle("POST /api/v1/users/me/api-tokens", authMW.Authenticate(http.HandlerFunc(apiTokenHandler.Create)))
+	mux.Handle("GET /api/v1/users/me/api-tokens", authMW.Authenticate(http.HandlerFunc(apiTokenHandler.List)))
+	mux.Handle("DELETE /api/v1/users/me/api-tokens/{id}", authMW.Authenticate(http.HandlerFunc(apiTokenHandler.Delete)))
 
 	// Users - admin (includes MFA reset)
 	mux.Handle("DELETE /api/v1/users/{id}/mfa", authMW.RequireAdmin(http.HandlerFunc(mfaHandler.AdminResetMFA)))

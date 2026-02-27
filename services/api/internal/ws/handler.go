@@ -4,43 +4,61 @@ import (
 	"context"
 	"log/slog"
 	"net/http"
+	"strings"
 
 	"github.com/google/uuid"
 	"github.com/sitaware/api/internal/auth"
+	"github.com/sitaware/api/internal/model"
 	"github.com/sitaware/api/internal/repository"
 	"nhooyr.io/websocket"
 )
+
+// TokenValidator validates a raw API token string and returns auth claims.
+type TokenValidator interface {
+	ValidateToken(ctx context.Context, raw string) (*auth.Claims, error)
+}
 
 // Handler handles WebSocket upgrade requests.
 type Handler struct {
 	hub        *Hub
 	jwt        *auth.JWTService
+	tokenVal   TokenValidator // optional; nil if API tokens are not configured
 	deviceRepo repository.DeviceRepo
 	groupRepo  repository.GroupRepo
 }
 
 // NewHandler creates a new WebSocket Handler.
-func NewHandler(hub *Hub, jwt *auth.JWTService, deviceRepo repository.DeviceRepo, groupRepo repository.GroupRepo) *Handler {
+func NewHandler(hub *Hub, jwt *auth.JWTService, tokenVal TokenValidator, deviceRepo repository.DeviceRepo, groupRepo repository.GroupRepo) *Handler {
 	return &Handler{
 		hub:        hub,
 		jwt:        jwt,
+		tokenVal:   tokenVal,
 		deviceRepo: deviceRepo,
 		groupRepo:  groupRepo,
 	}
 }
 
-// ServeHTTP handles GET /api/v1/ws?token=<jwt>&device_id=<uuid>
+// resolveToken validates a token string. API tokens (sat_ prefix) are checked
+// against the database; everything else is treated as a JWT.
+func (h *Handler) resolveToken(ctx context.Context, tokenStr string) (*auth.Claims, error) {
+	if h.tokenVal != nil && strings.HasPrefix(tokenStr, model.APITokenPrefix) {
+		return h.tokenVal.ValidateToken(ctx, tokenStr)
+	}
+	return h.jwt.ValidateAccessToken(tokenStr)
+}
+
+// ServeHTTP handles GET /api/v1/ws?token=<jwt|sat_token>&device_id=<uuid>
 func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	// --- Validate JWT from query parameter ---
+	// --- Validate token from query parameter ---
 	tokenStr := r.URL.Query().Get("token")
 	if tokenStr == "" {
 		http.Error(w, "missing token parameter", http.StatusUnauthorized)
 		return
 	}
 
-	claims, err := h.jwt.ValidateAccessToken(tokenStr)
+	claims, err := h.resolveToken(ctx, tokenStr)
 	if err != nil {
 		http.Error(w, "invalid or expired token", http.StatusUnauthorized)
 		return

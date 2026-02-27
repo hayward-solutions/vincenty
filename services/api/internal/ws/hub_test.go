@@ -501,11 +501,11 @@ func TestHub_SendSnapshot(t *testing.T) {
 			if gid == groupID {
 				return []repository.LocationRecord{
 					{
-						UserID:      userID,
-						DeviceID:    deviceID, // Same as client — should be excluded
-						Lat:         1.0,
-						Lng:         2.0,
-						RecordedAt:  now,
+						UserID:     userID,
+						DeviceID:   deviceID, // Same as client — should be excluded
+						Lat:        1.0,
+						Lng:        2.0,
+						RecordedAt: now,
 					},
 					{
 						UserID:      otherUserID,
