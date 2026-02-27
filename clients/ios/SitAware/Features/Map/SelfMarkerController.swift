@@ -15,20 +15,40 @@ final class SelfMarkerController {
     private var annotation: MLNPointAnnotation?
     private var hasCentered = false
 
+    /// Pending position stored when update() is called before the map is ready.
+    private var pendingPosition: (lat: Double, lng: Double, heading: Double?)?
+    private var pendingAutoCenter = false
+
     /// Whether auto-centering has been performed on first fix.
     var didAutoCenter: Bool { hasCentered }
 
     // MARK: - Setup
 
     func attach(to mapView: MLNMapView) {
+        // If this is a different MLNMapView instance (e.g. map was recreated after
+        // the loading spinner), the existing annotation belongs to the old map.
+        // Clear it so update() creates a fresh one on the new map.
+        if let existing = self.mapView, existing !== mapView {
+            annotation = nil
+        }
         self.mapView = mapView
+        // Apply any position that arrived before the map was ready
+        if let pos = pendingPosition {
+            pendingPosition = nil
+            update(position: pos, autoCenter: pendingAutoCenter)
+        }
     }
 
     // MARK: - Update
 
     /// Update the self marker position. Pass `nil` to remove.
     func update(position: (lat: Double, lng: Double, heading: Double?)?, autoCenter: Bool) {
-        guard let mapView else { return }
+        guard let mapView else {
+            // Map not yet ready — store for application once attach(to:) is called
+            pendingPosition = position
+            pendingAutoCenter = autoCenter
+            return
+        }
 
         guard let position else {
             // Remove marker if position is nil (e.g. "Show self" toggled off)

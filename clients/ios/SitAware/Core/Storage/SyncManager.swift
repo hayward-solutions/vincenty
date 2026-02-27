@@ -74,6 +74,7 @@ final class SyncManager {
         context.insert(action)
         try? context.save()
         pendingCount += 1
+        AppLogger.shared.log(.info, .sync, "Queued offline action: \(type.rawValue) (\(pendingCount) pending)")
     }
 
     // MARK: - Sync (FIFO drain)
@@ -99,18 +100,26 @@ final class SyncManager {
             return
         }
 
+        AppLogger.shared.log(.info, .sync, "Sync started: \(actions.count) pending actions")
+
         for action in actions {
             let success = await executeAction(action)
 
             if success {
                 action.isSynced = true
                 try? context.save()
+                AppLogger.shared.log(.info, .sync, "Synced: \(action.actionType)")
             } else {
                 action.retryCount += 1
                 if action.retryCount >= maxRetries {
                     // Drop after max retries
                     action.isSynced = true
                     lastSyncError = "Action \(action.actionType) dropped after \(maxRetries) retries"
+                    AppLogger.shared.log(.error, .sync,
+                        "Dropped: \(action.actionType) after \(maxRetries) retries")
+                } else {
+                    AppLogger.shared.log(.warning, .sync,
+                        "Failed: \(action.actionType) (retry \(action.retryCount)/\(maxRetries))")
                 }
                 try? context.save()
 
@@ -133,6 +142,7 @@ final class SyncManager {
 
         await refreshPendingCount()
         isSyncing = false
+        AppLogger.shared.log(.info, .sync, "Sync complete (\(pendingCount) remaining)")
     }
 
     // MARK: - Cache Sync
@@ -210,7 +220,7 @@ final class SyncManager {
         let descriptor = FetchDescriptor<CachedUser>(
             sortBy: [SortDescriptor(\.username)]
         )
-        return (try? context.fetch(descriptor).map(\.toUser)) ?? []
+        return (try? context.fetch(descriptor).map { $0.toUser() }) ?? []
     }
 
     /// Load cached groups for offline display.
@@ -220,51 +230,62 @@ final class SyncManager {
         let descriptor = FetchDescriptor<CachedGroup>(
             sortBy: [SortDescriptor(\.name)]
         )
-        return (try? context.fetch(descriptor).map(\.toGroup)) ?? []
+        return (try? context.fetch(descriptor).map { $0.toGroup() }) ?? []
     }
 
     // MARK: - Private
 
     /// Execute a single offline action against the API.
+    ///
+    /// Payloads are stored as pre-serialized JSON `Data`. We decode them back to
+    /// the correct request type before passing to `APIClient` so the encoder
+    /// produces the right JSON body (avoids double-encoding as base64).
     private func executeAction(_ action: OfflineAction) async -> Bool {
         guard let type = OfflineActionType(rawValue: action.actionType) else { return true }
+
+        let decoder = JSONDecoder()
+        decoder.keyDecodingStrategy = .convertFromSnakeCase
 
         do {
             switch type {
             case .sendMessage:
-                // Decode the message payload and send via multipart
-                // The payload contains the multipart form fields
-                let _: MessageResponse = try await api.post(
-                    Endpoints.messages, body: action.payloadData)
+                // Message sending requires multipart — skip offline replay for now.
+                // TODO: Store multipart fields separately for proper offline message send.
                 return true
 
             case .createDrawing:
+                let request = try decoder.decode(CreateDrawingRequest.self, from: action.payloadData)
                 let _: DrawingResponse = try await api.post(
-                    Endpoints.drawings, body: action.payloadData)
+                    Endpoints.drawings, body: request)
                 return true
 
             case .updateDrawing:
                 // Payload includes the drawing ID in the serialized data
-                // For simplicity, we store the endpoint path in the payload
                 return true
 
             case .deleteDrawing, .shareDrawing:
                 return true
 
             case .updateProfile:
+                let request = try decoder.decode(UpdateMeRequest.self, from: action.payloadData)
                 let _: User = try await api.put(
-                    Endpoints.usersMe, body: action.payloadData)
+                    Endpoints.usersMe, body: request)
                 return true
 
             case .updateMarker:
+                let request = try decoder.decode(UpdateMeRequest.self, from: action.payloadData)
                 let _: User = try await api.put(
-                    Endpoints.usersMe, body: action.payloadData)
+                    Endpoints.usersMe, body: request)
                 return true
             }
         } catch let error as APIError where error.isConflict {
             // Server-wins conflict resolution: discard local change
+            AppLogger.shared.log(.info, .sync,
+                "Conflict: server-wins for \(action.actionType), discarding local change")
             return true
         } catch {
+            AppLogger.shared.log(.warning, .sync,
+                "Action failed: \(action.actionType)", detail: error.localizedDescription)
             return false
         }
     }

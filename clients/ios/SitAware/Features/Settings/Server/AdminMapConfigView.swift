@@ -191,10 +191,10 @@ struct AdminMapConfigView: View {
                     Button("Edit") {
                         editingTileConfig = config
                         tileName = config.name
-                        tileSourceType = config.sourceType ?? "remote"
+                        tileSourceType = config.sourceType
                         tileUrl = config.tileUrl
-                        tileMinZoom = config.minZoom ?? 0
-                        tileMaxZoom = config.maxZoom ?? 22
+                        tileMinZoom = config.minZoom
+                        tileMaxZoom = config.maxZoom
                         tileIsDefault = config.isDefault
                         showTileSheet = true
                     }
@@ -254,7 +254,7 @@ struct AdminMapConfigView: View {
                     Button("Edit") {
                         editingTerrainConfig = config
                         terrainName = config.name
-                        terrainSourceType = config.sourceType ?? "remote"
+                        terrainSourceType = config.sourceType
                         terrainUrl = config.terrainUrl
                         terrainEncoding = config.terrainEncoding
                         terrainIsDefault = config.isDefault
@@ -292,7 +292,7 @@ struct AdminMapConfigView: View {
                         Text("Style JSON").tag("style")
                     }
                     TextField("Tile URL", text: $tileUrl)
-                        .autocapitalization(.none)
+                        .textInputAutocapitalization(.never)
                     Stepper("Min Zoom: \(tileMinZoom)", value: $tileMinZoom, in: 0...24)
                     Stepper("Max Zoom: \(tileMaxZoom)", value: $tileMaxZoom, in: 0...24)
                     Toggle("Set as Default", isOn: $tileIsDefault)
@@ -327,7 +327,7 @@ struct AdminMapConfigView: View {
                         Text("Local (MinIO)").tag("local")
                     }
                     TextField("Terrain URL (DEM tile URL)", text: $terrainUrl)
-                        .autocapitalization(.none)
+                        .textInputAutocapitalization(.never)
                     Picker("Encoding", selection: $terrainEncoding) {
                         Text("Terrarium").tag("terrarium")
                         Text("Mapbox").tag("mapbox")
@@ -374,8 +374,7 @@ struct AdminMapConfigView: View {
     private func loadTileConfigs() async {
         isLoadingTiles = true
         do {
-            let response: ListResponse<MapConfigResponse> = try await api.get(Endpoints.mapConfigs)
-            tileConfigs = response.data
+            tileConfigs = try await api.get(Endpoints.mapConfigs)
         } catch {
             errorMessage = "Failed to load tile configs"
         }
@@ -385,8 +384,7 @@ struct AdminMapConfigView: View {
     private func loadTerrainConfigs() async {
         isLoadingTerrain = true
         do {
-            let response: ListResponse<TerrainConfigResponse> = try await api.get(Endpoints.terrainConfigs)
-            terrainConfigs = response.data
+            terrainConfigs = try await api.get(Endpoints.terrainConfigs)
         } catch {
             errorMessage = "Failed to load terrain configs"
         }
@@ -478,12 +476,12 @@ struct AdminMapConfigView: View {
                 let name: String
                 let sourceType: String
                 let terrainUrl: String
-                let encoding: String
+                let terrainEncoding: String
                 let isDefault: Bool
             }
             let body = TerrainBody(
                 name: terrainName, sourceType: terrainSourceType,
-                terrainUrl: terrainUrl, encoding: terrainEncoding,
+                terrainUrl: terrainUrl, terrainEncoding: terrainEncoding,
                 isDefault: terrainIsDefault)
 
             if let existing = editingTerrainConfig {

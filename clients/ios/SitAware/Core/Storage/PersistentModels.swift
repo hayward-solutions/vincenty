@@ -132,8 +132,8 @@ final class CachedMessage {
         self.id = message.id
         self.content = message.content
         self.senderId = message.senderId
-        self.senderUsername = message.senderUsername
-        self.senderDisplayName = message.senderDisplayName
+        self.senderUsername = message.username
+        self.senderDisplayName = message.displayName
         self.groupId = message.groupId
         self.recipientId = message.recipientId
         self.messageType = message.messageType
@@ -179,7 +179,7 @@ final class CachedDrawing {
     init(from drawing: DrawingResponse) {
         self.id = drawing.id
         self.name = drawing.name
-        self.userId = drawing.userId
+        self.userId = drawing.ownerId
         self.username = drawing.username
         self.displayName = drawing.displayName
         self.createdAt = drawing.createdAt
@@ -187,18 +187,14 @@ final class CachedDrawing {
         self.lastSyncedAt = Date()
 
         // Serialize GeoJSON
-        if let fc = drawing.geojson {
-            self.geoJsonData = try? JSONEncoder().encode(fc)
-        }
+        self.geoJsonData = try? JSONEncoder().encode(drawing.geojson)
     }
 
     func update(from drawing: DrawingResponse) {
         self.name = drawing.name
         self.updatedAt = drawing.updatedAt
         self.lastSyncedAt = Date()
-        if let fc = drawing.geojson {
-            self.geoJsonData = try? JSONEncoder().encode(fc)
-        }
+        self.geoJsonData = try? JSONEncoder().encode(drawing.geojson)
     }
 }
 
@@ -218,8 +214,8 @@ final class CachedLocationEntry {
     var lastSyncedAt: Date
 
     init(from entry: LocationHistoryEntry) {
-        // Composite key: userId + timestamp for uniqueness
-        self.entryId = "\(entry.userId)_\(entry.timestamp)"
+        // Composite key: userId + recordedAt for uniqueness
+        self.entryId = "\(entry.userId)_\(entry.recordedAt)"
         self.userId = entry.userId
         self.deviceId = entry.deviceId
         self.lat = entry.lat
@@ -227,8 +223,8 @@ final class CachedLocationEntry {
         self.altitude = entry.altitude
         self.speed = entry.speed
         self.heading = entry.heading
-        self.accuracy = entry.accuracy
-        self.timestamp = entry.timestamp
+        self.accuracy = nil  // Not provided by LocationHistoryEntry
+        self.timestamp = entry.recordedAt
         self.lastSyncedAt = Date()
     }
 }

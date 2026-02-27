@@ -48,6 +48,12 @@ struct SettingsScreen: View {
                     } label: {
                         Label("Groups", systemImage: "person.3")
                     }
+
+                    NavigationLink {
+                        SystemLogView()
+                    } label: {
+                        Label("System Log", systemImage: "list.bullet.rectangle")
+                    }
                 }
 
                 // MARK: - Server Settings (Admin only)

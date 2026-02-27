@@ -35,7 +35,7 @@ struct LoginView: View {
                 VStack(spacing: 8) {
                     Image(systemName: "antenna.radiowaves.left.and.right")
                         .font(.system(size: 48))
-                        .foregroundStyle(.accent)
+                        .foregroundStyle(.tint)
                         .accessibilityHidden(true)
 
                     Text("SitAware")

@@ -11,7 +11,7 @@ import Foundation
 /// - Distance filter of 5m to avoid spamming trivial updates
 /// - Broadcasts location as `WSLocationUpdate` via the WebSocket service
 @Observable @MainActor
-final class LocationSharingManager: NSObject {
+final class LocationSharingManager: NSObject, @unchecked Sendable {
 
     // MARK: - Public State
 
@@ -64,13 +64,16 @@ final class LocationSharingManager: NSObject {
 
         switch authorizationStatus {
         case .notDetermined:
+            AppLogger.shared.log(.info, .location, "Requesting location permission")
             locationManager.requestWhenInUseAuthorization()
         case .authorizedWhenInUse, .authorizedAlways:
             beginUpdates()
         case .denied, .restricted:
             self.error = "Location access denied. Enable in Settings."
+            AppLogger.shared.log(.warning, .location, "Location permission denied")
         @unknown default:
             self.error = "Unknown authorization status."
+            AppLogger.shared.log(.warning, .location, "Unknown location authorization status")
         }
     }
 
@@ -79,6 +82,7 @@ final class LocationSharingManager: NSObject {
         locationManager.stopUpdatingLocation()
         isSharing = false
         currentPosition = nil
+        AppLogger.shared.log(.info, .location, "Location sharing stopped")
     }
 
     /// Request "Always" authorization for background tracking.
@@ -107,6 +111,7 @@ final class LocationSharingManager: NSObject {
         locationManager.distanceFilter = distanceFilter
         locationManager.startUpdatingLocation()
         isSharing = true
+        AppLogger.shared.log(.info, .location, "Location sharing started (filter: \(Int(distanceFilter))m)")
     }
 
     /// Send the current location to the server via WebSocket.
@@ -146,6 +151,10 @@ extension LocationSharingManager: CLLocationManagerDelegate {
 
             // Broadcast to server
             self.broadcastLocation(latest)
+            let acc = latest.horizontalAccuracy >= 0 ? String(format: "±%.0fm", latest.horizontalAccuracy) : ""
+            AppLogger.shared.log(.debug, .location,
+                String(format: "Broadcast: %.5f, %.5f \(acc)",
+                       latest.coordinate.latitude, latest.coordinate.longitude))
         }
     }
 
@@ -157,28 +166,37 @@ extension LocationSharingManager: CLLocationManagerDelegate {
                 switch clError.code {
                 case .denied:
                     self.error = "Location access denied."
+                    AppLogger.shared.log(.warning, .location, "Location access denied by user")
                     self.stopSharing()
                 case .locationUnknown:
                     // Transient — ignore
                     break
                 default:
                     self.error = "Location error: \(clError.localizedDescription)"
+                    AppLogger.shared.log(.error, .location, "Location error",
+                                        detail: clError.localizedDescription)
                 }
             }
         }
     }
 
     nonisolated func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
-        Task { @MainActor in
-            self.authorizationStatus = manager.authorizationStatus
+        // Capture needed state before hopping to the main actor to avoid sending non-Sendable values.
+        let status = manager.authorizationStatus
 
-            switch manager.authorizationStatus {
+        Task { @MainActor in
+            self.authorizationStatus = status
+
+            switch status {
             case .authorizedWhenInUse, .authorizedAlways:
+                let label = status == .authorizedAlways ? "Always" : "WhenInUse"
+                AppLogger.shared.log(.info, .location, "Location permission granted: \(label)")
                 if self.webSocket != nil && !self.isSharing {
                     self.beginUpdates()
                 }
             case .denied, .restricted:
                 self.error = "Location access denied."
+                AppLogger.shared.log(.warning, .location, "Location permission denied/restricted")
                 self.stopSharing()
             default:
                 break

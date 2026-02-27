@@ -84,6 +84,7 @@ final class WebSocketService {
         connectionState = .disconnected
         backoff = Self.initialBackoff
         retriedDevice = false
+        AppLogger.shared.log(.info, .ws, "Disconnected (clean)")
     }
 
     // MARK: - Subscribe / Send
@@ -120,7 +121,7 @@ final class WebSocketService {
 
         webSocketTask.send(.string(string)) { error in
             if let error {
-                print("[WS] Send error: \(error.localizedDescription)")
+                AppLogger.shared.error(.ws, "Send error: \(error.localizedDescription)")
             }
         }
     }
@@ -138,6 +139,7 @@ final class WebSocketService {
         receiveTask?.cancel()
 
         connectionState = .connecting
+        AppLogger.shared.log(.info, .ws, "Connecting (device: \(deviceId.prefix(8))…)")
 
         // Build WS URL: ws(s)://host/api/v1/ws?token=<jwt>&device_id=<uuid>
         let wsBase = baseURL
@@ -166,40 +168,36 @@ final class WebSocketService {
         // Track whether we got a successful open
         var didOpen = false
 
-        // Start receiving messages
+        // Receive loop — connection is confirmed on first successful receive.
+        // The server always sends a "connected" ack immediately after upgrade,
+        // so the first receive doubles as the open signal.
         receiveTask = Task { [weak self] in
-            // Wait briefly for the connection to establish
-            // URLSessionWebSocketTask doesn't have an "onOpen" callback like JS WebSocket,
-            // but a successful first receive or ping confirms connection.
-
-            // Send a ping to confirm connection
-            do {
-                try await task.sendPing()
-                didOpen = true
-                await MainActor.run {
-                    guard let self, self.isMounted else { return }
-                    self.connectionState = .connected
-                    self.backoff = Self.initialBackoff
-                    self.retriedDevice = false
-                }
-            } catch {
-                // Connection failed to open
-                await self?.handleDisconnect(task: task, didOpen: false, deviceId: deviceId)
-                return
-            }
-
-            // Receive loop
             while !Task.isCancelled {
                 do {
                     let message = try await task.receive()
-                    await self?.handleMessage(message)
+
+                    // First successful receive confirms the connection is open
+                    if !didOpen {
+                        didOpen = true
+                        await MainActor.run { [weak self] in
+                            guard let self, self.isMounted else { return }
+                            self.connectionState = .connected
+                            self.backoff = Self.initialBackoff
+                            self.retriedDevice = false
+                            AppLogger.shared.log(.info, .ws, "Connected")
+                        }
+                    }
+
+                    await MainActor.run { [weak self] in
+                        self?.handleMessage(message)
+                    }
                 } catch {
-                    // Connection closed or error
+                    // Connection closed or failed to open
                     break
                 }
             }
 
-            await self?.handleDisconnect(task: task, didOpen: didOpen, deviceId: deviceId)
+            self?.handleDisconnect(task: task, didOpen: didOpen, deviceId: deviceId)
         }
     }
 
@@ -216,13 +214,15 @@ final class WebSocketService {
         }
 
         guard let envelope: WSEnvelope = try? decoder.decode(WSEnvelope.self, from: data) else {
-            print("[WS] Failed to decode envelope")
+            AppLogger.shared.log(.warning, .ws, "Failed to decode envelope",
+                                 detail: String(data: data, encoding: .utf8))
             return
         }
 
         // Fan out to all subscribers
         let type = envelope.type
         let payload = envelope.payload
+        AppLogger.shared.log(.debug, .ws, "Received: \(type)")
         for handler in handlers.values {
             handler(type, payload)
         }
@@ -236,6 +236,7 @@ final class WebSocketService {
 
         webSocketTask = nil
         connectionState = .disconnected
+        AppLogger.shared.log(.warning, .ws, didOpen ? "Disconnected" : "Connection failed (never opened)")
 
         // Stale device_id detection:
         // If the server rejected connection before it ever opened, clear stored device
@@ -243,7 +244,7 @@ final class WebSocketService {
         if !didOpen && !retriedDevice {
             retriedDevice = true
             KeychainStore.shared.deviceId = nil
-            print("[WS] Connection rejected; re-resolving device")
+            AppLogger.shared.log(.info, .ws, "Stale device ID detected — re-resolving")
 
             Task { @MainActor [weak self] in
                 guard let self, self.isMounted else { return }
@@ -260,6 +261,7 @@ final class WebSocketService {
         // Reconnect with exponential backoff
         let delay = backoff
         backoff = min(backoff * 2, Self.maxBackoff)
+        AppLogger.shared.log(.info, .ws, "Reconnecting in \(Int(delay))s…")
 
         reconnectTask = Task { @MainActor [weak self] in
             try? await Task.sleep(for: .seconds(delay))
@@ -286,3 +288,4 @@ private struct AnyEncodableValue: Encodable {
         try _encode(encoder)
     }
 }
+

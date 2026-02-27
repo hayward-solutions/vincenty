@@ -179,7 +179,7 @@ struct DrawPanelView: View {
             }
             .padding(12)
         }
-        .frame(width: 280, maxHeight: UIScreen.main.bounds.height * 0.7)
+        .frame(width: 280, height: UIScreen.main.bounds.height * 0.7)
         .background(.ultraThinMaterial)
         .clipShape(RoundedRectangle(cornerRadius: 10))
         .shadow(color: .black.opacity(0.15), radius: 4, x: 0, y: 2)
@@ -250,7 +250,7 @@ struct DrawPanelView: View {
                                     .foregroundStyle(.secondary))
                     } else {
                         RoundedRectangle(cornerRadius: 4)
-                            .fill(Color(hex: color) ?? .blue)
+                            .fill(Color(hex: color))
                             .frame(width: 22, height: 22)
                     }
                 }

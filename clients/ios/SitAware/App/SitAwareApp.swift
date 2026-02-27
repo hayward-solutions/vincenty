@@ -31,6 +31,7 @@ struct SitAwareApp: App {
                 .environment(syncManager)
                 .modelContainer(modelContainer)
                 .task {
+                    AppLogger.shared.log(.info, .app, "App launched")
                     syncManager.configure(container: modelContainer)
                     networkMonitor.start()
                     await authManager.bootstrap()

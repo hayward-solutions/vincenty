@@ -1,4 +1,5 @@
 import SwiftUI
+import CoreLocation
 
 /// The main map screen — full-viewport MapLibre map with overlaid controls.
 ///
@@ -46,22 +47,7 @@ struct MapScreen: View {
                 LoadingStateView(message: "Loading map...", style: .fullScreen)
             } else {
                 // Map base layer
-                MapContainerView(
-                    settings: viewModel.mapSettings,
-                    onMapReady: { mapView in
-                        viewModel.onMapReady(mapView)
-                        locationMarkers.attach(to: mapView)
-                        selfMarker.attach(to: mapView)
-                        measureController.attach(to: mapView)
-                        drawController.attach(to: mapView)
-                    },
-                    onCameraChanged: { bearing, pitch, zoom in
-                        viewModel.onCameraChanged(bearing: bearing, pitch: pitch, zoom: zoom)
-                    },
-                    onTap: handleMapTap,
-                    onDoubleTap: handleMapDoubleTap
-                )
-                .ignoresSafeArea()
+                mapContainerView
 
                 // Overlaid controls
                 mapOverlays
@@ -91,12 +77,10 @@ struct MapScreen: View {
                 groups: viewModel.groups)
         }
         .onChange(of: locationSharing.currentPosition?.lat) { _, _ in
-            // Feed location sharing position into view model
-            viewModel.selfPosition = locationSharing.currentPosition
-            selfMarker.update(
-                position: viewModel.showSelf ? viewModel.selfPosition : nil,
-                autoCenter: true)
-            viewModel.updateTrackingIfNeeded()
+            updateSelfPosition()
+        }
+        .onChange(of: locationSharing.currentPosition?.lng) { _, _ in
+            updateSelfPosition()
         }
         // Measure tool lifecycle
         .onChange(of: viewModel.showMeasurePanel) { _, isActive in
@@ -117,8 +101,16 @@ struct MapScreen: View {
                 drawController.onShapeComplete = { feature, mode in
                     drawingsViewModel.completedShapes.append(CompletedShape(feature: feature, shapeType: mode))
                 }
+                // Restore any shapes completed before the panel was re-opened
+                drawController.updateCompletedShapes(drawingsViewModel.completedShapes)
             } else {
                 drawController.deactivate()
+            }
+        }
+        // Sync completed shapes to map whenever the list changes
+        .onChange(of: drawingsViewModel.completedShapes.count) { _, _ in
+            if drawController.isActive {
+                drawController.updateCompletedShapes(drawingsViewModel.completedShapes)
             }
         }
         // Sync draw mode/style changes to controller
@@ -132,6 +124,17 @@ struct MapScreen: View {
                 drawController.updateStyle(newStyle)
             }
         }
+    }
+
+    // MARK: - Location Updates
+
+    /// Sync the latest GPS position to the view model and self-marker.
+    private func updateSelfPosition() {
+        viewModel.selfPosition = locationSharing.currentPosition
+        selfMarker.update(
+            position: viewModel.showSelf ? viewModel.selfPosition : nil,
+            autoCenter: true)
+        viewModel.updateTrackingIfNeeded()
     }
 
     // MARK: - Tap Handling
@@ -152,6 +155,39 @@ struct MapScreen: View {
         } else if drawController.isActive {
             drawController.handleDoubleTap(at: coordinate)
         }
+    }
+
+    // MARK: - Map Container
+
+    /// Extracted to a separate property to keep `body` short enough for the Swift type-checker.
+    @ViewBuilder
+    private var mapContainerView: some View {
+        MapContainerView(
+            settings: viewModel.mapSettings,
+            onMapReady: { mapView in
+                viewModel.onMapReady(mapView)
+                locationMarkers.attach(to: mapView)
+                selfMarker.attach(to: mapView)
+                measureController.attach(to: mapView)
+                drawController.attach(to: mapView)
+                // Re-apply current position immediately — handles the case where
+                // the map was recreated and onChange won't fire (value unchanged).
+                updateSelfPosition()
+            },
+            onCameraChanged: { bearing, pitch, zoom in
+                viewModel.onCameraChanged(bearing: bearing, pitch: pitch, zoom: zoom)
+            },
+            onUserDragBegan: {
+                viewModel.onUserDragBegan()
+            },
+            onTap: handleMapTap,
+            onDoubleTap: handleMapDoubleTap,
+            drawStrokeColor: drawingsViewModel.drawStyle.stroke,
+            drawStrokeWidth: drawingsViewModel.drawStyle.strokeWidth,
+            drawFillColor: drawingsViewModel.drawStyle.fill,
+            toolIsActive: viewModel.showMeasurePanel || viewModel.showDrawPanel
+        )
+        .ignoresSafeArea()
     }
 
     // MARK: - Overlays
@@ -215,6 +251,24 @@ struct MapScreen: View {
         .padding(.trailing, 12)
         .padding(.top, 12)
         .frame(maxWidth: .infinity, alignment: .trailing)
+
+        // Top-center: WebSocket connection status (hidden when connected)
+        if webSocket.connectionState != .connected {
+            VStack {
+                StatusBanner(
+                    icon: webSocket.connectionState == .connecting ? nil : "wifi.slash",
+                    message: webSocket.connectionState == .connecting
+                        ? "Connecting..." : "Disconnected",
+                    color: webSocket.connectionState == .connecting ? .orange : .red,
+                    showSpinner: webSocket.connectionState == .connecting
+                )
+                Spacer()
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.top, 12)
+            .transition(.move(edge: .top).combined(with: .opacity))
+            .animation(.easeInOut(duration: 0.2), value: webSocket.connectionState)
+        }
 
         // Bottom: replay controls (when active)
         if viewModel.showReplayPanel {

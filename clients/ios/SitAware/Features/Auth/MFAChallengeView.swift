@@ -35,7 +35,7 @@ struct MFAChallengeView: View {
                 VStack(spacing: 8) {
                     Image(systemName: "lock.shield")
                         .font(.system(size: 48))
-                        .foregroundStyle(.accent)
+                        .foregroundStyle(.tint)
 
                     Text("Two-Factor Authentication")
                         .font(.title2.bold())

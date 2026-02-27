@@ -74,6 +74,7 @@ struct MapControlsView: View {
         .background(.ultraThinMaterial)
         .clipShape(RoundedRectangle(cornerRadius: 10))
         .shadow(color: .black.opacity(0.15), radius: 4, x: 0, y: 2)
+        .fixedSize(horizontal: true, vertical: false)
     }
 
     @ViewBuilder

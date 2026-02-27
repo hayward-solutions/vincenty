@@ -11,7 +11,7 @@ struct ContentView: View {
     @Environment(SyncManager.self) private var syncManager
 
     var body: some View {
-        Group {
+        ZStack {
             if auth.isLoading {
                 // Launch screen equivalent
                 VStack(spacing: 16) {
@@ -20,7 +20,7 @@ struct ContentView: View {
                         .foregroundStyle(.tint)
                     ProgressView()
                 }
-            } else if KeychainStore.shared.serverURL == nil {
+            } else if !auth.hasServerURL {
                 ServerURLView()
             } else if !auth.isAuthenticated {
                 LoginView()
@@ -53,7 +53,7 @@ struct ContentView: View {
                         icon: nil, message: "Syncing offline changes...",
                         color: .blue, showSpinner: true)
                     .transition(.move(edge: .bottom).combined(with: .opacity))
-                } else if syncManager.pendingCount > 0 && !network.isConnected {
+                } else if syncManager.pendingCount != 0 && !network.isConnected {
                     StatusBanner(
                         icon: "arrow.triangle.2.circlepath",
                         message: "\(syncManager.pendingCount) pending",
@@ -61,7 +61,7 @@ struct ContentView: View {
                     .transition(.move(edge: .bottom).combined(with: .opacity))
                 }
             }
-            .padding(.bottom, 4)
+            .padding(.bottom, 56)
         }
         // Device enrolment sheet — non-dismissible
         .sheet(isPresented: showEnrolmentSheet) {
@@ -75,7 +75,7 @@ struct ContentView: View {
             }
         }
         // Auth lifecycle: connect/disconnect WS + resolve device
-        .onChange(of: auth.isAuthenticated) { _, isAuthenticated in
+        .onChange(of: auth.isAuthenticated) { oldValue, isAuthenticated in
             if isAuthenticated {
                 startConnection()
             } else {

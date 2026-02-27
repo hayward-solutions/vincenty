@@ -51,10 +51,24 @@ final class GPXOverlayController {
 
         // Fit map to GPX bounds
         if let shapeSource = style.source(withIdentifier: Self.sourceId) as? MLNShapeSource,
-           let features = shapeSource.shape
+           let shape = shapeSource.shape
         {
-            let bounds = features.coordinate
-            mapView.setCenter(bounds, zoomLevel: max(mapView.zoomLevel, 12), animated: true)
+            if let polyline = shape as? MLNPolyline {
+                let camera = mapView.cameraThatFitsCoordinateBounds(
+                    polyline.overlayBounds,
+                    edgePadding: UIEdgeInsets(top: 50, left: 50, bottom: 50, right: 50))
+                mapView.fly(to: camera, withDuration: 1.0, completionHandler: nil)
+            } else if let collection = shape as? MLNShapeCollectionFeature,
+                      let firstLine = collection.shapes.first as? MLNPolyline
+            {
+                let camera = mapView.cameraThatFitsCoordinateBounds(
+                    firstLine.overlayBounds,
+                    edgePadding: UIEdgeInsets(top: 50, left: 50, bottom: 50, right: 50))
+                mapView.fly(to: camera, withDuration: 1.0, completionHandler: nil)
+            } else {
+                // Fallback: center on the shape's coordinate
+                mapView.setCenter(shape.coordinate, zoomLevel: max(mapView.zoomLevel, 12), animated: true)
+            }
         }
     }
 

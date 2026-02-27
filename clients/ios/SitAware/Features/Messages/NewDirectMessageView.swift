@@ -14,48 +14,51 @@ struct NewDirectMessageView: View {
 
     var body: some View {
         NavigationStack {
-            Group {
-                if isLoading {
-                    ProgressView()
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-                } else if filteredUsers.isEmpty {
-                    ContentUnavailableView.search(text: search)
-                } else {
-                    List(filteredUsers) { user in
-                        Button {
-                            let name = user.displayName.isEmpty ? user.username : user.displayName
-                            onSelect(user.id, name)
-                            dismiss()
-                        } label: {
-                            HStack(spacing: 10) {
-                                Image(systemName: "person.circle")
-                                    .font(.title3)
-                                    .foregroundStyle(.secondary)
+            contentView
+                .searchable(text: $search, prompt: "Search users...")
+                .navigationTitle("New Message")
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    ToolbarItem(placement: .cancellationAction) {
+                        Button("Cancel") { dismiss() }
+                    }
+                }
+                .task {
+                    await loadUsers()
+                }
+        }
+    }
+    
+    @ViewBuilder
+    private var contentView: some View {
+        if isLoading {
+            ProgressView()
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+        } else if filteredUsers.isEmpty {
+            ContentUnavailableView.search(text: search)
+        } else {
+            List(filteredUsers) { user in
+                Button {
+                    let name = user.displayName.isEmpty ? user.username : user.displayName
+                    onSelect(user.id, name)
+                    dismiss()
+                } label: {
+                    HStack(spacing: 10) {
+                        Image(systemName: "person.circle")
+                            .font(.title3)
+                            .foregroundStyle(.secondary)
 
-                                VStack(alignment: .leading, spacing: 2) {
-                                    Text(user.displayName.isEmpty ? user.username : user.displayName)
-                                        .font(.subheadline.weight(.medium))
-                                    if !user.displayName.isEmpty {
-                                        Text("@\(user.username)")
-                                            .font(.caption)
-                                            .foregroundStyle(.secondary)
-                                    }
-                                }
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(user.displayName.isEmpty ? user.username : user.displayName)
+                                .font(.subheadline.weight(.medium))
+                            if !user.displayName.isEmpty {
+                                Text("@\(user.username)")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
                             }
                         }
                     }
                 }
-            }
-            .searchable(text: $search, prompt: "Search users...")
-            .navigationTitle("New Message")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }
-                }
-            }
-            .task {
-                await loadUsers()
             }
         }
     }

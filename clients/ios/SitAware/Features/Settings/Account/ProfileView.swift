@@ -73,7 +73,7 @@ struct ProfileView: View {
                     // Shape picker
                     Text("Shape")
                         .font(.caption.weight(.medium))
-                        .foregroundStyle(.secondary)
+                        .foregroundColor(.secondary)
 
                     LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 5), spacing: 8) {
                         ForEach(Self.availableShapes, id: \.self) { shape in
@@ -87,10 +87,10 @@ struct ProfileView: View {
                                     .background(
                                         markerIcon == shape
                                             ? Color.accentColor.opacity(0.15)
-                                            : Color(.secondarySystemGroupedBackground))
+                                            : Color(uiColor: .secondarySystemGroupedBackground))
                                     .clipShape(RoundedRectangle(cornerRadius: 8))
                             }
-                            .foregroundStyle(markerIcon == shape ? .primary : .secondary)
+                            .foregroundColor(markerIcon == shape ? .primary : .secondary)
                             .accessibilityLabel("\(labelForShape(shape)) marker shape")
                             .accessibilityValue(markerIcon == shape ? "Selected" : "")
                         }
@@ -99,7 +99,7 @@ struct ProfileView: View {
                     // Color picker
                     Text("Color")
                         .font(.caption.weight(.medium))
-                        .foregroundStyle(.secondary)
+                        .foregroundColor(.secondary)
 
                     HStack(spacing: 6) {
                         ForEach(Self.presetColors, id: \.self) { color in
@@ -107,7 +107,7 @@ struct ProfileView: View {
                                 markerColor = color
                             } label: {
                                 RoundedRectangle(cornerRadius: 4)
-                                    .fill(Color(hex: color) ?? .blue)
+                                    .fill(Color(hex: color))
                                     .frame(width: 26, height: 26)
                                     .overlay(
                                         RoundedRectangle(cornerRadius: 4)
@@ -140,7 +140,7 @@ struct ProfileView: View {
             Section("Profile") {
                 LabeledContent("Username") {
                     Text(auth.user?.username ?? "")
-                        .foregroundStyle(.secondary)
+                        .foregroundColor(.secondary)
                 }
 
                 TextField("Display Name", text: $displayName)
@@ -148,7 +148,7 @@ struct ProfileView: View {
                 TextField("Email", text: $email)
                     .keyboardType(.emailAddress)
                     .textContentType(.emailAddress)
-                    .autocapitalization(.none)
+                    .textInputAutocapitalization(.never)
 
                 Button {
                     Task { await saveProfile() }
@@ -169,7 +169,7 @@ struct ProfileView: View {
             if let error = errorMessage {
                 Section {
                     Text(error)
-                        .foregroundStyle(.red)
+                        .foregroundColor(.red)
                         .font(.caption)
                 }
             }
@@ -177,7 +177,7 @@ struct ProfileView: View {
             if let success = successMessage {
                 Section {
                     Text(success)
-                        .foregroundStyle(.green)
+                        .foregroundColor(.green)
                         .font(.caption)
                 }
             }
@@ -219,7 +219,7 @@ struct ProfileView: View {
             .overlay(
                 Text(initials)
                     .font(.title2.weight(.semibold))
-                    .foregroundStyle(.accentColor))
+                    .foregroundColor(.accentColor))
     }
 
     private var initials: String {
@@ -268,7 +268,7 @@ struct ProfileView: View {
             }
 
             var formData = MultipartFormData()
-            formData.addFile(name: "avatar", filename: "avatar.jpg", data: data, contentType: "image/jpeg")
+            formData.append(name: "avatar", data: data, filename: "avatar.jpg", mimeType: "image/jpeg")
 
             let _: User = try await api.upload(Endpoints.usersMeAvatar, formData: formData)
             await auth.refreshUser()

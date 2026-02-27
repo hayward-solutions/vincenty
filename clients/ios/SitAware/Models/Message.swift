@@ -101,7 +101,7 @@ enum ConversationType: String, Sendable {
 // MARK: - AnyCodable Helper
 
 /// Minimal type-erased Codable wrapper for arbitrary JSON values.
-struct AnyCodable: Codable, Sendable {
+struct AnyCodable: Codable, @unchecked Sendable {
     let value: Any
 
     init(_ value: Any) {
@@ -134,6 +134,10 @@ struct AnyCodable: Codable, Sendable {
         case let int as Int: try container.encode(int)
         case let double as Double: try container.encode(double)
         case let bool as Bool: try container.encode(bool)
+        case let array as [Any]:
+            try container.encode(array.map { AnyCodable($0) })
+        case let dict as [String: Any]:
+            try container.encode(dict.mapValues { AnyCodable($0) })
         default: try container.encodeNil()
         }
     }

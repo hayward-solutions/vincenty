@@ -38,7 +38,7 @@ struct MFAMethodsView: View {
     }
 
     var body: some View {
-        Group {
+        VStack {
             if isLoading {
                 ProgressView()
             } else {
@@ -177,7 +177,7 @@ struct MFAMethodsView: View {
     @ViewBuilder
     private var totpSetupSheet: some View {
         NavigationStack {
-            Group {
+            VStack {
                 switch totpSetupStep {
                 case .name:
                     totpNameStep
@@ -373,7 +373,8 @@ struct MFAMethodsView: View {
     private func loadMethods() async {
         isLoading = true
         do {
-            methods = try await api.get(Endpoints.usersMeMFAMethods)
+            let response: [MFAMethod] = try await api.get(Endpoints.usersMeMFAMethods)
+            methods = response
         } catch {
             errorMessage = "Failed to load MFA methods"
         }
@@ -398,9 +399,10 @@ struct MFAMethodsView: View {
             struct SetupBody: Encodable {
                 let name: String
             }
-            totpSetup = try await api.post(
+            let response: TOTPSetupResponse = try await api.post(
                 Endpoints.usersMeMFATOTPSetup,
                 body: SetupBody(name: totpName))
+            totpSetup = response
             totpSetupStep = .scan
         } catch {
             errorMessage = "Failed to start TOTP setup: \(error.localizedDescription)"
@@ -457,7 +459,10 @@ struct MFAMethodsView: View {
         isRegenerating = true
 
         do {
-            let response: RecoveryCodesResponse = try await api.post(Endpoints.usersMeMFARecoveryCodes)
+            struct EmptyBody: Encodable {}
+            let response: RecoveryCodesResponse = try await api.post(
+                Endpoints.usersMeMFARecoveryCodes,
+                body: EmptyBody())
             regeneratedCodes = response.codes
         } catch {
             errorMessage = "Failed to regenerate codes: \(error.localizedDescription)"

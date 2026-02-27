@@ -3,7 +3,7 @@ import Foundation
 /// HTTP client for the SitAware REST API.
 /// Mirrors the web client's `ApiClient` class — auto-injects Bearer tokens,
 /// retries on 401 with token refresh, and handles the standard error envelope.
-final class APIClient: Sendable {
+final class APIClient: @unchecked Sendable {
     static let shared = APIClient()
 
     let tokenManager = TokenManager()
@@ -74,21 +74,47 @@ final class APIClient: Sendable {
             request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         }
 
+        let logger = AppLogger.shared
+        logger.debug(.api, "\(method) \(path) [multipart]")
+        let start = Date()
+
         let (responseData, response) = try await session.data(for: request)
+
+        let elapsed = Int(Date().timeIntervalSince(start) * 1000)
+        let status = (response as? HTTPURLResponse)?.statusCode ?? 0
 
         // Auto-refresh on 401
         if let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 401 {
+            logger.info(.api, "\(method) \(path) [multipart] → 401, refreshing token")
             let refreshed = await tokenManager.tryRefresh()
             if refreshed {
                 if let newToken = await tokenManager.accessToken {
                     request.setValue("Bearer \(newToken)", forHTTPHeaderField: "Authorization")
                 }
                 let (retryData, retryResponse) = try await session.data(for: request)
-                return try handleResponse(data: retryData, response: retryResponse)
+                do {
+                    let result: T = try handleResponse(data: retryData, response: retryResponse)
+                    let s2 = (retryResponse as? HTTPURLResponse)?.statusCode ?? 0
+                    logger.info(.api, "\(method) \(path) [multipart] → \(s2) (\(elapsed)ms)")
+                    return result
+                } catch {
+                    logger.error(.api, "\(method) \(path) [multipart] → failed after token refresh",
+                                 detail: error.localizedDescription)
+                    throw error
+                }
             }
+            logger.warning(.api, "\(method) \(path) [multipart] — token refresh failed")
         }
 
-        return try handleResponse(data: responseData, response: response)
+        do {
+            let result: T = try handleResponse(data: responseData, response: response)
+            logger.info(.api, "\(method) \(path) [multipart] → \(status) (\(elapsed)ms)")
+            return result
+        } catch {
+            logger.error(.api, "\(method) \(path) [multipart] → \(status) (\(elapsed)ms)",
+                         detail: error.localizedDescription)
+            throw error
+        }
     }
 
     /// Download raw data (for GPX/CSV/JSON export).
@@ -101,17 +127,23 @@ final class APIClient: Sendable {
             request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         }
 
+        let logger = AppLogger.shared
+        logger.debug(.api, "GET \(path) [download]")
+        let start = Date()
+
         let (data, response) = try await session.data(for: request)
+
+        let elapsed = Int(Date().timeIntervalSince(start) * 1000)
+        let status = (response as? HTTPURLResponse)?.statusCode ?? 0
 
         guard let httpResponse = response as? HTTPURLResponse,
               (200 ... 299).contains(httpResponse.statusCode)
         else {
-            let httpResponse = response as? HTTPURLResponse
-            throw APIError(
-                status: httpResponse?.statusCode ?? 0,
-                message: "Download failed")
+            logger.error(.api, "GET \(path) [download] → \(status) (\(elapsed)ms)")
+            throw APIError(status: status, message: "Download failed")
         }
 
+        logger.info(.api, "GET \(path) [download] → \(status) (\(elapsed)ms), \(data.count) bytes")
         return data
     }
 
@@ -150,21 +182,38 @@ final class APIClient: Sendable {
             request.httpBody = try encoder.encode(AnyEncodable(body))
         }
 
+        let logger = AppLogger.shared
+        logger.debug(.api, "\(method) \(path)")
+        let start = Date()
+
         let (data, response) = try await session.data(for: request)
+
+        let elapsed = Int(Date().timeIntervalSince(start) * 1000)
+        let status = (response as? HTTPURLResponse)?.statusCode ?? 0
 
         // Auto-refresh on 401 (once)
         if let httpResponse = response as? HTTPURLResponse,
            httpResponse.statusCode == 401, retry
         {
+            logger.info(.api, "\(method) \(path) → 401, refreshing token")
             let refreshed = await tokenManager.tryRefresh()
             if refreshed {
                 return try await self.request(
                     path: path, method: method, body: body,
                     params: params, retry: false)
             }
+            logger.warning(.api, "\(method) \(path) — token refresh failed, unauthorized")
         }
 
-        return try handleResponse(data: data, response: response)
+        do {
+            let result: T = try handleResponse(data: data, response: response)
+            logger.info(.api, "\(method) \(path) → \(status) (\(elapsed)ms)")
+            return result
+        } catch {
+            logger.error(.api, "\(method) \(path) → \(status) (\(elapsed)ms)",
+                         detail: error.localizedDescription)
+            throw error
+        }
     }
 
     private func handleResponse<T: Decodable>(data: Data, response: URLResponse) throws -> T {

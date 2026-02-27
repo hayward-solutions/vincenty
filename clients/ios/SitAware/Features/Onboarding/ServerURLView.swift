@@ -3,6 +3,7 @@ import SwiftUI
 /// First-launch screen to configure the server URL.
 /// iOS-specific — the web client is co-deployed with the API and doesn't need this.
 struct ServerURLView: View {
+    @Environment(AuthManager.self) private var auth
     @State private var serverURL = ""
     @State private var isValidating = false
     @State private var error: String?
@@ -16,7 +17,7 @@ struct ServerURLView: View {
                 VStack(spacing: 12) {
                     Image(systemName: "antenna.radiowaves.left.and.right")
                         .font(.system(size: 56))
-                        .foregroundStyle(.accent)
+                        .foregroundStyle(.tint)
 
                     Text("SitAware")
                         .font(.largeTitle.bold())
@@ -105,9 +106,9 @@ struct ServerURLView: View {
                 return
             }
 
-            // Success — save the server URL
+            // Success — save the server URL and trigger navigation
             KeychainStore.shared.serverURL = url
-            serverURL = url
+            auth.hasServerURL = true
         } catch {
             self.error = "Could not connect to server. Check the URL and try again."
         }
@@ -125,3 +126,4 @@ private extension String {
         return result
     }
 }
+

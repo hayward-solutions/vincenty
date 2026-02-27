@@ -17,6 +17,7 @@ final class MessagesViewModel {
     private(set) var isLoadingConversations = false
 
     var activeConversation: Conversation?
+    var selectedConversationId: String?
 
     // MARK: - Messages (for active conversation)
 
@@ -165,28 +166,28 @@ final class MessagesViewModel {
         isSending = true
         defer { isSending = false }
 
-        let form = MultipartFormData()
+        var form = MultipartFormData()
 
         if let content, !content.isEmpty {
-            form.addTextField(name: "content", value: content)
+            form.append(name: "content", value: content)
         }
 
         switch conversation.type {
         case .group:
-            form.addTextField(name: "group_id", value: conversation.id)
+            form.append(name: "group_id", value: conversation.id)
         case .direct:
-            form.addTextField(name: "recipient_id", value: conversation.id)
+            form.append(name: "recipient_id", value: conversation.id)
         }
 
-        if let lat { form.addTextField(name: "lat", value: String(lat)) }
-        if let lng { form.addTextField(name: "lng", value: String(lng)) }
-        if let deviceId { form.addTextField(name: "device_id", value: deviceId) }
+        if let lat { form.append(name: "lat", value: String(lat)) }
+        if let lng { form.append(name: "lng", value: String(lng)) }
+        if let deviceId { form.append(name: "device_id", value: deviceId) }
 
         for fileURL in files {
             if let data = try? Data(contentsOf: fileURL) {
                 let filename = fileURL.lastPathComponent
                 let mimeType = mimeTypeForExtension(fileURL.pathExtension)
-                form.addDataField(name: "files", data: data, filename: filename, mimeType: mimeType)
+                form.append(name: "files", data: data, filename: filename, mimeType: mimeType)
             }
         }
 
@@ -262,3 +263,4 @@ final class MessagesViewModel {
         }
     }
 }
+

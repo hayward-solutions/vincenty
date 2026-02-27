@@ -72,16 +72,16 @@ final class DrawingOverlayController {
         // Fill layer (polygons)
         let fill = MLNFillStyleLayer(identifier: "\(sourceId)-fill", source: source)
         fill.fillColor = NSExpression(
-            forMLNJSONObject: ["coalesce", ["get", "fill"], "#3b82f6"])
+            mglJSONObject: ["coalesce", ["get", "fill"], "#3b82f6"])
         fill.fillOpacity = NSExpression(forConstantValue: 0.2)
         style.addLayer(fill)
 
         // Outline layer (polygon borders)
         let outline = MLNLineStyleLayer(identifier: "\(sourceId)-outline", source: source)
         outline.lineColor = NSExpression(
-            forMLNJSONObject: ["coalesce", ["get", "stroke"], "#3b82f6"])
+            mglJSONObject: ["coalesce", ["get", "stroke"], "#3b82f6"])
         outline.lineWidth = NSExpression(
-            forMLNJSONObject: ["coalesce", ["get", "strokeWidth"], 2])
+            mglJSONObject: ["coalesce", ["get", "strokeWidth"], 2])
         outline.lineOpacity = NSExpression(forConstantValue: 0.9)
         style.addLayer(outline)
 
@@ -96,7 +96,7 @@ final class DrawingOverlayController {
         let point = MLNCircleStyleLayer(identifier: "\(sourceId)-point", source: source)
         point.circleRadius = NSExpression(forConstantValue: 4)
         point.circleColor = NSExpression(
-            forMLNJSONObject: ["coalesce", ["get", "stroke"], "#3b82f6"])
+            mglJSONObject: ["coalesce", ["get", "stroke"], "#3b82f6"])
         point.circleStrokeColor = NSExpression(forConstantValue: UIColor.white)
         point.circleStrokeWidth = NSExpression(forConstantValue: 1.5)
         style.addLayer(point)

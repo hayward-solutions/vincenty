@@ -92,7 +92,8 @@ struct MapFilterPanel: View {
             }
             .padding(12)
         }
-        .frame(width: 260, maxHeight: UIScreen.main.bounds.height * 0.6)
+        .frame(width: 260)
+        .frame(maxHeight: 500)
         .background(.ultraThinMaterial)
         .clipShape(RoundedRectangle(cornerRadius: 10))
         .shadow(color: .black.opacity(0.15), radius: 4, x: 0, y: 2)
@@ -115,7 +116,7 @@ struct MapFilterPanel: View {
 
                 // Group marker color indicator
                 Circle()
-                    .fill(Color(hex: group.markerColor) ?? .blue)
+                    .fill(Color(hex: group.markerColor))
                     .frame(width: 10, height: 10)
 
                 Text(group.name)

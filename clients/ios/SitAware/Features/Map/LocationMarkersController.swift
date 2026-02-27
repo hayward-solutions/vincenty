@@ -18,19 +18,24 @@ final class LocationMarkersController {
     private var colorIndex = 0
 
     private static let fallbackColors: [UIColor] = [
-        UIColor(hex: "#3b82f6"),  // blue
-        UIColor(hex: "#ef4444"),  // red
-        UIColor(hex: "#10b981"),  // emerald
-        UIColor(hex: "#f59e0b"),  // amber
-        UIColor(hex: "#8b5cf6"),  // violet
-        UIColor(hex: "#ec4899"),  // pink
-        UIColor(hex: "#06b6d4"),  // cyan
-        UIColor(hex: "#84cc16"),  // lime
+        hexColor("#3b82f6"),  // blue
+        hexColor("#ef4444"),  // red
+        hexColor("#10b981"),  // emerald
+        hexColor("#f59e0b"),  // amber
+        hexColor("#8b5cf6"),  // violet
+        hexColor("#ec4899"),  // pink
+        hexColor("#06b6d4"),  // cyan
+        hexColor("#84cc16"),  // lime
     ]
 
     // MARK: - Setup
 
     func attach(to mapView: MLNMapView) {
+        // If this is a different MLNMapView instance, our annotation refs are stale.
+        // Clear them so update() re-adds all markers on the new map.
+        if let existing = self.mapView, existing !== mapView {
+            annotations.removeAll()
+        }
         self.mapView = mapView
     }
 
@@ -54,8 +59,6 @@ final class LocationMarkersController {
         for loc in locations {
             if loc.userId == currentUserId { continue }
             activeDeviceIds.insert(loc.deviceId)
-
-            let color = resolveColor(for: loc, groupMap: groupMap)
 
             if let existing = annotations[loc.deviceId] {
                 // Update position
@@ -97,7 +100,7 @@ final class LocationMarkersController {
     private func resolveColor(for loc: UserLocation, groupMap: [String: Group]) -> UIColor {
         // Check group marker color first
         if let group = groupMap[loc.groupId], !group.markerColor.isEmpty {
-            return UIColor(hex: group.markerColor)
+            return hexColor(group.markerColor)
         }
 
         // Stable per-user color
@@ -129,20 +132,17 @@ final class LocationMarkersController {
     }
 }
 
-// MARK: - UIColor+Hex Init
+// MARK: - Local hex color helper (avoids duplicate initializers)
+private func hexColor(_ hex: String) -> UIColor {
+    var hexSanitized = hex.trimmingCharacters(in: .whitespacesAndNewlines)
+    hexSanitized = hexSanitized.hasPrefix("#") ? String(hexSanitized.dropFirst()) : hexSanitized
 
-private extension UIColor {
-    convenience init(hex: String) {
-        var hexSanitized = hex.trimmingCharacters(in: .whitespacesAndNewlines)
-        hexSanitized = hexSanitized.hasPrefix("#") ? String(hexSanitized.dropFirst()) : hexSanitized
+    var rgb: UInt64 = 0
+    Scanner(string: hexSanitized).scanHexInt64(&rgb)
 
-        var rgb: UInt64 = 0
-        Scanner(string: hexSanitized).scanHexInt64(&rgb)
+    let r = CGFloat((rgb >> 16) & 0xFF) / 255.0
+    let g = CGFloat((rgb >> 8) & 0xFF) / 255.0
+    let b = CGFloat(rgb & 0xFF) / 255.0
 
-        let r = CGFloat((rgb >> 16) & 0xFF) / 255.0
-        let g = CGFloat((rgb >> 8) & 0xFF) / 255.0
-        let b = CGFloat(rgb & 0xFF) / 255.0
-
-        self.init(red: r, green: g, blue: b, alpha: 1.0)
-    }
+    return UIColor(red: r, green: g, blue: b, alpha: 1.0)
 }

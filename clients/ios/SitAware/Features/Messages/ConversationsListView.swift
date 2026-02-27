@@ -4,12 +4,11 @@ import SwiftUI
 /// Mirrors the web client's `conversation-list.tsx`.
 struct ConversationsListView: View {
     let conversations: [Conversation]
-    let activeId: String?
-    let onSelect: (Conversation) -> Void
+    @Binding var selection: String?
     let onNewMessage: () -> Void
 
     var body: some View {
-        List {
+        List(selection: $selection) {
             // Groups section
             let groups = conversations.filter { $0.type == .group }
             if !groups.isEmpty {
@@ -17,8 +16,8 @@ struct ConversationsListView: View {
                     ForEach(groups) { conv in
                         ConversationRow(
                             conversation: conv,
-                            isActive: activeId == conv.id,
-                            onSelect: onSelect)
+                            isActive: selection == conv.id)
+                        .tag(conv.id)
                     }
                 }
             }
@@ -30,8 +29,8 @@ struct ConversationsListView: View {
                     ForEach(dms) { conv in
                         ConversationRow(
                             conversation: conv,
-                            isActive: activeId == conv.id,
-                            onSelect: onSelect)
+                            isActive: selection == conv.id)
+                        .tag(conv.id)
                     }
                 }
             }
@@ -62,22 +61,17 @@ struct ConversationsListView: View {
 private struct ConversationRow: View {
     let conversation: Conversation
     let isActive: Bool
-    let onSelect: (Conversation) -> Void
 
     var body: some View {
-        Button {
-            onSelect(conversation)
-        } label: {
-            HStack(spacing: 8) {
-                Image(systemName: conversation.type == .group ? "number" : "person")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-                    .frame(width: 20)
+        HStack(spacing: 8) {
+            Image(systemName: conversation.type == .group ? "number" : "person")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+                .frame(width: 20)
 
-                Text(conversation.name)
-                    .font(.subheadline.weight(isActive ? .semibold : .regular))
-                    .lineLimit(1)
-            }
+            Text(conversation.name)
+                .font(.subheadline.weight(isActive ? .semibold : .regular))
+                .lineLimit(1)
         }
         .listRowBackground(isActive ? Color.accentColor.opacity(0.1) : nil)
         .accessibilityElement(children: .combine)

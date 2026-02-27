@@ -15,21 +15,21 @@ struct MainTabView: View {
 
     var body: some View {
         TabView(selection: $selectedTab) {
-            SwiftUI.Tab("Dashboard", systemImage: "square.grid.2x2", value: .dashboard) {
-                DashboardView()
-            }
+            DashboardView()
+                .tabItem { Label("Dashboard", systemImage: "square.grid.2x2") }
+                .tag(Tab.dashboard)
 
-            SwiftUI.Tab("Map", systemImage: "map", value: .map) {
-                MapScreen()
-            }
+            MapScreen()
+                .tabItem { Label("Map", systemImage: "map") }
+                .tag(Tab.map)
 
-            SwiftUI.Tab("Messages", systemImage: "message", value: .messages) {
-                MessagesScreen()
-            }
+            MessagesScreen()
+                .tabItem { Label("Messages", systemImage: "message") }
+                .tag(Tab.messages)
 
-            SwiftUI.Tab("Settings", systemImage: "gear", value: .settings) {
-                SettingsScreen()
-            }
+            SettingsScreen()
+                .tabItem { Label("Settings", systemImage: "gear") }
+                .tag(Tab.settings)
         }
     }
 }

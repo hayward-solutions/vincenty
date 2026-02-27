@@ -221,11 +221,11 @@ struct AdminUsersView: View {
             Form {
                 Section {
                     TextField("Username", text: $createUsername)
-                        .autocapitalization(.none)
+                        .textInputAutocapitalization(.never)
                         .textContentType(.username)
                     TextField("Email", text: $createEmail)
                         .keyboardType(.emailAddress)
-                        .autocapitalization(.none)
+                        .textInputAutocapitalization(.never)
                     SecureField("Password (min 8 chars)", text: $createPassword)
                         .textContentType(.newPassword)
                     TextField("Display Name (optional)", text: $createDisplayName)
@@ -259,7 +259,7 @@ struct AdminUsersView: View {
                 Section {
                     TextField("Email", text: $editEmail)
                         .keyboardType(.emailAddress)
-                        .autocapitalization(.none)
+                        .textInputAutocapitalization(.never)
                     TextField("Display Name", text: $editDisplayName)
                     SecureField("New Password (leave blank to keep)", text: $editPassword)
                     Toggle("Administrator", isOn: $editIsAdmin)
@@ -295,7 +295,7 @@ struct AdminUsersView: View {
             ]
             let response: ListResponse<User> = try await api.get(Endpoints.users, params: params)
             users = response.data
-            totalCount = response.total ?? 0
+            totalCount = response.total
         } catch {
             errorMessage = "Failed to load users"
         }

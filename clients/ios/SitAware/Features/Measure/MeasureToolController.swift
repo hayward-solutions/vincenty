@@ -27,8 +27,16 @@ struct MeasureResult: Sendable, Equatable {
 /// Mirrors the web client's `measure-tool.tsx`:
 /// - Line mode: tap to add points, each segment measured, total distance shown
 /// - Circle mode: tap center, tap edge → radius + area
-/// - Live GeoJSON preview with styled layers
-/// - Distance labels at segment midpoints
+/// - Live annotation-based preview (MLNPolyline, MLNPolygon, MLNPointAnnotation)
+///
+/// Annotations are styled via Coordinator delegate methods in MapView.swift.
+/// Annotation titles are used as identifiers for dispatch:
+///   "measure-line"    — committed polyline path
+///   "measure-outline" — circle outline polyline
+///   "measure-radius"  — radius line from center to edge
+///   "measure-fill"    — circle fill polygon
+///   "measure-point"   — vertex dots (MLNPointAnnotation)
+///   "measure-center"  — center dot in circle mode (MLNPointAnnotation)
 ///
 /// On iOS, map taps are forwarded from the MapView coordinator.
 @MainActor
@@ -41,23 +49,11 @@ final class MeasureToolController {
     private var points: [CLLocationCoordinate2D] = []
     private var mode: MeasureMode = .line
 
+    /// All annotations currently shown on the map for this tool.
+    private var annotations: [MLNAnnotation] = []
+
     /// Callback when measurements change (segments + total + radius/area).
     var onMeasurementsChange: ((MeasureResult) -> Void)?
-
-    // MARK: - Source/Layer IDs
-
-    private static let sourceId = "measure-geojson"
-    // Line mode layers
-    private static let linesLayerId = "measure-lines"
-    private static let pendingLayerId = "measure-pending"
-    private static let pointsLayerId = "measure-points"
-    private static let labelsLayerId = "measure-labels"
-    // Circle mode layers
-    private static let fillLayerId = "measure-fill"
-    private static let outlineLayerId = "measure-outline"
-    private static let radiusLayerId = "measure-radius"
-    private static let centerLayerId = "measure-center"
-    private static let circleLabelLayerId = "measure-circle-labels"
 
     // MARK: - Setup
 
@@ -69,22 +65,21 @@ final class MeasureToolController {
         self.mode = mode
         self.points = []
         self.isActive = true
-        setupSourceAndLayers()
+        clearAnnotations()
         onMeasurementsChange?(.empty)
     }
 
     func deactivate() {
         isActive = false
         points = []
-        removeLayers()
+        clearAnnotations()
         onMeasurementsChange?(.empty)
     }
 
     func updateMode(_ newMode: MeasureMode) {
         self.mode = newMode
         self.points = []
-        removeLayers()
-        setupSourceAndLayers()
+        rebuildPreview()
         onMeasurementsChange?(.empty)
     }
 
@@ -126,7 +121,7 @@ final class MeasureToolController {
     /// Called on double-tap — finalizes a line measurement (prevents further extension).
     func handleDoubleTap(at coordinate: CLLocationCoordinate2D) {
         guard isActive, mode == .line, points.count >= 2 else { return }
-        // Double-tap adds a duplicate — remove it
+        // Double-tap fires single-tap first; if it added a duplicate point, remove it.
         if let last = points.last,
            last.latitude == coordinate.latitude && last.longitude == coordinate.longitude
         {
@@ -167,302 +162,87 @@ final class MeasureToolController {
         }
     }
 
-    // MARK: - Preview Rendering
-
-    private func setupSourceAndLayers() {
-        guard let mapView, let mapStyle = mapView.style else { return }
-
-        removeLayers()
-
-        // Add empty GeoJSON source
-        let emptyGeoJSON = """
-            {"type":"FeatureCollection","features":[]}
-            """.data(using: .utf8)!
-        guard let shape = try? MLNShape(data: emptyGeoJSON, encoding: String.Encoding.utf8.rawValue)
-        else { return }
-
-        let source = MLNShapeSource(identifier: Self.sourceId, shape: shape, options: nil)
-        mapStyle.addSource(source)
-
-        switch mode {
-        case .line:
-            setupLineLayers(source: source, style: mapStyle)
-        case .circle:
-            setupCircleLayers(source: source, style: mapStyle)
-        }
-    }
-
-    private func setupLineLayers(source: MLNShapeSource, style: MLNStyle) {
-        // Committed lines (solid)
-        let lines = MLNLineStyleLayer(identifier: Self.linesLayerId, source: source)
-        lines.lineColor = NSExpression(forConstantValue: UIColor.systemBlue)
-        lines.lineWidth = NSExpression(forConstantValue: 3)
-        lines.predicate = NSPredicate(format: "kind == 'line'")
-        style.addLayer(lines)
-
-        // Pending segment (dashed)
-        let pending = MLNLineStyleLayer(identifier: Self.pendingLayerId, source: source)
-        pending.lineColor = NSExpression(forConstantValue: UIColor.systemBlue.withAlphaComponent(0.6))
-        pending.lineWidth = NSExpression(forConstantValue: 2)
-        pending.lineDashPattern = NSExpression(forConstantValue: [4, 4])
-        pending.predicate = NSPredicate(format: "kind == 'pending'")
-        style.addLayer(pending)
-
-        // Points
-        let pointLayer = MLNCircleStyleLayer(identifier: Self.pointsLayerId, source: source)
-        pointLayer.circleRadius = NSExpression(forConstantValue: 5)
-        pointLayer.circleColor = NSExpression(forConstantValue: UIColor.systemBlue)
-        pointLayer.circleStrokeColor = NSExpression(forConstantValue: UIColor.white)
-        pointLayer.circleStrokeWidth = NSExpression(forConstantValue: 2)
-        pointLayer.predicate = NSPredicate(format: "kind == 'point'")
-        style.addLayer(pointLayer)
-
-        // Distance labels
-        let labels = MLNSymbolStyleLayer(identifier: Self.labelsLayerId, source: source)
-        labels.text = NSExpression(forKeyPath: "label")
-        labels.textFontSize = NSExpression(forConstantValue: 12)
-        labels.textColor = NSExpression(forConstantValue: UIColor.white)
-        labels.textHaloColor = NSExpression(forConstantValue: UIColor.black)
-        labels.textHaloWidth = NSExpression(forConstantValue: 1.5)
-        labels.textOffset = NSExpression(forConstantValue: NSValue(cgVector: CGVector(dx: 0, dy: -1.2)))
-        labels.predicate = NSPredicate(format: "kind == 'label'")
-        style.addLayer(labels)
-    }
-
-    private func setupCircleLayers(source: MLNShapeSource, style: MLNStyle) {
-        // Fill
-        let fill = MLNFillStyleLayer(identifier: Self.fillLayerId, source: source)
-        fill.fillColor = NSExpression(forConstantValue: UIColor.systemBlue.withAlphaComponent(0.1))
-        fill.fillOpacity = NSExpression(forConstantValue: 1)
-        fill.predicate = NSPredicate(format: "kind == 'circle-fill'")
-        style.addLayer(fill)
-
-        // Outline
-        let outline = MLNLineStyleLayer(identifier: Self.outlineLayerId, source: source)
-        outline.lineColor = NSExpression(forConstantValue: UIColor.systemBlue)
-        outline.lineWidth = NSExpression(forConstantValue: 2)
-        outline.predicate = NSPredicate(format: "kind == 'circle-outline'")
-        style.addLayer(outline)
-
-        // Radius line (dashed)
-        let radius = MLNLineStyleLayer(identifier: Self.radiusLayerId, source: source)
-        radius.lineColor = NSExpression(forConstantValue: UIColor.systemBlue.withAlphaComponent(0.7))
-        radius.lineWidth = NSExpression(forConstantValue: 2)
-        radius.lineDashPattern = NSExpression(forConstantValue: [6, 4])
-        radius.predicate = NSPredicate(format: "kind == 'radius'")
-        style.addLayer(radius)
-
-        // Center point
-        let center = MLNCircleStyleLayer(identifier: Self.centerLayerId, source: source)
-        center.circleRadius = NSExpression(forConstantValue: 6)
-        center.circleColor = NSExpression(forConstantValue: UIColor.systemBlue)
-        center.circleStrokeColor = NSExpression(forConstantValue: UIColor.white)
-        center.circleStrokeWidth = NSExpression(forConstantValue: 2)
-        center.predicate = NSPredicate(format: "kind == 'center'")
-        style.addLayer(center)
-
-        // Radius label
-        let label = MLNSymbolStyleLayer(identifier: Self.circleLabelLayerId, source: source)
-        label.text = NSExpression(forKeyPath: "label")
-        label.textFontSize = NSExpression(forConstantValue: 12)
-        label.textColor = NSExpression(forConstantValue: UIColor.white)
-        label.textHaloColor = NSExpression(forConstantValue: UIColor.black)
-        label.textHaloWidth = NSExpression(forConstantValue: 1.5)
-        label.textOffset = NSExpression(forConstantValue: NSValue(cgVector: CGVector(dx: 0, dy: -1.2)))
-        label.predicate = NSPredicate(format: "kind == 'label'")
-        style.addLayer(label)
-    }
+    // MARK: - Preview Rendering (Annotation-Based)
 
     private func rebuildPreview() {
-        guard let mapView, let mapStyle = mapView.style,
-              let source = mapStyle.source(withIdentifier: Self.sourceId) as? MLNShapeSource
-        else { return }
-
-        var features: [[String: Any]] = []
+        guard let mapView else { return }
+        clearAnnotations()
 
         switch mode {
-        case .line:
-            features = buildLineFeatures()
-        case .circle:
-            features = buildCircleFeatures()
+        case .line:   buildLineAnnotations()
+        case .circle: buildCircleAnnotations()
         }
 
-        let collection: [String: Any] = [
-            "type": "FeatureCollection",
-            "features": features,
-        ]
-
-        if let data = try? JSONSerialization.data(withJSONObject: collection),
-           let shape = try? MLNShape(data: data, encoding: String.Encoding.utf8.rawValue)
-        {
-            source.shape = shape
+        if !annotations.isEmpty {
+            mapView.addAnnotations(annotations)
         }
     }
 
-    // MARK: - GeoJSON Feature Builders
-
-    private func buildLineFeatures() -> [[String: Any]] {
-        var features: [[String: Any]] = []
-
-        // Vertex points
+    private func buildLineAnnotations() {
+        // Vertex dots
         for point in points {
-            features.append(pointFeature(coordinate: point, kind: "point"))
+            let ann = MLNPointAnnotation()
+            ann.coordinate = point
+            ann.title = "measure-point"
+            annotations.append(ann)
         }
 
-        // Committed line segments
+        // Committed polyline connecting all tapped points
         if points.count >= 2 {
-            let coords = points.map { [$0.longitude, $0.latitude] }
-            features.append([
-                "type": "Feature",
-                "geometry": [
-                    "type": "LineString",
-                    "coordinates": coords,
-                ] as [String: Any],
-                "properties": ["kind": "line"] as [String: Any],
-            ])
-        }
-
-        // Distance labels at midpoints of each segment
-        if points.count >= 2 {
-            for i in 1..<points.count {
-                let dist = Self.haversineDistance(from: points[i - 1], to: points[i])
-                let mid = Self.midpoint(points[i - 1], points[i])
-                features.append([
-                    "type": "Feature",
-                    "geometry": [
-                        "type": "Point",
-                        "coordinates": [mid.longitude, mid.latitude],
-                    ] as [String: Any],
-                    "properties": [
-                        "kind": "label",
-                        "label": Self.formatDistance(dist),
-                    ] as [String: Any],
-                ])
-            }
-
-            // Total distance label at the last point (if > 1 segment)
-            if points.count > 2, let last = points.last {
-                let total = (1..<points.count).reduce(0.0) { sum, i in
-                    sum + Self.haversineDistance(from: points[i - 1], to: points[i])
-                }
-                features.append([
-                    "type": "Feature",
-                    "geometry": [
-                        "type": "Point",
-                        "coordinates": [last.longitude, last.latitude],
-                    ] as [String: Any],
-                    "properties": [
-                        "kind": "label",
-                        "label": "Total: \(Self.formatDistance(total))",
-                    ] as [String: Any],
-                ])
-            }
-        }
-
-        return features
-    }
-
-    private func buildCircleFeatures() -> [[String: Any]] {
-        var features: [[String: Any]] = []
-
-        guard !points.isEmpty else { return features }
-
-        // Center point
-        features.append(pointFeature(coordinate: points[0], kind: "center"))
-
-        if points.count >= 2 {
-            let center = points[0]
-            let edge = points[1]
-            let radius = Self.haversineDistance(from: center, to: edge)
-
-            // Circle polygon (64-step approximation)
-            let ring = Self.generateCircleCoords(center: center, radiusMeters: radius, steps: 64)
-            let ringCoords = ring.map { [$0.longitude, $0.latitude] }
-
-            // Fill
-            features.append([
-                "type": "Feature",
-                "geometry": [
-                    "type": "Polygon",
-                    "coordinates": [ringCoords],
-                ] as [String: Any],
-                "properties": ["kind": "circle-fill"] as [String: Any],
-            ])
-
-            // Outline
-            features.append([
-                "type": "Feature",
-                "geometry": [
-                    "type": "Polygon",
-                    "coordinates": [ringCoords],
-                ] as [String: Any],
-                "properties": ["kind": "circle-outline"] as [String: Any],
-            ])
-
-            // Radius line (dashed, center → edge)
-            features.append([
-                "type": "Feature",
-                "geometry": [
-                    "type": "LineString",
-                    "coordinates": [
-                        [center.longitude, center.latitude],
-                        [edge.longitude, edge.latitude],
-                    ],
-                ] as [String: Any],
-                "properties": ["kind": "radius"] as [String: Any],
-            ])
-
-            // Radius label at midpoint
-            let mid = Self.midpoint(center, edge)
-            features.append([
-                "type": "Feature",
-                "geometry": [
-                    "type": "Point",
-                    "coordinates": [mid.longitude, mid.latitude],
-                ] as [String: Any],
-                "properties": [
-                    "kind": "label",
-                    "label": Self.formatDistance(radius),
-                ] as [String: Any],
-            ])
-        }
-
-        return features
-    }
-
-    // MARK: - Helpers
-
-    private func pointFeature(coordinate: CLLocationCoordinate2D, kind: String) -> [String: Any] {
-        [
-            "type": "Feature",
-            "geometry": [
-                "type": "Point",
-                "coordinates": [coordinate.longitude, coordinate.latitude],
-            ] as [String: Any],
-            "properties": ["kind": kind] as [String: Any],
-        ]
-    }
-
-    private func removeLayers() {
-        guard let mapView, let mapStyle = mapView.style else { return }
-
-        let allLayerIds = [
-            Self.linesLayerId, Self.pendingLayerId, Self.pointsLayerId, Self.labelsLayerId,
-            Self.fillLayerId, Self.outlineLayerId, Self.radiusLayerId, Self.centerLayerId,
-            Self.circleLabelLayerId,
-        ]
-
-        for layerId in allLayerIds {
-            if let layer = mapStyle.layer(withIdentifier: layerId) {
-                mapStyle.removeLayer(layer)
-            }
-        }
-        if let source = mapStyle.source(withIdentifier: Self.sourceId) {
-            mapStyle.removeSource(source)
+            var coords = points
+            let polyline = MLNPolyline(coordinates: &coords, count: UInt(coords.count))
+            polyline.title = "measure-line"
+            annotations.append(polyline)
         }
     }
 
-    // MARK: - Geometry (static, reusable)
+    private func buildCircleAnnotations() {
+        guard !points.isEmpty else { return }
+
+        // Center dot
+        let centerAnn = MLNPointAnnotation()
+        centerAnn.coordinate = points[0]
+        centerAnn.title = "measure-center"
+        annotations.append(centerAnn)
+
+        guard points.count >= 2 else { return }
+
+        let center = points[0]
+        let edge = points[1]
+        let radius = Self.haversineDistance(from: center, to: edge)
+        let ring = Self.generateCircleCoords(center: center, radiusMeters: radius, steps: 64)
+
+        // Fill polygon
+        var ringCoords = ring
+        let polygon = MLNPolygon(coordinates: &ringCoords, count: UInt(ringCoords.count))
+        polygon.title = "measure-fill"
+        annotations.append(polygon)
+
+        // Outline polyline (closed ring)
+        var outlineCoords = ring
+        let outline = MLNPolyline(coordinates: &outlineCoords, count: UInt(outlineCoords.count))
+        outline.title = "measure-outline"
+        annotations.append(outline)
+
+        // Radius line from center to edge
+        var radiusCoords = [center, edge]
+        let radiusLine = MLNPolyline(coordinates: &radiusCoords, count: 2)
+        radiusLine.title = "measure-radius"
+        annotations.append(radiusLine)
+    }
+
+    // MARK: - Annotation Lifecycle
+
+    private func clearAnnotations() {
+        guard let mapView, !annotations.isEmpty else {
+            annotations.removeAll()
+            return
+        }
+        mapView.removeAnnotations(annotations)
+        annotations.removeAll()
+    }
+
+    // MARK: - Geometry (static, reusable by other controllers)
 
     /// Haversine distance between two coordinates in meters.
     static func haversineDistance(
@@ -486,7 +266,7 @@ final class MeasureToolController {
             longitude: (a.longitude + b.longitude) / 2)
     }
 
-    /// Generate a circle polygon approximation (64 steps).
+    /// Generate a circle polygon approximation.
     static func generateCircleCoords(
         center: CLLocationCoordinate2D, radiusMeters: Double, steps: Int
     ) -> [CLLocationCoordinate2D] {

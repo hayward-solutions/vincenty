@@ -199,7 +199,7 @@ struct ActivityView: View {
                 Endpoints.auditLogsMe,
                 params: filters.queryParams)
             logs = response.data
-            totalCount = response.total ?? 0
+            totalCount = response.total
         } catch {
             errorMessage = "Failed to load activity"
         }

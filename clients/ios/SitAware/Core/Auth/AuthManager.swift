@@ -8,6 +8,7 @@ final class AuthManager {
     private(set) var user: User?
     private(set) var isLoading = true
     private(set) var error: String?
+    var hasServerURL = false
 
     var isAuthenticated: Bool { user != nil }
     var isAdmin: Bool { user?.isAdmin ?? false }
@@ -19,16 +20,23 @@ final class AuthManager {
     /// Check for existing session on app launch.
     /// Mirrors the web client's `useEffect` in `AuthProvider` that checks `localStorage`.
     func bootstrap() async {
+        hasServerURL = KeychainStore.shared.serverURL != nil
+
         guard KeychainStore.shared.accessToken != nil else {
+            AppLogger.shared.log(.info, .auth, "Bootstrap: no stored token")
             isLoading = false
             return
         }
 
+        AppLogger.shared.log(.info, .auth, "Bootstrap: validating stored token")
         do {
             let fetchedUser: User = try await api.get(Endpoints.usersMe)
             self.user = fetchedUser
+            AppLogger.shared.log(.info, .auth, "Bootstrap: authenticated as \(fetchedUser.username)")
         } catch {
             // Token invalid — clear and require re-login
+            AppLogger.shared.log(.warning, .auth, "Bootstrap: token invalid, clearing session",
+                                 detail: error.localizedDescription)
             await api.tokenManager.clearTokens()
         }
 
@@ -54,9 +62,10 @@ final class AuthManager {
         case .authenticated(let auth):
             await api.tokenManager.setTokens(access: auth.accessToken, refresh: auth.refreshToken)
             self.user = auth.user
+            AppLogger.shared.log(.info, .auth, "Login successful: \(auth.user.username)")
 
         case .mfaRequired:
-            break // Caller handles MFA challenge
+            AppLogger.shared.log(.info, .auth, "Login: MFA challenge required")
         }
 
         return result
@@ -66,6 +75,7 @@ final class AuthManager {
     func completeMFALogin(_ response: AuthResponse) async {
         await api.tokenManager.setTokens(access: response.accessToken, refresh: response.refreshToken)
         self.user = response.user
+        AppLogger.shared.log(.info, .auth, "MFA login complete: \(response.user.username)")
     }
 
     // MARK: - MFA Challenge Verification
@@ -92,6 +102,7 @@ final class AuthManager {
 
     /// Revoke refresh token and clear local state.
     func logout() async {
+        AppLogger.shared.log(.info, .auth, "Logging out")
         if let refreshToken = KeychainStore.shared.refreshToken {
             do {
                 try await api.post(
@@ -99,11 +110,14 @@ final class AuthManager {
                     body: LogoutRequest(refreshToken: refreshToken)) as EmptyResponse
             } catch {
                 // Ignore errors during logout — clear local state regardless
+                AppLogger.shared.log(.warning, .auth, "Logout: server revocation failed",
+                                     detail: error.localizedDescription)
             }
         }
 
         await api.tokenManager.clearTokens()
         self.user = nil
+        AppLogger.shared.log(.info, .auth, "Logged out")
     }
 
     // MARK: - Refresh User

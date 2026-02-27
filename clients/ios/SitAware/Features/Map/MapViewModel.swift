@@ -98,8 +98,12 @@ final class MapViewModel {
     // MARK: - Lifecycle
 
     /// Load map settings and group/user lists from the API.
+    /// On first load, shows a loading spinner. On re-entry (tab switch back),
+    /// refreshes data silently so the existing map is not destroyed.
     func loadInitialData() async {
-        isLoadingSettings = true
+        if mapSettings == nil {
+            isLoadingSettings = true
+        }
         async let settingsTask: MapSettings? = {
             do { return try await api.get(Endpoints.mapSettings) }
             catch { return nil }
@@ -151,10 +155,12 @@ final class MapViewModel {
         self.bearing = bearing
         self.pitch = pitch
         self.zoomLevel = zoom
+    }
 
-        // Deactivate tracking on user drag
-        // (This is called for all camera changes; the tracking flag is cleared
-        // separately via a drag gesture recognizer if needed)
+    /// Called when the user begins a gesture-driven camera move. Disables tracking
+    /// so the camera doesn't snap back on the next GPS update.
+    func onUserDragBegan() {
+        isTracking = false
     }
 
     // MARK: - Camera Controls

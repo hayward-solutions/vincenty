@@ -190,8 +190,7 @@ struct DevicesView: View {
         errorMessage = nil
 
         do {
-            let response: ListResponse<Device> = try await api.get(Endpoints.usersMeDevices)
-            devices = response.data
+            devices = try await api.get(Endpoints.usersMeDevices)
         } catch {
             errorMessage = "Failed to load devices"
         }

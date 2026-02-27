@@ -18,10 +18,7 @@ struct MessagesScreen: View {
             // Sidebar: conversation list
             ConversationsListView(
                 conversations: viewModel.conversations,
-                activeId: viewModel.activeConversation?.id,
-                onSelect: { conv in
-                    viewModel.selectConversation(conv)
-                },
+                selection: $viewModel.selectedConversationId,
                 onNewMessage: {
                     showNewDM = true
                 })
@@ -87,10 +84,19 @@ struct MessagesScreen: View {
         .onDisappear {
             viewModel.unsubscribe()
         }
+        .onChange(of: viewModel.selectedConversationId) { _, newValue in
+            if let id = newValue,
+               let conv = viewModel.conversations.first(where: { $0.id == id })
+            {
+                viewModel.selectConversation(conv)
+            } else if newValue == nil {
+                viewModel.clearActiveConversation()
+            }
+        }
         .sheet(isPresented: $showNewDM) {
             NewDirectMessageView { userId, displayName in
                 let conv = viewModel.addDmConversation(userId: userId, displayName: displayName)
-                viewModel.selectConversation(conv)
+                viewModel.selectedConversationId = conv.id
             }
         }
     }

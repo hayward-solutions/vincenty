@@ -64,7 +64,7 @@ struct GroupsView: View {
         HStack(spacing: 12) {
             // Marker preview
             Circle()
-                .fill(Color(hex: group.markerColor.isEmpty ? "#3b82f6" : group.markerColor) ?? .blue)
+                .fill(Color(hex: group.markerColor.isEmpty ? "#3b82f6" : group.markerColor))
                 .frame(width: 32, height: 32)
                 .overlay(
                     Text(String(group.name.prefix(1)).uppercased())
@@ -75,7 +75,8 @@ struct GroupsView: View {
                 Text(group.name)
                     .font(.subheadline.weight(.medium))
 
-                if let desc = group.description, !desc.isEmpty {
+                let desc = group.description
+                if !desc.isEmpty {
                     Text(desc)
                         .font(.caption)
                         .foregroundStyle(.secondary)
@@ -89,7 +90,8 @@ struct GroupsView: View {
                             .padding(.horizontal, 6)
                             .padding(.vertical, 2)
                             .background(
-                                (Color(hex: group.markerColor) ?? .blue).opacity(0.15))
+                                Color(hex: group.markerColor).opacity(0.15)
+                            )
                             .clipShape(RoundedRectangle(cornerRadius: 4))
                     }
                 }
@@ -128,7 +130,7 @@ struct GroupsView: View {
                     HStack {
                         Spacer()
                         Circle()
-                            .fill(Color(hex: editMarkerColor) ?? .blue)
+                            .fill(Color(hex: editMarkerColor))
                             .frame(width: 48, height: 48)
                             .overlay(
                                 Text(String(editingGroup?.name.prefix(1) ?? "G").uppercased())
@@ -171,7 +173,7 @@ struct GroupsView: View {
                                 editMarkerColor = color
                             } label: {
                                 RoundedRectangle(cornerRadius: 4)
-                                    .fill(Color(hex: color) ?? .blue)
+                                    .fill(Color(hex: color))
                                     .frame(width: 26, height: 26)
                                     .overlay(
                                         RoundedRectangle(cornerRadius: 4)
@@ -206,12 +208,12 @@ struct GroupsView: View {
         errorMessage = nil
 
         do {
-            let response: ListResponse<Group> = try await api.get(Endpoints.usersMeGroups)
-            groups = response.data
+            let fetchedGroups: [Group] = try await api.get(Endpoints.usersMeGroups)
+            groups = fetchedGroups
 
             // Check admin status for each group
             await withTaskGroup(of: (String, Bool).self) { taskGroup in
-                for group in response.data {
+                for group in fetchedGroups {
                     taskGroup.addTask {
                         await (group.id, self.checkGroupAdmin(groupId: group.id))
                     }
@@ -230,9 +232,12 @@ struct GroupsView: View {
     private func checkGroupAdmin(groupId: String) async -> Bool {
         guard let userId = auth.user?.id else { return false }
         do {
-            let response: ListResponse<GroupMember> = try await api.get(
+            let members: [GroupMember] = try await api.get(
                 Endpoints.groupMembers(groupId))
-            return response.data.first(where: { $0.userId == userId })?.isAdmin ?? false
+            if let member = members.first(where: { $0.userId == userId }) {
+                return member.isGroupAdmin
+            }
+            return false
         } catch {
             return false
         }
@@ -259,3 +264,4 @@ struct GroupsView: View {
         isSavingMarker = false
     }
 }
+

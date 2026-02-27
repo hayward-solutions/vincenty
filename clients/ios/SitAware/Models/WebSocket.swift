@@ -82,7 +82,7 @@ enum WSMessageType {
 
 /// Consolidated live location for a device, used by the map view.
 /// Built from WSLocationBroadcast data.
-struct UserLocation: Sendable, Identifiable {
+struct UserLocation: Sendable, Identifiable, Equatable {
     var id: String { deviceId }
 
     let userId: String

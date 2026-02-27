@@ -119,7 +119,7 @@ struct AdminGroupsView: View {
         VStack(alignment: .leading, spacing: 6) {
             HStack(spacing: 10) {
                 Circle()
-                    .fill(Color(hex: group.markerColor.isEmpty ? "#3b82f6" : group.markerColor) ?? .blue)
+                    .fill(Color(hex: group.markerColor.isEmpty ? "#3b82f6" : group.markerColor))
                     .frame(width: 28, height: 28)
                     .overlay(
                         Text(String(group.name.prefix(1)).uppercased())
@@ -244,7 +244,7 @@ struct AdminGroupsView: View {
             ]
             let response: ListResponse<Group> = try await api.get(Endpoints.groups, params: params)
             groups = response.data
-            totalCount = response.total ?? 0
+            totalCount = response.total
         } catch {
             errorMessage = "Failed to load groups"
         }
@@ -492,9 +492,7 @@ struct AdminGroupDetailView: View {
     private func loadMembers() async {
         isLoading = true
         do {
-            let response: ListResponse<GroupMember> = try await api.get(
-                Endpoints.groupMembers(groupId))
-            members = response.data
+            members = try await api.get(Endpoints.groupMembers(groupId))
         } catch {
             errorMessage = "Failed to load members"
         }
