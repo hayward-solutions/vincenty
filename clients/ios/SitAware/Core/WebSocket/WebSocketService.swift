@@ -1,4 +1,7 @@
 import Foundation
+#if os(iOS)
+import ActivityKit
+#endif
 
 /// Message handler closure type — receives (type, raw payload dictionary).
 typealias WSMessageHandler = @Sendable (String, AnyCodable?) -> Void
@@ -41,6 +44,12 @@ final class WebSocketService {
     private var isMounted = false
     /// Guard: only attempt device re-resolution once per connect cycle.
     private var retriedDevice = false
+
+    // MARK: - Live Activity
+
+    #if os(iOS)
+    private var connectionActivity: Activity<ConnectionActivityAttributes>?
+    #endif
 
     /// Callback invoked when the WS needs a fresh device ID (stale ID rejected).
     /// Set by the DeviceManager. Returns nil if user needs to choose via enrolment sheet.
@@ -85,6 +94,7 @@ final class WebSocketService {
         backoff = Self.initialBackoff
         retriedDevice = false
         AppLogger.shared.log(.info, .ws, "Disconnected (clean)")
+        endLiveActivity()
     }
 
     // MARK: - Subscribe / Send
@@ -185,6 +195,7 @@ final class WebSocketService {
                             self.backoff = Self.initialBackoff
                             self.retriedDevice = false
                             AppLogger.shared.log(.info, .ws, "Connected")
+                            self.startOrUpdateLiveActivity(isConnected: true)
                         }
                     }
 
@@ -228,6 +239,53 @@ final class WebSocketService {
         }
     }
 
+    // MARK: - Live Activity
+
+    #if os(iOS)
+    /// Start a new Live Activity (or update the existing one) to reflect connection state.
+    private func startOrUpdateLiveActivity(isConnected: Bool) {
+        guard ActivityAuthorizationInfo().areActivitiesEnabled else { return }
+        let serverURL = KeychainStore.shared.serverURL ?? ""
+        let state = ConnectionActivityAttributes.ContentState(
+            isConnected: isConnected,
+            connectedSince: isConnected ? Date() : nil)
+
+        if let activity = connectionActivity {
+            Task {
+                await activity.update(.init(state: state, staleDate: nil))
+            }
+        } else {
+            let attributes = ConnectionActivityAttributes(serverURL: serverURL)
+            do {
+                let activity = try Activity<ConnectionActivityAttributes>.request(
+                    attributes: attributes,
+                    content: .init(state: state, staleDate: nil),
+                    pushType: nil)
+                connectionActivity = activity
+                AppLogger.shared.log(.info, .ws, "Live Activity started")
+            } catch {
+                AppLogger.shared.error(.ws, "Live Activity failed to start: \(error)")
+            }
+        }
+    }
+
+    /// End the Live Activity with a brief "Disconnected" snapshot then dismiss.
+    private func endLiveActivity() {
+        guard let activity = connectionActivity else { return }
+        connectionActivity = nil
+        let finalState = ConnectionActivityAttributes.ContentState(
+            isConnected: false,
+            connectedSince: nil)
+        Task {
+            await activity.end(.init(state: finalState, staleDate: nil), dismissalPolicy: .after(.now + 3))
+            AppLogger.shared.log(.info, .ws, "Live Activity ended")
+        }
+    }
+    #else
+    private func startOrUpdateLiveActivity(isConnected: Bool) {}
+    private func endLiveActivity() {}
+    #endif
+
     private func handleDisconnect(task: URLSessionWebSocketTask, didOpen: Bool, deviceId: String) {
         guard isMounted else { return }
 
@@ -237,6 +295,7 @@ final class WebSocketService {
         webSocketTask = nil
         connectionState = .disconnected
         AppLogger.shared.log(.warning, .ws, didOpen ? "Disconnected" : "Connection failed (never opened)")
+        startOrUpdateLiveActivity(isConnected: false)
 
         // Stale device_id detection:
         // If the server rejected connection before it ever opened, clear stored device
