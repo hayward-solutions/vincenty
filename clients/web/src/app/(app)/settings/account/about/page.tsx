@@ -50,7 +50,7 @@ export default function AboutSettingsPage() {
     setApiError(false);
 
     api
-      .get<ApiInfo>("/api/v1/")
+      .get<ApiInfo>("/api/v1")
       .then((data) => {
         if (!cancelled) setApiInfo(data);
       })
