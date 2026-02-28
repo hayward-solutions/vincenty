@@ -20,6 +20,9 @@ COPY . .
 ARG NEXT_PUBLIC_API_URL
 ENV NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
 
+ARG GIT_COMMIT=dev
+ENV NEXT_PUBLIC_APP_VERSION=${GIT_COMMIT}
+
 RUN npm run build
 
 # =============================================================================

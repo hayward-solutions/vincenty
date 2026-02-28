@@ -20,6 +20,7 @@ export interface Device {
   device_type: string;
   device_uid: string;
   user_agent?: string;
+  app_version?: string;
   is_primary: boolean;
   last_seen_at?: string;
   created_at: string;

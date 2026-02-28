@@ -152,7 +152,7 @@ type DeviceRepo interface {
 	GetByID(ctx context.Context, id uuid.UUID) (*model.Device, error)
 	ListByUserID(ctx context.Context, userID uuid.UUID) ([]model.Device, error)
 	Update(ctx context.Context, device *model.Device) error
-	TouchLastSeen(ctx context.Context, id uuid.UUID, userAgent *string) error
+	TouchLastSeen(ctx context.Context, id uuid.UUID, userAgent *string, appVersion *string) error
 	GetByDeviceUID(ctx context.Context, deviceUID string) (*model.Device, error)
 	FindSingleByUserAgent(ctx context.Context, userID uuid.UUID, deviceType, userAgent string) (*model.Device, error)
 	SetPrimary(ctx context.Context, userID, deviceID uuid.UUID) error

@@ -9,6 +9,7 @@ struct Device: Codable, Sendable, Identifiable {
     let deviceType: String
     let deviceUid: String
     var userAgent: String?
+    var appVersion: String?
     let isPrimary: Bool
     var lastSeenAt: String?
     let createdAt: String
@@ -29,9 +30,10 @@ struct DeviceResolveResponse: Codable, Sendable {
 struct CreateDeviceRequest: Codable, Sendable {
     let name: String
     let deviceType: String
+    let appVersion: String
 
     static func ios(name: String = "iPhone") -> CreateDeviceRequest {
-        CreateDeviceRequest(name: name, deviceType: "ios")
+        CreateDeviceRequest(name: name, deviceType: "ios", appVersion: BuildInfo.version)
     }
 }
 

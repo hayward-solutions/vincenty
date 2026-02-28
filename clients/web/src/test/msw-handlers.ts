@@ -414,4 +414,9 @@ export const handlers = [
   http.delete("/api/v1/users/me/api-tokens/:id", () => {
     return new HttpResponse(null, { status: 204 });
   }),
+
+  // API info (used by About page)
+  http.get("/api/v1/", () => {
+    return HttpResponse.json({ service: "sitaware-api", version: "dev" });
+  }),
 ];

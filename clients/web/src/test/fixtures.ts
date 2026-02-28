@@ -123,6 +123,7 @@ export const mockDevice: Device = {
   name: "Web Browser",
   device_type: "web",
   device_uid: "uid-123",
+  app_version: "dev",
   is_primary: true,
   created_at: "2025-01-01T00:00:00Z",
   updated_at: "2025-01-01T00:00:00Z",

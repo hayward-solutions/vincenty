@@ -77,6 +77,9 @@ func TestHandler_APIToken_ValidToken(t *testing.T) {
 	deviceRepo.GetByIDFn = func(_ context.Context, id uuid.UUID) (*model.Device, error) {
 		return &model.Device{ID: deviceID, UserID: userID, Name: "CLI"}, nil
 	}
+	deviceRepo.TouchLastSeenFn = func(_ context.Context, _ uuid.UUID, _ *string, _ *string) error {
+		return nil
+	}
 	groupRepo.ListByUserIDFn = func(_ context.Context, uid uuid.UUID) ([]model.Group, []int, error) {
 		return nil, nil, nil
 	}
@@ -215,6 +218,9 @@ func TestHandler_GroupLoadFailure(t *testing.T) {
 	deviceRepo.GetByIDFn = func(ctx context.Context, id uuid.UUID) (*model.Device, error) {
 		return &model.Device{ID: deviceID, UserID: userID, Name: "Phone"}, nil
 	}
+	deviceRepo.TouchLastSeenFn = func(_ context.Context, _ uuid.UUID, _ *string, _ *string) error {
+		return nil
+	}
 	groupRepo.ListByUserIDFn = func(ctx context.Context, uid uuid.UUID) ([]model.Group, []int, error) {
 		return nil, nil, model.ErrNotFound("internal error")
 	}
@@ -236,6 +242,9 @@ func TestHandler_UserLoadFailure(t *testing.T) {
 	deviceID := uuid.New()
 	deviceRepo.GetByIDFn = func(ctx context.Context, id uuid.UUID) (*model.Device, error) {
 		return &model.Device{ID: deviceID, UserID: userID, Name: "Phone"}, nil
+	}
+	deviceRepo.TouchLastSeenFn = func(_ context.Context, _ uuid.UUID, _ *string, _ *string) error {
+		return nil
 	}
 	groupRepo.ListByUserIDFn = func(ctx context.Context, uid uuid.UUID) ([]model.Group, []int, error) {
 		return []model.Group{{ID: uuid.New(), Name: "G1"}}, []int{3}, nil

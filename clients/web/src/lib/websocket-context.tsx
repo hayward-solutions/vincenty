@@ -13,6 +13,9 @@ import { api } from "@/lib/api";
 import { DeviceEnrolmentDialog } from "@/components/devices/device-enrolment-dialog";
 import type { Device, DeviceResolveResponse, WSEnvelope } from "@/types/api";
 
+/** The version of this web client build, injected at build time. */
+const APP_VERSION = process.env.NEXT_PUBLIC_APP_VERSION ?? "dev";
+
 type ConnectionState = "connecting" | "connected" | "disconnected";
 type MessageHandler = (type: string, payload: unknown) => void;
 
@@ -97,6 +100,7 @@ export function WebSocketProvider({
         const device = await api.post<Device>("/api/v1/users/me/devices", {
           name: "Web Browser",
           device_type: "web",
+          app_version: APP_VERSION,
         });
         localStorage.setItem("device_id", device.id);
         setDeviceId(device.id);
@@ -151,7 +155,7 @@ export function WebSocketProvider({
 
       setConnectionState("connecting");
 
-      const url = `${wsUrl}/api/v1/ws?token=${encodeURIComponent(token)}&device_id=${encodeURIComponent(devId)}`;
+      const url = `${wsUrl}/api/v1/ws?token=${encodeURIComponent(token)}&device_id=${encodeURIComponent(devId)}&app_version=${encodeURIComponent(APP_VERSION)}`;
 
       try {
         const socket = new WebSocket(url);

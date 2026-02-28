@@ -227,6 +227,7 @@ export default function DevicesSettingsPage() {
                   <TableRow>
                     <TableHead>Device</TableHead>
                     <TableHead>Type</TableHead>
+                    <TableHead>Version</TableHead>
                     <TableHead>Primary</TableHead>
                     <TableHead>Last Active</TableHead>
                     <TableHead>Registered</TableHead>
@@ -268,6 +269,9 @@ export default function DevicesSettingsPage() {
                             {device.device_type}
                           </Badge>
                         </TableCell>
+                        <TableCell className="whitespace-nowrap text-xs font-mono text-muted-foreground">
+                          {device.app_version ?? "—"}
+                        </TableCell>
                         <TableCell>
                           {device.is_primary ? (
                             <Badge variant="default" className="text-xs">
@@ -307,7 +311,7 @@ export default function DevicesSettingsPage() {
                   {devices.length === 0 && (
                     <TableRow>
                       <TableCell
-                        colSpan={6}
+                        colSpan={7}
                         className="text-center text-muted-foreground py-8"
                       >
                         No devices registered

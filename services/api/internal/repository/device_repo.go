@@ -41,25 +41,25 @@ func (r *DeviceRepository) Create(ctx context.Context, device *model.Device) err
 	}
 
 	query := `
-		INSERT INTO devices (id, user_id, name, device_type, device_uid, user_agent, is_primary)
-		VALUES ($1, $2, $3, $4, $5, $6, $7)
+		INSERT INTO devices (id, user_id, name, device_type, device_uid, user_agent, app_version, is_primary)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
 		RETURNING created_at, updated_at`
 
 	return r.pool.QueryRow(ctx, query,
-		device.ID, device.UserID, device.Name, device.DeviceType, device.DeviceUID, device.UserAgent, device.IsPrimary,
+		device.ID, device.UserID, device.Name, device.DeviceType, device.DeviceUID, device.UserAgent, device.AppVersion, device.IsPrimary,
 	).Scan(&device.CreatedAt, &device.UpdatedAt)
 }
 
 // GetByID retrieves a device by ID.
 func (r *DeviceRepository) GetByID(ctx context.Context, id uuid.UUID) (*model.Device, error) {
 	query := `
-		SELECT id, user_id, name, device_type, device_uid, user_agent, is_primary, last_seen_at, created_at, updated_at
+		SELECT id, user_id, name, device_type, device_uid, user_agent, app_version, is_primary, last_seen_at, created_at, updated_at
 		FROM devices WHERE id = $1`
 
 	d := &model.Device{}
 	err := r.pool.QueryRow(ctx, query, id).Scan(
 		&d.ID, &d.UserID, &d.Name, &d.DeviceType, &d.DeviceUID,
-		&d.UserAgent, &d.IsPrimary, &d.LastSeenAt, &d.CreatedAt, &d.UpdatedAt,
+		&d.UserAgent, &d.AppVersion, &d.IsPrimary, &d.LastSeenAt, &d.CreatedAt, &d.UpdatedAt,
 	)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -73,7 +73,7 @@ func (r *DeviceRepository) GetByID(ctx context.Context, id uuid.UUID) (*model.De
 // ListByUserID retrieves all devices for a user.
 func (r *DeviceRepository) ListByUserID(ctx context.Context, userID uuid.UUID) ([]model.Device, error) {
 	query := `
-		SELECT id, user_id, name, device_type, device_uid, user_agent, is_primary, last_seen_at, created_at, updated_at
+		SELECT id, user_id, name, device_type, device_uid, user_agent, app_version, is_primary, last_seen_at, created_at, updated_at
 		FROM devices WHERE user_id = $1
 		ORDER BY created_at DESC`
 
@@ -88,7 +88,7 @@ func (r *DeviceRepository) ListByUserID(ctx context.Context, userID uuid.UUID) (
 		var d model.Device
 		if err := rows.Scan(
 			&d.ID, &d.UserID, &d.Name, &d.DeviceType, &d.DeviceUID,
-			&d.UserAgent, &d.IsPrimary, &d.LastSeenAt, &d.CreatedAt, &d.UpdatedAt,
+			&d.UserAgent, &d.AppVersion, &d.IsPrimary, &d.LastSeenAt, &d.CreatedAt, &d.UpdatedAt,
 		); err != nil {
 			return nil, err
 		}
@@ -115,13 +115,18 @@ func (r *DeviceRepository) Update(ctx context.Context, device *model.Device) err
 	return nil
 }
 
-// TouchLastSeen updates last_seen_at and optionally user_agent for a device.
-func (r *DeviceRepository) TouchLastSeen(ctx context.Context, id uuid.UUID, userAgent *string) error {
+// TouchLastSeen updates last_seen_at, optionally user_agent, and optionally
+// app_version for a device. Nil values are preserved (COALESCE).
+func (r *DeviceRepository) TouchLastSeen(ctx context.Context, id uuid.UUID, userAgent *string, appVersion *string) error {
 	query := `
-		UPDATE devices SET last_seen_at = NOW(), user_agent = COALESCE($2, user_agent), updated_at = NOW()
+		UPDATE devices
+		SET last_seen_at = NOW(),
+		    user_agent   = COALESCE($2, user_agent),
+		    app_version  = COALESCE($3, app_version),
+		    updated_at   = NOW()
 		WHERE id = $1`
 
-	tag, err := r.pool.Exec(ctx, query, id, userAgent)
+	tag, err := r.pool.Exec(ctx, query, id, userAgent, appVersion)
 	if err != nil {
 		return err
 	}
@@ -134,13 +139,13 @@ func (r *DeviceRepository) TouchLastSeen(ctx context.Context, id uuid.UUID, user
 // GetByDeviceUID retrieves a device by its unique device UID (e.g., CoT event UID).
 func (r *DeviceRepository) GetByDeviceUID(ctx context.Context, deviceUID string) (*model.Device, error) {
 	query := `
-		SELECT id, user_id, name, device_type, device_uid, user_agent, is_primary, last_seen_at, created_at, updated_at
+		SELECT id, user_id, name, device_type, device_uid, user_agent, app_version, is_primary, last_seen_at, created_at, updated_at
 		FROM devices WHERE device_uid = $1`
 
 	d := &model.Device{}
 	err := r.pool.QueryRow(ctx, query, deviceUID).Scan(
 		&d.ID, &d.UserID, &d.Name, &d.DeviceType, &d.DeviceUID,
-		&d.UserAgent, &d.IsPrimary, &d.LastSeenAt, &d.CreatedAt, &d.UpdatedAt,
+		&d.UserAgent, &d.AppVersion, &d.IsPrimary, &d.LastSeenAt, &d.CreatedAt, &d.UpdatedAt,
 	)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -157,7 +162,7 @@ func (r *DeviceRepository) GetByDeviceUID(ctx context.Context, deviceUID string)
 // the caller can fall through to creating a new device.
 func (r *DeviceRepository) FindSingleByUserAgent(ctx context.Context, userID uuid.UUID, deviceType, userAgent string) (*model.Device, error) {
 	query := `
-		SELECT id, user_id, name, device_type, device_uid, user_agent, is_primary, last_seen_at, created_at, updated_at
+		SELECT id, user_id, name, device_type, device_uid, user_agent, app_version, is_primary, last_seen_at, created_at, updated_at
 		FROM devices
 		WHERE user_id = $1 AND device_type = $2 AND user_agent = $3`
 
@@ -178,7 +183,7 @@ func (r *DeviceRepository) FindSingleByUserAgent(ctx context.Context, userID uui
 		d := &model.Device{}
 		if err := rows.Scan(
 			&d.ID, &d.UserID, &d.Name, &d.DeviceType, &d.DeviceUID,
-			&d.UserAgent, &d.IsPrimary, &d.LastSeenAt, &d.CreatedAt, &d.UpdatedAt,
+			&d.UserAgent, &d.AppVersion, &d.IsPrimary, &d.LastSeenAt, &d.CreatedAt, &d.UpdatedAt,
 		); err != nil {
 			return nil, err
 		}
