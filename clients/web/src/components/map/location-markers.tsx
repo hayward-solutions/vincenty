@@ -114,6 +114,7 @@ export function LocationMarkers({
         if (loc.heading != null) {
           existing.setRotation(loc.heading);
         }
+        applyLabelCounterRotation(existing, loc.heading ?? null);
       } else {
         // Style changed or new marker — (re)create
         if (existing) {
@@ -141,6 +142,7 @@ export function LocationMarkers({
         if (loc.heading != null) {
           marker.setRotation(loc.heading);
         }
+        applyLabelCounterRotation(marker, loc.heading ?? null);
 
         markersRef.current.set(deviceId, marker);
         styleRef.current.set(deviceId, styleKey);
@@ -172,6 +174,18 @@ export function LocationMarkers({
   return null; // markers are managed imperatively
 }
 
+/**
+ * Apply a counter-rotation to the label so it remains screen-upright even
+ * when the marker wrapper is rotated to reflect the device's heading.
+ * Must be called whenever setRotation() is called on the marker.
+ */
+function applyLabelCounterRotation(marker: maplibregl.Marker, heading: number | null): void {
+  const label = marker.getElement().querySelector<HTMLElement>(".sa-marker-label");
+  if (!label) return;
+  const rotate = heading != null ? ` rotate(${-heading}deg)` : "";
+  label.style.transform = `translateX(-50%)${rotate}`;
+}
+
 function createMarkerElement(
   label: string,
   icon: string,
@@ -187,8 +201,11 @@ function createMarkerElement(
   svg.style.filter = "drop-shadow(0 1px 3px rgba(0,0,0,0.4))";
   wrapper.appendChild(svg);
 
-  // Label — absolutely positioned below the pin, outside the wrapper's layout
+  // Label — absolutely positioned below the pin, outside the wrapper's layout.
+  // The class allows counter-rotation to keep the label screen-upright when the
+  // marker wrapper is rotated to reflect the device's heading.
   const text = document.createElement("div");
+  text.className = "sa-marker-label";
   text.textContent = label;
   text.style.cssText = `
     position:absolute;top:20px;left:50%;transform:translateX(-50%);
