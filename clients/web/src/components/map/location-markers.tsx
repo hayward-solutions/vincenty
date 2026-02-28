@@ -111,10 +111,7 @@ export function LocationMarkers({
           popup.setHTML(buildPopupHTML(loc, color));
         }
 
-        if (loc.heading != null) {
-          existing.setRotation(loc.heading);
-        }
-        applyLabelCounterRotation(existing, loc.heading ?? null);
+        applyIconRotation(existing, loc.heading ?? null);
       } else {
         // Style changed or new marker — (re)create
         if (existing) {
@@ -139,10 +136,7 @@ export function LocationMarkers({
           .setPopup(popup)
           .addTo(map);
 
-        if (loc.heading != null) {
-          marker.setRotation(loc.heading);
-        }
-        applyLabelCounterRotation(marker, loc.heading ?? null);
+        applyIconRotation(marker, loc.heading ?? null);
 
         markersRef.current.set(deviceId, marker);
         styleRef.current.set(deviceId, styleKey);
@@ -175,15 +169,14 @@ export function LocationMarkers({
 }
 
 /**
- * Apply a counter-rotation to the label so it remains screen-upright even
- * when the marker wrapper is rotated to reflect the device's heading.
- * Must be called whenever setRotation() is called on the marker.
+ * Rotate only the SVG icon to reflect the device's heading, leaving the
+ * wrapper and label untouched so the label stays screen-upright and centred
+ * directly below the icon at all headings.
  */
-function applyLabelCounterRotation(marker: maplibregl.Marker, heading: number | null): void {
-  const label = marker.getElement().querySelector<HTMLElement>(".sa-marker-label");
-  if (!label) return;
-  const rotate = heading != null ? ` rotate(${-heading}deg)` : "";
-  label.style.transform = `translateX(-50%)${rotate}`;
+function applyIconRotation(marker: maplibregl.Marker, heading: number | null): void {
+  const icon = marker.getElement().querySelector<SVGSVGElement>(".sa-marker-icon");
+  if (!icon) return;
+  icon.style.transform = heading != null ? `rotate(${heading}deg)` : "";
 }
 
 function createMarkerElement(
@@ -195,15 +188,18 @@ function createMarkerElement(
   wrapper.className = "sa-marker";
   wrapper.style.cssText = "position:relative;width:18px;height:18px;cursor:pointer;";
 
-  // Shape icon — centered in the wrapper, determines the anchor point
+  // Shape icon — centered in the wrapper, determines the anchor point.
+  // Rotation is applied to this element only (not the wrapper) so the label
+  // position is unaffected by heading changes.
   const svg = createMarkerSVG(icon, color, 18);
-  svg.style.cssText = "position:absolute;top:0;left:0;";
+  svg.setAttribute("class", "sa-marker-icon");
+  svg.style.cssText = "position:absolute;top:0;left:0;transform-origin:center center;";
   svg.style.filter = "drop-shadow(0 1px 3px rgba(0,0,0,0.4))";
   wrapper.appendChild(svg);
 
   // Label — absolutely positioned below the pin, outside the wrapper's layout.
-  // The class allows counter-rotation to keep the label screen-upright when the
-  // marker wrapper is rotated to reflect the device's heading.
+  // Because only the SVG icon rotates (not the wrapper), this stays horizontal
+  // and centred below the icon regardless of heading.
   const text = document.createElement("div");
   text.className = "sa-marker-label";
   text.textContent = label;
