@@ -88,6 +88,20 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Record the connecting app version (optional query param). This keeps the
+	// version up to date on every connect without requiring a separate API call.
+	appVersionStr := r.URL.Query().Get("app_version")
+	var appVersionPtr *string
+	if appVersionStr != "" {
+		appVersionPtr = &appVersionStr
+	}
+	ua := r.UserAgent()
+	var uaPtr *string
+	if ua != "" {
+		uaPtr = &ua
+	}
+	_ = h.deviceRepo.TouchLastSeen(ctx, deviceID, uaPtr, appVersionPtr)
+
 	// --- Load user's group memberships ---
 	groups, _, err := h.groupRepo.ListByUserID(ctx, claims.UserID)
 	if err != nil {

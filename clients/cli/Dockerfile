@@ -11,7 +11,8 @@ RUN go mod download
 
 # Copy source and build
 COPY . .
-RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o /build/sitaware-cli .
+ARG GIT_COMMIT=dev
+RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w -X main.version=${GIT_COMMIT}" -o /build/sitaware-cli .
 
 # =============================================================================
 # Runtime stage

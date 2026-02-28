@@ -366,7 +366,7 @@ type DeviceRepo struct {
 	GetByIDFn               func(ctx context.Context, id uuid.UUID) (*model.Device, error)
 	ListByUserIDFn          func(ctx context.Context, userID uuid.UUID) ([]model.Device, error)
 	UpdateFn                func(ctx context.Context, device *model.Device) error
-	TouchLastSeenFn         func(ctx context.Context, id uuid.UUID, userAgent *string) error
+	TouchLastSeenFn         func(ctx context.Context, id uuid.UUID, userAgent *string, appVersion *string) error
 	GetByDeviceUIDFn        func(ctx context.Context, deviceUID string) (*model.Device, error)
 	FindSingleByUserAgentFn func(ctx context.Context, userID uuid.UUID, deviceType, userAgent string) (*model.Device, error)
 	SetPrimaryFn            func(ctx context.Context, userID, deviceID uuid.UUID) error
@@ -385,8 +385,8 @@ func (m *DeviceRepo) ListByUserID(ctx context.Context, userID uuid.UUID) ([]mode
 func (m *DeviceRepo) Update(ctx context.Context, device *model.Device) error {
 	return m.UpdateFn(ctx, device)
 }
-func (m *DeviceRepo) TouchLastSeen(ctx context.Context, id uuid.UUID, userAgent *string) error {
-	return m.TouchLastSeenFn(ctx, id, userAgent)
+func (m *DeviceRepo) TouchLastSeen(ctx context.Context, id uuid.UUID, userAgent *string, appVersion *string) error {
+	return m.TouchLastSeenFn(ctx, id, userAgent, appVersion)
 }
 func (m *DeviceRepo) GetByDeviceUID(ctx context.Context, deviceUID string) (*model.Device, error) {
 	return m.GetByDeviceUIDFn(ctx, deviceUID)

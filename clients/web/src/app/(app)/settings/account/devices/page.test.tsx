@@ -46,6 +46,7 @@ const mockDeviceData = [
     device_type: "web",
     device_uid: "uid-123",
     is_primary: true,
+    app_version: "sha-abc1234",
     user_agent:
       "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
     last_seen_at: new Date().toISOString(),
@@ -239,5 +240,21 @@ describe("DevicesSettingsPage", () => {
     render(<DevicesSettingsPage />);
     const renameButtons = screen.getAllByTitle("Rename device");
     expect(renameButtons).toHaveLength(2);
+  });
+
+  // -----------------------------------------------------------------------
+  // Version column
+  // -----------------------------------------------------------------------
+
+  it("shows app_version in Version column when set", () => {
+    render(<DevicesSettingsPage />);
+    expect(screen.getByText("sha-abc1234")).toBeInTheDocument();
+  });
+
+  it('shows "—" in Version column for devices with no app_version', () => {
+    render(<DevicesSettingsPage />);
+    // device-2 has no app_version; the cell should display an em-dash
+    const versionCells = screen.getAllByText("—");
+    expect(versionCells.length).toBeGreaterThanOrEqual(1);
   });
 });

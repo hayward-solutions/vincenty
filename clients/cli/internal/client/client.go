@@ -41,10 +41,11 @@ type DeviceResponse struct {
 }
 
 // CreateDevice creates a new device for the authenticated user and returns it.
-func (c *Client) CreateDevice(ctx context.Context, name, deviceType string) (*DeviceResponse, error) {
+func (c *Client) CreateDevice(ctx context.Context, name, deviceType, appVersion string) (*DeviceResponse, error) {
 	body := map[string]string{
 		"name":        name,
 		"device_type": deviceType,
+		"app_version": appVersion,
 	}
 
 	resp, err := c.doJSON(ctx, http.MethodPost, "/api/v1/users/me/devices", body)
@@ -84,8 +85,8 @@ type WSConn struct {
 }
 
 // ConnectWS establishes a WebSocket connection to the server.
-func (c *Client) ConnectWS(ctx context.Context, deviceID string) (*WSConn, error) {
-	wsURL := c.wsURL(deviceID)
+func (c *Client) ConnectWS(ctx context.Context, deviceID, appVersion string) (*WSConn, error) {
+	wsURL := c.wsURL(deviceID, appVersion)
 	slog.Info("connecting websocket", "url", wsURL)
 
 	conn, _, err := websocket.Dial(ctx, wsURL, nil)
@@ -175,14 +176,15 @@ func (c *Client) doJSON(ctx context.Context, method, path string, body any) (*ht
 	return c.http.Do(req)
 }
 
-func (c *Client) wsURL(deviceID string) string {
+func (c *Client) wsURL(deviceID, appVersion string) string {
 	u := c.baseURL
 	u = strings.Replace(u, "https://", "wss://", 1)
 	u = strings.Replace(u, "http://", "ws://", 1)
 
 	return u + "/api/v1/ws?" + url.Values{
-		"token":     {c.token},
-		"device_id": {deviceID},
+		"token":       {c.token},
+		"device_id":   {deviceID},
+		"app_version": {appVersion},
 	}.Encode()
 }
 

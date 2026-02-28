@@ -8,6 +8,7 @@ const accountItems = [
   { href: "/settings/account/devices", label: "Devices" },
   { href: "/settings/account/activity", label: "Activity" },
   { href: "/settings/account/groups", label: "Groups" },
+  { href: "/settings/account/about", label: "About" },
 ];
 
 export default function AccountSettingsLayout({

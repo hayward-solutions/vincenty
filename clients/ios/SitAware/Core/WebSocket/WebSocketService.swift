@@ -164,6 +164,7 @@ final class WebSocketService {
         components.queryItems = [
             URLQueryItem(name: "token", value: token),
             URLQueryItem(name: "device_id", value: deviceId),
+            URLQueryItem(name: "app_version", value: BuildInfo.version),
         ]
 
         guard let url = components.url else {

@@ -19,6 +19,7 @@
 //	-interval      Send interval           env: SITAWARE_INTERVAL (default 1s)
 //	-loop          Loop the track          env: SITAWARE_LOOP     (default false)
 //	-quiet         Suppress per-point log  env: SITAWARE_QUIET    (default false)
+//	-version       Print version and exit
 //
 // Flags take precedence over environment variables.
 package main
@@ -36,7 +37,19 @@ import (
 	"github.com/sitaware/cli/internal/track"
 )
 
+// version is set at build time via -ldflags "-X main.version=<value>".
+// Falls back to "dev" for local builds.
+var version = "dev"
+
 func main() {
+	// Handle -version / --version before full flag parsing.
+	for _, arg := range os.Args[1:] {
+		if arg == "-version" || arg == "--version" {
+			fmt.Println(version)
+			return
+		}
+	}
+
 	cfg, err := parseConfig(os.Args[1:], os.Getenv)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "error: %v\n", err)
@@ -82,8 +95,8 @@ func main() {
 	// -----------------------------------------------------------------------
 	api := client.New(cfg.Server, cfg.Token)
 
-	slog.Info("creating device", "name", cfg.DeviceName)
-	device, err := api.CreateDevice(ctx, cfg.DeviceName, "cli")
+	slog.Info("creating device", "name", cfg.DeviceName, "version", version)
+	device, err := api.CreateDevice(ctx, cfg.DeviceName, "cli", version)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "error creating device: %v\n", err)
 		os.Exit(1)
@@ -105,7 +118,7 @@ func main() {
 	// -----------------------------------------------------------------------
 	// Connect WebSocket
 	// -----------------------------------------------------------------------
-	ws, err := api.ConnectWS(ctx, device.ID)
+	ws, err := api.ConnectWS(ctx, device.ID, version)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "error connecting websocket: %v\n", err)
 		os.Exit(1)

@@ -15,6 +15,7 @@ type Device struct {
 	DeviceType string     `json:"-"`
 	DeviceUID  *string    `json:"-"`
 	UserAgent  *string    `json:"-"`
+	AppVersion *string    `json:"-"`
 	IsPrimary  bool       `json:"-"`
 	LastSeenAt *time.Time `json:"-"`
 	CreatedAt  time.Time  `json:"-"`
@@ -29,6 +30,7 @@ type DeviceResponse struct {
 	DeviceType string     `json:"device_type"`
 	DeviceUID  string     `json:"device_uid,omitempty"`
 	UserAgent  string     `json:"user_agent,omitempty"`
+	AppVersion string     `json:"app_version,omitempty"`
 	IsPrimary  bool       `json:"is_primary"`
 	LastSeenAt *time.Time `json:"last_seen_at,omitempty"`
 	CreatedAt  time.Time  `json:"created_at"`
@@ -45,6 +47,10 @@ func (d *Device) ToResponse() DeviceResponse {
 	if d.UserAgent != nil {
 		ua = *d.UserAgent
 	}
+	av := ""
+	if d.AppVersion != nil {
+		av = *d.AppVersion
+	}
 	return DeviceResponse{
 		ID:         d.ID,
 		UserID:     d.UserID,
@@ -52,6 +58,7 @@ func (d *Device) ToResponse() DeviceResponse {
 		DeviceType: d.DeviceType,
 		DeviceUID:  uid,
 		UserAgent:  ua,
+		AppVersion: av,
 		IsPrimary:  d.IsPrimary,
 		LastSeenAt: d.LastSeenAt,
 		CreatedAt:  d.CreatedAt,
@@ -63,6 +70,7 @@ func (d *Device) ToResponse() DeviceResponse {
 type CreateDeviceRequest struct {
 	Name       string `json:"name"`
 	DeviceType string `json:"device_type"`
+	AppVersion string `json:"app_version"`
 }
 
 // Validate checks that required fields are present.

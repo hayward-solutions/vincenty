@@ -4,6 +4,9 @@ import { useCallback, useState } from "react";
 import { api } from "@/lib/api";
 import type { Device, DeviceResolveResponse } from "@/types/api";
 
+/** The version of this web client build, injected at build time. */
+const APP_VERSION = process.env.NEXT_PUBLIC_APP_VERSION ?? "dev";
+
 /**
  * Fetch the authenticated user's registered devices.
  * The endpoint returns a plain Device[] (not paginated).
@@ -79,6 +82,7 @@ export function useCreateDevice() {
       return await api.post<Device>("/api/v1/users/me/devices", {
         name: name || "Web Browser",
         device_type: "web",
+        app_version: APP_VERSION,
       });
     } finally {
       setIsLoading(false);

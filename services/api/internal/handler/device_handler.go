@@ -69,7 +69,7 @@ func (h *DeviceHandler) Resolve(w http.ResponseWriter, r *http.Request) {
 	if cookie, err := r.Cookie("device_id"); err == nil && cookie.Value != "" {
 		if id, err := uuid.Parse(cookie.Value); err == nil {
 			if device, err := h.deviceRepo.GetByID(r.Context(), id); err == nil && device.UserID == claims.UserID {
-				_ = h.deviceRepo.TouchLastSeen(r.Context(), device.ID, uaPtr)
+				_ = h.deviceRepo.TouchLastSeen(r.Context(), device.ID, uaPtr, nil)
 				setDeviceCookie(w, device.ID)
 				slog.Info("device resolved via cookie", "device_id", device.ID, "user_id", claims.UserID)
 				resp := device.ToResponse()
@@ -87,7 +87,7 @@ func (h *DeviceHandler) Resolve(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		if device != nil {
-			_ = h.deviceRepo.TouchLastSeen(r.Context(), device.ID, uaPtr)
+			_ = h.deviceRepo.TouchLastSeen(r.Context(), device.ID, uaPtr, nil)
 			setDeviceCookie(w, device.ID)
 			slog.Info("device resolved via user-agent heuristic", "device_id", device.ID, "user_id", claims.UserID)
 			resp := device.ToResponse()
@@ -146,7 +146,7 @@ func (h *DeviceHandler) Claim(w http.ResponseWriter, r *http.Request) {
 		uaPtr = &ua
 	}
 
-	_ = h.deviceRepo.TouchLastSeen(r.Context(), device.ID, uaPtr)
+	_ = h.deviceRepo.TouchLastSeen(r.Context(), device.ID, uaPtr, nil)
 	setDeviceCookie(w, device.ID)
 	slog.Info("device claimed", "device_id", device.ID, "user_id", claims.UserID)
 	JSON(w, http.StatusOK, device.ToResponse())
@@ -180,11 +180,17 @@ func (h *DeviceHandler) Create(w http.ResponseWriter, r *http.Request) {
 		uaPtr = &ua
 	}
 
+	var avPtr *string
+	if req.AppVersion != "" {
+		avPtr = &req.AppVersion
+	}
+
 	device := &model.Device{
 		UserID:     claims.UserID,
 		Name:       req.Name,
 		DeviceType: req.DeviceType,
 		UserAgent:  uaPtr,
+		AppVersion: avPtr,
 	}
 
 	if err := h.deviceRepo.Create(r.Context(), device); err != nil {

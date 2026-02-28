@@ -43,7 +43,7 @@ func TestAPIInfo(t *testing.T) {
 	if body["service"] != "sitaware-api" {
 		t.Errorf("service = %q, want %q", body["service"], "sitaware-api")
 	}
-	if body["version"] != "0.1.0" {
-		t.Errorf("version = %q, want %q", body["version"], "0.1.0")
+	if body["version"] == "" {
+		t.Error("version field must not be empty")
 	}
 }

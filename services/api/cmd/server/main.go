@@ -24,6 +24,10 @@ import (
 	"github.com/sitaware/api/internal/ws"
 )
 
+// version is set at build time via -ldflags "-X main.version=<value>".
+// Falls back to "dev" for local builds.
+var version = "dev"
+
 func main() {
 	// Subcommand: healthcheck (used as container health probe in distroless images)
 	if len(os.Args) > 1 && os.Args[1] == "healthcheck" {
@@ -53,6 +57,7 @@ func main() {
 	slog.Info("starting SitAware API",
 		"host", cfg.Server.Host,
 		"port", cfg.Server.Port,
+		"version", version,
 	)
 
 	// -----------------------------------------------------------------------
@@ -278,7 +283,7 @@ func main() {
 	// API info (public)
 	mux.HandleFunc("GET /api/v1/", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		fmt.Fprint(w, `{"service":"sitaware-api","version":"0.1.0"}`)
+		fmt.Fprintf(w, `{"service":"sitaware-api","version":%q}`, version)
 	})
 
 	// WebSocket (auth via query param in handler)

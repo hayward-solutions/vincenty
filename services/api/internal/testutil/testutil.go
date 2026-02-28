@@ -372,7 +372,7 @@ func Setup(t *testing.T) *TestEnv {
 	// API info
 	mux.HandleFunc("GET /api/v1/", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		fmt.Fprint(w, `{"service":"sitaware-api","version":"0.1.0"}`)
+		fmt.Fprint(w, `{"service":"sitaware-api","version":"dev"}`)
 	})
 
 	// WebSocket

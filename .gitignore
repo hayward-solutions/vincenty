@@ -36,6 +36,7 @@ TODO.md
 
 # iOS / Xcode
 clients/ios/Local.xcconfig
+clients/ios/SitAware/Generated/
 clients/ios/SitAware/Resources/SitAware.local.entitlements
 xcuserdata/
 *.xcuserstate
