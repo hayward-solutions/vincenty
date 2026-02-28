@@ -6,19 +6,27 @@
 //
 //	sitaware-cli [flags]
 //
+// Authentication (one of the following is required):
+//
+//	-token                    API token (sat_...)     env: SITAWARE_TOKEN
+//	-username / -password     Login credentials       env: SITAWARE_USERNAME / SITAWARE_PASSWORD
+//
+// When username and password are used, the CLI logs in at startup and mints a
+// short-lived API token automatically. If the account has MFA enabled, use a
+// pre-generated API token via -token / SITAWARE_TOKEN instead.
+//
 // Required (flag or environment variable):
 //
-//	-token   API token (sat_...)          env: SITAWARE_TOKEN
 //	-file    Path to a .gpx or .geojson   env: SITAWARE_FILE
 //
 // Optional:
 //
-//	-server        API base URL            env: SITAWARE_SERVER   (default http://localhost:8080)
+//	-server        API base URL            env: SITAWARE_SERVER      (default http://localhost:8080)
 //	-device-name   Device name             env: SITAWARE_DEVICE_NAME (default cli-<random>)
-//	-speed         Playback speed          env: SITAWARE_SPEED    (default 1.0)
-//	-interval      Send interval           env: SITAWARE_INTERVAL (default 1s)
-//	-loop          Loop the track          env: SITAWARE_LOOP     (default false)
-//	-quiet         Suppress per-point log  env: SITAWARE_QUIET    (default false)
+//	-speed         Playback speed          env: SITAWARE_SPEED       (default 1.0)
+//	-interval      Send interval           env: SITAWARE_INTERVAL    (default 1s)
+//	-loop          Loop the track          env: SITAWARE_LOOP        (default false)
+//	-quiet         Suppress per-point log  env: SITAWARE_QUIET       (default false)
 //	-version       Print version and exit
 //
 // Flags take precedence over environment variables.
@@ -91,9 +99,18 @@ func main() {
 	}()
 
 	// -----------------------------------------------------------------------
-	// Create API client and device
+	// Create API client, authenticating if username/password provided
 	// -----------------------------------------------------------------------
 	api := client.New(cfg.Server, cfg.Token)
+
+	if cfg.Username != "" {
+		slog.Info("authenticating", "username", cfg.Username)
+		if err := api.Login(ctx, cfg.Username, cfg.Password); err != nil {
+			fmt.Fprintf(os.Stderr, "error authenticating: %v\n", err)
+			os.Exit(1)
+		}
+		slog.Info("authentication successful")
+	}
 
 	slog.Info("creating device", "name", cfg.DeviceName, "version", version)
 	device, err := api.CreateDevice(ctx, cfg.DeviceName, "cli", version)

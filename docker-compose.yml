@@ -109,6 +109,38 @@ services:
     depends_on:
       - api
 
+  cli-route:
+    build:
+      context: ./clients/cli
+      dockerfile: Dockerfile
+    environment:
+      - SITAWARE_SERVER=http://api:${API_PORT:-8080}
+      - SITAWARE_USERNAME=${ADMIN_USERNAME}
+      - SITAWARE_PASSWORD=${ADMIN_PASSWORD}
+      - SITAWARE_DEVICE_NAME=Round Britain
+      - SITAWARE_FILE=/data/route.gpx
+    volumes:
+      - .gpx:/data
+    depends_on:
+      api:
+        condition: service_healthy
+
+  cli-routeburn:
+    build:
+      context: ./clients/cli
+      dockerfile: Dockerfile
+    environment:
+      - SITAWARE_SERVER=http://api:${API_PORT:-8080}
+      - SITAWARE_USERNAME=${ADMIN_USERNAME}
+      - SITAWARE_PASSWORD=${ADMIN_PASSWORD}
+      - SITAWARE_DEVICE_NAME=Routeburn
+      - SITAWARE_FILE=/data/Routeburn.gpx
+    volumes:
+      - .gpx:/data
+    depends_on:
+      api:
+        condition: service_healthy
+
 volumes:
   pgdata:
   redisdata:

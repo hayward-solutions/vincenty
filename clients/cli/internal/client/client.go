@@ -79,6 +79,112 @@ func (c *Client) DeleteDevice(ctx context.Context, deviceID string) error {
 	return nil
 }
 
+// Login authenticates with the API using username and password, then mints a
+// long-lived API token and stores it on the client for all subsequent requests.
+// If the account requires MFA, Login returns an error directing the caller to
+// use a static API token instead.
+func (c *Client) Login(ctx context.Context, username, password string) error {
+	// --- Step 1: exchange credentials for a JWT ---
+	loginBody, err := json.Marshal(loginRequest{Username: username, Password: password})
+	if err != nil {
+		return fmt.Errorf("marshal login request: %w", err)
+	}
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.baseURL+"/api/v1/auth/login", bytes.NewReader(loginBody))
+	if err != nil {
+		return fmt.Errorf("build login request: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := c.http.Do(req)
+	if err != nil {
+		return fmt.Errorf("login request: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("login failed: %w", readAPIError(resp))
+	}
+
+	// Peek at the response to detect an MFA challenge before full decode.
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return fmt.Errorf("read login response: %w", err)
+	}
+
+	var mfaCheck struct {
+		MFARequired bool `json:"mfa_required"`
+	}
+	_ = json.Unmarshal(body, &mfaCheck)
+	if mfaCheck.MFARequired {
+		return fmt.Errorf("account requires MFA; use SITAWARE_TOKEN with a pre-generated API token instead")
+	}
+
+	var loginResp loginResponse
+	if err := json.Unmarshal(body, &loginResp); err != nil {
+		return fmt.Errorf("decode login response: %w", err)
+	}
+	if loginResp.AccessToken == "" {
+		return fmt.Errorf("login response missing access_token")
+	}
+
+	// --- Step 2: mint an API token using the JWT ---
+	tokenName := fmt.Sprintf("cli-%d", time.Now().Unix())
+	tokenBody, err := json.Marshal(createAPITokenRequest{Name: tokenName})
+	if err != nil {
+		return fmt.Errorf("marshal token request: %w", err)
+	}
+
+	req, err = http.NewRequestWithContext(ctx, http.MethodPost, c.baseURL+"/api/v1/users/me/api-tokens", bytes.NewReader(tokenBody))
+	if err != nil {
+		return fmt.Errorf("build token request: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer "+loginResp.AccessToken)
+
+	resp, err = c.http.Do(req)
+	if err != nil {
+		return fmt.Errorf("create token request: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusCreated {
+		return fmt.Errorf("create API token failed: %w", readAPIError(resp))
+	}
+
+	var tokenResp createAPITokenResponse
+	if err := json.NewDecoder(resp.Body).Decode(&tokenResp); err != nil {
+		return fmt.Errorf("decode token response: %w", err)
+	}
+	if tokenResp.Token == "" {
+		return fmt.Errorf("create API token response missing token")
+	}
+
+	c.token = tokenResp.Token
+	return nil
+}
+
+// loginRequest is the body for POST /api/v1/auth/login.
+type loginRequest struct {
+	Username string `json:"username"`
+	Password string `json:"password"`
+}
+
+// loginResponse is the successful response from POST /api/v1/auth/login.
+type loginResponse struct {
+	AccessToken string `json:"access_token"`
+}
+
+// createAPITokenRequest is the body for POST /api/v1/users/me/api-tokens.
+type createAPITokenRequest struct {
+	Name string `json:"name"`
+}
+
+// createAPITokenResponse is the response from POST /api/v1/users/me/api-tokens.
+type createAPITokenResponse struct {
+	Token string `json:"token"`
+}
+
 // WSConn wraps a WebSocket connection for sending location updates.
 type WSConn struct {
 	conn *websocket.Conn

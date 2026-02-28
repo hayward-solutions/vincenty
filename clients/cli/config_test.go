@@ -173,14 +173,92 @@ func TestParseConfig_Defaults(t *testing.T) {
 // Validation: missing required fields
 // ---------------------------------------------------------------------------
 
-func TestParseConfig_MissingToken(t *testing.T) {
+func TestParseConfig_NoAuth(t *testing.T) {
+	// Neither token nor username/password — should error mentioning both options.
 	args := []string{"-file", "track.gpx"}
 	_, err := parseConfig(args, noEnv())
 	if err == nil {
-		t.Fatal("expected error for missing token")
+		t.Fatal("expected error when no auth is provided")
 	}
-	if !strings.Contains(err.Error(), "token") && !strings.Contains(err.Error(), "TOKEN") {
-		t.Errorf("error %q should mention token", err.Error())
+	if !strings.Contains(strings.ToLower(err.Error()), "token") &&
+		!strings.Contains(strings.ToLower(err.Error()), "username") {
+		t.Errorf("error %q should mention token or username", err.Error())
+	}
+}
+
+func TestParseConfig_UsernamePassword(t *testing.T) {
+	// username + password without token is valid.
+	args := []string{"-username", "admin", "-password", "secret", "-file", "track.gpx"}
+	cfg, err := parseConfig(args, noEnv())
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if cfg.Username != "admin" {
+		t.Errorf("Username = %q, want %q", cfg.Username, "admin")
+	}
+	if cfg.Password != "secret" {
+		t.Errorf("Password = %q, want %q", cfg.Password, "secret")
+	}
+	if cfg.Token != "" {
+		t.Errorf("Token = %q, want empty", cfg.Token)
+	}
+}
+
+func TestParseConfig_UsernamePasswordFromEnv(t *testing.T) {
+	env := mockEnv(map[string]string{
+		"SITAWARE_USERNAME": "admin",
+		"SITAWARE_PASSWORD": "secret",
+		"SITAWARE_FILE":     "track.gpx",
+	})
+	cfg, err := parseConfig(nil, env)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if cfg.Username != "admin" {
+		t.Errorf("Username = %q, want %q", cfg.Username, "admin")
+	}
+	if cfg.Password != "secret" {
+		t.Errorf("Password = %q, want %q", cfg.Password, "secret")
+	}
+}
+
+func TestParseConfig_UsernameWithoutPassword(t *testing.T) {
+	args := []string{"-username", "admin", "-file", "track.gpx"}
+	_, err := parseConfig(args, noEnv())
+	if err == nil {
+		t.Fatal("expected error for username without password")
+	}
+	if !strings.Contains(strings.ToLower(err.Error()), "password") {
+		t.Errorf("error %q should mention password", err.Error())
+	}
+}
+
+func TestParseConfig_PasswordWithoutUsername(t *testing.T) {
+	args := []string{"-password", "secret", "-file", "track.gpx"}
+	_, err := parseConfig(args, noEnv())
+	if err == nil {
+		t.Fatal("expected error for password without username")
+	}
+	if !strings.Contains(strings.ToLower(err.Error()), "username") {
+		t.Errorf("error %q should mention username", err.Error())
+	}
+}
+
+func TestParseConfig_TokenTakesPrecedence(t *testing.T) {
+	// Token wins when all three are set; username/password are stored but token
+	// being non-empty means Login() won't be called (enforced in main.go).
+	args := []string{
+		"-token", "sat_abc123",
+		"-username", "admin",
+		"-password", "secret",
+		"-file", "track.gpx",
+	}
+	cfg, err := parseConfig(args, noEnv())
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if cfg.Token != "sat_abc123" {
+		t.Errorf("Token = %q, want sat_abc123", cfg.Token)
 	}
 }
 
