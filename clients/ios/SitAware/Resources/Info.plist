@@ -32,6 +32,8 @@
 	<string>SitAware uses Face ID to verify your identity when signing in with a passkey.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>SitAware needs photo library access to attach images to messages.</string>
+	<key>NSSupportsLiveActivities</key>
+	<true/>
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>location</string>

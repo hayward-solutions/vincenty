@@ -37,10 +37,10 @@ func NewHub(
 	userRepo repository.UserRepo,
 ) *Hub {
 	return &Hub{
-		clients:     make(map[uuid.UUID]map[*Client]struct{}),
-		register:    make(chan *Client),
-		unregister:  make(chan *Client),
-		ps:          ps,
+		clients:    make(map[uuid.UUID]map[*Client]struct{}),
+		register:   make(chan *Client),
+		unregister: make(chan *Client),
+		ps:         ps,
 		locationSvc: locationSvc,
 		groupRepo:   groupRepo,
 		userRepo:    userRepo,

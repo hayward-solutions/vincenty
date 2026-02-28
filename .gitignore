@@ -1,5 +1,6 @@
 # Environment
 .env
+.gpx
 
 # Go
 services/api/bin/
@@ -34,6 +35,8 @@ TODO.md
 *.log
 
 # iOS / Xcode
+clients/ios/Local.xcconfig
+clients/ios/SitAware/Resources/SitAware.local.entitlements
 xcuserdata/
 *.xcuserstate
 DerivedData/

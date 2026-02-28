@@ -22,11 +22,11 @@ struct ContentView: View {
                 }
             } else if !auth.hasServerURL {
                 ServerURLView()
-            } else if !auth.isAuthenticated {
-                LoginView()
-            } else {
-                MainTabView()
-            }
+        } else if !auth.isAuthenticated {
+            LoginView()
+        } else {
+            MainTabView()
+        }
         }
         .animation(.default, value: auth.isAuthenticated)
         .animation(.default, value: auth.isLoading)

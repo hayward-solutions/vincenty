@@ -165,8 +165,6 @@ func main() {
 	locationService := service.NewLocationService(locationRepo, groupRepo, ps, cfg.WS.LocationThrottle)
 	mapConfigService := service.NewMapConfigService(mapConfigRepo, terrainConfigRepo, serverSettingsRepo, cfg.Map)
 	terrainConfigService := service.NewTerrainConfigService(terrainConfigRepo, cfg.Map)
-	messageService := service.NewMessageService(messageRepo, groupRepo, storageSvc, ps)
-	drawingService := service.NewDrawingService(drawingRepo, messageRepo, groupRepo, ps)
 	auditService := service.NewAuditService(auditRepo, groupRepo)
 	cotService := service.NewCotService(cotRepo, deviceRepo, userRepo, groupRepo, locationService)
 	apiTokenService := service.NewAPITokenService(apiTokenRepo)
@@ -191,6 +189,19 @@ func main() {
 		os.Exit(1)
 	}
 
+	messageService := service.NewMessageService(messageRepo, groupRepo, storageSvc, ps)
+	drawingService := service.NewDrawingService(drawingRepo, messageRepo, groupRepo, ps)
+
+	// -----------------------------------------------------------------------
+	// WebSocket Hub
+	// -----------------------------------------------------------------------
+	hub := ws.NewHub(ps, locationService, groupRepo, userRepo)
+	hubCtx, hubCancel := context.WithCancel(context.Background())
+	defer hubCancel()
+	go hub.Run(hubCtx)
+
+	wsHandler := ws.NewHandler(hub, jwtService, apiTokenService, deviceRepo, groupRepo)
+
 	// -----------------------------------------------------------------------
 	// Handlers
 	// -----------------------------------------------------------------------
@@ -208,16 +219,6 @@ func main() {
 	mfaHandler := handler.NewMFAHandler(mfaService, authService)
 	serverSettingsHandler := handler.NewServerSettingsHandler(serverSettingsRepo)
 	apiTokenHandler := handler.NewAPITokenHandler(apiTokenService)
-
-	// -----------------------------------------------------------------------
-	// WebSocket Hub
-	// -----------------------------------------------------------------------
-	hub := ws.NewHub(ps, locationService, groupRepo, userRepo)
-	hubCtx, hubCancel := context.WithCancel(context.Background())
-	defer hubCancel()
-	go hub.Run(hubCtx)
-
-	wsHandler := ws.NewHandler(hub, jwtService, apiTokenService, deviceRepo, groupRepo)
 
 	// -----------------------------------------------------------------------
 	// Token cleanup (purge expired refresh tokens on a schedule)
