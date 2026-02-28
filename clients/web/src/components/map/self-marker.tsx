@@ -88,6 +88,7 @@ export function SelfMarker({
       markerRef.current = new maplibregl.Marker({
         element: el,
         anchor: "center",
+        subpixelPositioning: true,
       })
         .setLngLat([position.lng, position.lat])
         .setPopup(popup)
@@ -134,8 +135,7 @@ export function SelfMarker({
  */
 function createSelfMarkerElement(icon: string, color: string): HTMLElement {
   const wrapper = document.createElement("div");
-  wrapper.style.cssText =
-    "position:relative;width:24px;height:24px;cursor:pointer;";
+  wrapper.style.cssText = "width:24px;height:24px;cursor:pointer;";
 
   // Pulse ring — positioned behind the icon, centered
   const pulse = document.createElement("div");

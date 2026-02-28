@@ -131,7 +131,7 @@ export function LocationMarkers({
           maxWidth: "220px",
         }).setHTML(buildPopupHTML(loc, color));
 
-        const marker = new maplibregl.Marker({ element: el, anchor: "center" })
+        const marker = new maplibregl.Marker({ element: el, anchor: "center", subpixelPositioning: true })
           .setLngLat([loc.lng, loc.lat])
           .setPopup(popup)
           .addTo(map);
@@ -186,7 +186,7 @@ function createMarkerElement(
 ): HTMLElement {
   const wrapper = document.createElement("div");
   wrapper.className = "sa-marker";
-  wrapper.style.cssText = "position:relative;width:18px;height:18px;cursor:pointer;";
+  wrapper.style.cssText = "width:18px;height:18px;cursor:pointer;";
 
   // Shape icon — centered in the wrapper, determines the anchor point.
   // Rotation is applied to this element only (not the wrapper) so the label
