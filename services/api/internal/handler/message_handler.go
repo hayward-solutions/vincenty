@@ -40,7 +40,8 @@ func (h *MessageHandler) Send(w http.ResponseWriter, r *http.Request) {
 	}
 
 	req := service.SendMessageRequest{
-		SenderID: claims.UserID,
+		SenderID:      claims.UserID,
+		CallerIsAdmin: claims.IsAdmin,
 	}
 
 	// Content (optional if files are present)

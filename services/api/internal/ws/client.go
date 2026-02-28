@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/sitaware/api/internal/model"
 	"nhooyr.io/websocket"
 )
 
@@ -29,32 +30,41 @@ const (
 
 // Client represents a single WebSocket connection.
 type Client struct {
-	hub        *Hub
-	conn       *websocket.Conn
-	userID     uuid.UUID
-	deviceID   uuid.UUID
-	deviceName string
-	isPrimary  bool
-	username   string
-	isAdmin    bool
-	groups     []uuid.UUID
-	send       chan []byte
+	hub              *Hub
+	conn             *websocket.Conn
+	userID           uuid.UUID
+	deviceID         uuid.UUID
+	deviceName       string
+	isPrimary        bool
+	username         string
+	isAdmin          bool
+	groupMemberships map[uuid.UUID]*model.GroupMember
+	send             chan []byte
 }
 
 // NewClient creates a new Client.
-func NewClient(hub *Hub, conn *websocket.Conn, userID, deviceID uuid.UUID, deviceName string, isPrimary bool, username string, isAdmin bool, groups []uuid.UUID) *Client {
+func NewClient(hub *Hub, conn *websocket.Conn, userID, deviceID uuid.UUID, deviceName string, isPrimary bool, username string, isAdmin bool, memberships map[uuid.UUID]*model.GroupMember) *Client {
 	return &Client{
-		hub:        hub,
-		conn:       conn,
-		userID:     userID,
-		deviceID:   deviceID,
-		deviceName: deviceName,
-		isPrimary:  isPrimary,
-		username:   username,
-		isAdmin:    isAdmin,
-		groups:     groups,
-		send:       make(chan []byte, sendBufferSize),
+		hub:              hub,
+		conn:             conn,
+		userID:           userID,
+		deviceID:         deviceID,
+		deviceName:       deviceName,
+		isPrimary:        isPrimary,
+		username:         username,
+		isAdmin:          isAdmin,
+		groupMemberships: memberships,
+		send:             make(chan []byte, sendBufferSize),
 	}
+}
+
+// groupIDs returns just the group UUIDs for backward compatibility.
+func (c *Client) groupIDs() []uuid.UUID {
+	ids := make([]uuid.UUID, 0, len(c.groupMemberships))
+	for id := range c.groupMemberships {
+		ids = append(ids, id)
+	}
+	return ids
 }
 
 // Run starts the client's read and write pumps. It blocks until the

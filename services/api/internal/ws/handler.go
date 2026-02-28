@@ -102,17 +102,17 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	_ = h.deviceRepo.TouchLastSeen(ctx, deviceID, uaPtr, appVersionPtr)
 
-	// --- Load user's group memberships ---
-	groups, _, err := h.groupRepo.ListByUserID(ctx, claims.UserID)
+	// --- Load user's group memberships (full records for permission checks) ---
+	memberships, err := h.groupRepo.ListMembershipsByUserID(ctx, claims.UserID)
 	if err != nil {
-		slog.Error("failed to load user groups for ws", "error", err, "user_id", claims.UserID)
+		slog.Error("failed to load user memberships for ws", "error", err, "user_id", claims.UserID)
 		http.Error(w, "internal error", http.StatusInternalServerError)
 		return
 	}
 
-	groupIDs := make([]uuid.UUID, len(groups))
-	for i, g := range groups {
-		groupIDs[i] = g.ID
+	membershipMap := make(map[uuid.UUID]*model.GroupMember, len(memberships))
+	for i := range memberships {
+		membershipMap[memberships[i].GroupID] = &memberships[i]
 	}
 
 	// --- Get username for broadcasts ---
@@ -134,7 +134,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// --- Create and register client ---
-	client := NewClient(h.hub, conn, claims.UserID, deviceID, device.Name, device.IsPrimary, user.Username, claims.IsAdmin, groupIDs)
+	client := NewClient(h.hub, conn, claims.UserID, deviceID, device.Name, device.IsPrimary, user.Username, claims.IsAdmin, membershipMap)
 
 	h.hub.register <- client
 

@@ -115,9 +115,10 @@ type GroupRepo struct {
 	AddMemberFn     func(ctx context.Context, member *model.GroupMember) error
 	GetMemberFn     func(ctx context.Context, groupID, userID uuid.UUID) (*model.GroupMember, error)
 	GetMemberByIDFn func(ctx context.Context, memberID uuid.UUID) (*model.GroupMember, error)
-	ListMembersFn   func(ctx context.Context, groupID uuid.UUID) ([]model.GroupMemberWithUser, error)
-	UpdateMemberFn  func(ctx context.Context, member *model.GroupMember) error
-	RemoveMemberFn  func(ctx context.Context, groupID, userID uuid.UUID) error
+	ListMembersFn              func(ctx context.Context, groupID uuid.UUID) ([]model.GroupMemberWithUser, error)
+	ListMembershipsByUserIDFn  func(ctx context.Context, userID uuid.UUID) ([]model.GroupMember, error)
+	UpdateMemberFn             func(ctx context.Context, member *model.GroupMember) error
+	RemoveMemberFn             func(ctx context.Context, groupID, userID uuid.UUID) error
 }
 
 func (m *GroupRepo) Create(ctx context.Context, group *model.Group) error {
@@ -155,6 +156,9 @@ func (m *GroupRepo) GetMemberByID(ctx context.Context, memberID uuid.UUID) (*mod
 }
 func (m *GroupRepo) ListMembers(ctx context.Context, groupID uuid.UUID) ([]model.GroupMemberWithUser, error) {
 	return m.ListMembersFn(ctx, groupID)
+}
+func (m *GroupRepo) ListMembershipsByUserID(ctx context.Context, userID uuid.UUID) ([]model.GroupMember, error) {
+	return m.ListMembershipsByUserIDFn(ctx, userID)
 }
 func (m *GroupRepo) UpdateMember(ctx context.Context, member *model.GroupMember) error {
 	return m.UpdateMemberFn(ctx, member)

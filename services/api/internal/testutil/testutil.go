@@ -285,20 +285,21 @@ func Setup(t *testing.T) *TestEnv {
 	ps := pubsub.NewRedisPubSub(rdb)
 	env.cleanup = append(env.cleanup, func() { ps.Close() })
 
+	permissionPolicyService := service.NewPermissionPolicyService(env.ServerSettingsRepo)
 	mfaService := service.NewMFAService(env.MFARepo, env.UserRepo, encryptor, rdb, wa)
 	env.MFAService = mfaService
 	authService := service.NewAuthService(env.UserRepo, env.TokenRepo, jwtService, mfaService)
 	env.AuthService = authService
 	userService := service.NewUserService(env.UserRepo, env.TokenRepo, storageSvc)
 	env.UserService = userService
-	groupService := service.NewGroupService(env.GroupRepo, env.UserRepo)
+	groupService := service.NewGroupService(env.GroupRepo, env.UserRepo, permissionPolicyService)
 	locationService := service.NewLocationService(env.LocationRepo, env.GroupRepo, ps, cfg.WS.LocationThrottle)
 	env.LocationSvc = locationService
 	mapConfigService := service.NewMapConfigService(env.MapConfigRepo, env.TerrainConfigRepo, env.ServerSettingsRepo, cfg.Map)
 	terrainConfigService := service.NewTerrainConfigService(env.TerrainConfigRepo, cfg.Map)
-	messageService := service.NewMessageService(env.MessageRepo, env.GroupRepo, storageSvc, ps)
-	drawingService := service.NewDrawingService(env.DrawingRepo, env.MessageRepo, env.GroupRepo, ps)
-	auditService := service.NewAuditService(env.AuditRepo, env.GroupRepo)
+	messageService := service.NewMessageService(env.MessageRepo, env.GroupRepo, storageSvc, ps, permissionPolicyService)
+	drawingService := service.NewDrawingService(env.DrawingRepo, env.MessageRepo, env.GroupRepo, ps, permissionPolicyService)
+	auditService := service.NewAuditService(env.AuditRepo, env.GroupRepo, permissionPolicyService)
 	cotService := service.NewCotService(env.CotRepo, env.DeviceRepo, env.UserRepo, env.GroupRepo, locationService)
 
 	// Bootstrap admin user
@@ -330,12 +331,13 @@ func Setup(t *testing.T) *TestEnv {
 	cotHandler := handler.NewCotHandler(cotService)
 	mfaHandler := handler.NewMFAHandler(mfaService, authService)
 	serverSettingsHandler := handler.NewServerSettingsHandler(env.ServerSettingsRepo)
+	permissionPolicyHandler := handler.NewPermissionPolicyHandler(permissionPolicyService)
 	apiTokenRepo := repository.NewAPITokenRepository(pool)
 	apiTokenService := service.NewAPITokenService(apiTokenRepo)
 	apiTokenHandler := handler.NewAPITokenHandler(apiTokenService)
 
 	// WebSocket hub
-	hub := ws.NewHub(ps, locationService, env.GroupRepo, env.UserRepo)
+	hub := ws.NewHub(ps, locationService, permissionPolicyService, env.GroupRepo, env.UserRepo)
 	hubCtx, hubCancel := context.WithCancel(ctx)
 	env.cleanup = append(env.cleanup, hubCancel)
 	go hub.Run(hubCtx)
@@ -517,6 +519,10 @@ func Setup(t *testing.T) *TestEnv {
 	// Server settings - admin
 	mux.Handle("GET /api/v1/server/settings", authMW.RequireAdmin(http.HandlerFunc(serverSettingsHandler.GetSettings)))
 	mux.Handle("PUT /api/v1/server/settings", authMW.RequireAdmin(http.HandlerFunc(serverSettingsHandler.UpdateSettings)))
+
+	// Permission policy - admin
+	mux.Handle("GET /api/v1/server/permissions", authMW.RequireAdmin(http.HandlerFunc(permissionPolicyHandler.GetPolicy)))
+	mux.Handle("PUT /api/v1/server/permissions", authMW.RequireAdmin(http.HandlerFunc(permissionPolicyHandler.UpdatePolicy)))
 
 	// CoT
 	mux.Handle("POST /api/v1/cot/events", authMW.Authenticate(http.HandlerFunc(cotHandler.IngestEvents)))

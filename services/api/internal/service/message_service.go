@@ -39,6 +39,7 @@ type SendMessageRequest struct {
 	Lat            *float64
 	Lng            *float64
 	Files          []FileUpload
+	CallerIsAdmin  bool
 }
 
 // MessageService handles messaging business logic.
@@ -47,6 +48,7 @@ type MessageService struct {
 	groupRepo   repository.GroupRepo
 	storage     storage.Storage
 	ps          pubsub.PubSub
+	permSvc     *PermissionPolicyService
 }
 
 // NewMessageService creates a new MessageService.
@@ -55,12 +57,14 @@ func NewMessageService(
 	groupRepo repository.GroupRepo,
 	storage storage.Storage,
 	ps pubsub.PubSub,
+	permSvc *PermissionPolicyService,
 ) *MessageService {
 	return &MessageService{
 		messageRepo: messageRepo,
 		groupRepo:   groupRepo,
 		storage:     storage,
 		ps:          ps,
+		permSvc:     permSvc,
 	}
 }
 
@@ -79,14 +83,18 @@ func (s *MessageService) Send(ctx context.Context, req SendMessageRequest) (*mod
 		return nil, model.ErrValidation("content or at least one file is required")
 	}
 
-	// Permission check: sender must be a member of the group with write access
+	// Permission check: sender must be a group member with the appropriate permission
 	if req.GroupID != nil {
 		member, err := s.groupRepo.GetMember(ctx, *req.GroupID, req.SenderID)
 		if err != nil {
 			return nil, model.ErrForbidden("you are not a member of this group")
 		}
-		if !member.CanWrite {
-			return nil, model.ErrForbidden("you do not have write access in this group")
+		action := model.ActionSendMessages
+		if len(req.Files) > 0 {
+			action = model.ActionSendAttachments
+		}
+		if err := s.permSvc.RequireCommunication(ctx, action, member, req.CallerIsAdmin); err != nil {
+			return nil, err
 		}
 	}
 
@@ -242,16 +250,14 @@ func (s *MessageService) Send(ctx context.Context, req SendMessageRequest) (*mod
 }
 
 // ListGroupMessages returns messages for a group with cursor-based pagination.
-// Caller must be admin or a group member with read access.
+// Caller must be a group member with read_messages permission.
 func (s *MessageService) ListGroupMessages(ctx context.Context, groupID uuid.UUID, callerID uuid.UUID, callerIsAdmin bool, before *uuid.UUID, limit int) ([]model.MessageWithUser, error) {
-	if !callerIsAdmin {
-		member, err := s.groupRepo.GetMember(ctx, groupID, callerID)
-		if err != nil {
-			return nil, model.ErrForbidden("you are not a member of this group")
-		}
-		if !member.CanRead {
-			return nil, model.ErrForbidden("you do not have read access in this group")
-		}
+	member, err := s.groupRepo.GetMember(ctx, groupID, callerID)
+	if err != nil {
+		return nil, model.ErrForbidden("you are not a member of this group")
+	}
+	if err := s.permSvc.RequireCommunication(ctx, model.ActionReadMessages, member, callerIsAdmin); err != nil {
+		return nil, err
 	}
 
 	if limit <= 0 || limit > 100 {
@@ -300,33 +306,40 @@ func (s *MessageService) ListDMConversations(ctx context.Context, callerID uuid.
 }
 
 // GetMessage retrieves a single message by ID.
-// Caller must be sender, recipient, or a member of the message's group.
+// Caller must be sender, recipient, or a group member with read_messages permission.
 func (s *MessageService) GetMessage(ctx context.Context, messageID uuid.UUID, callerID uuid.UUID, callerIsAdmin bool) (*model.MessageWithUser, error) {
 	msg, err := s.messageRepo.GetByID(ctx, messageID)
 	if err != nil {
 		return nil, err
 	}
 
-	if !callerIsAdmin {
-		if err := s.checkMessageAccess(ctx, msg, callerID); err != nil {
-			return nil, err
-		}
+	if err := s.checkMessageAccess(ctx, msg, callerID, callerIsAdmin); err != nil {
+		return nil, err
 	}
 
 	return msg, nil
 }
 
-// DeleteMessage deletes a message. Only the sender can delete their own messages.
-// Also cleans up S3 objects.
+// DeleteMessage deletes a message. Only the sender or a server admin who is
+// a group member can delete messages. Also cleans up S3 objects.
 func (s *MessageService) DeleteMessage(ctx context.Context, messageID uuid.UUID, callerID uuid.UUID, callerIsAdmin bool) error {
 	msg, err := s.messageRepo.GetByID(ctx, messageID)
 	if err != nil {
 		return err
 	}
 
-	// Only the sender (or admin) can delete
-	if !callerIsAdmin && msg.SenderID != callerID {
-		return model.ErrForbidden("you can only delete your own messages")
+	// Sender can always delete their own messages
+	if msg.SenderID != callerID {
+		// Non-sender needs admin status AND group membership to delete
+		if !callerIsAdmin {
+			return model.ErrForbidden("you can only delete your own messages")
+		}
+		// Admin must still be a group member
+		if msg.GroupID != nil {
+			if _, err := s.groupRepo.GetMember(ctx, *msg.GroupID, callerID); err != nil {
+				return model.ErrForbidden("you must be a group member to delete messages")
+			}
+		}
 	}
 
 	// Get attachment keys before deleting the message (cascade will remove attachment rows)
@@ -363,10 +376,8 @@ func (s *MessageService) GetAttachment(ctx context.Context, attachmentID uuid.UU
 	if err != nil {
 		return nil, nil, err
 	}
-	if !callerIsAdmin {
-		if err := s.checkMessageAccess(ctx, msg, callerID); err != nil {
-			return nil, nil, err
-		}
+	if err := s.checkMessageAccess(ctx, msg, callerID, callerIsAdmin); err != nil {
+		return nil, nil, err
 	}
 
 	// Download file content from S3
@@ -383,7 +394,7 @@ func (s *MessageService) GetAttachment(ctx context.Context, attachmentID uuid.UU
 // --------------------------------------------------------------------------
 
 // checkMessageAccess verifies the caller can access a message.
-func (s *MessageService) checkMessageAccess(ctx context.Context, msg *model.MessageWithUser, callerID uuid.UUID) error {
+func (s *MessageService) checkMessageAccess(ctx context.Context, msg *model.MessageWithUser, callerID uuid.UUID, callerIsAdmin bool) error {
 	// Sender always has access
 	if msg.SenderID == callerID {
 		return nil
@@ -392,16 +403,13 @@ func (s *MessageService) checkMessageAccess(ctx context.Context, msg *model.Mess
 	if msg.RecipientID != nil && *msg.RecipientID == callerID {
 		return nil
 	}
-	// Group member with read access
+	// Group member with read_messages permission
 	if msg.GroupID != nil {
 		member, err := s.groupRepo.GetMember(ctx, *msg.GroupID, callerID)
 		if err != nil {
 			return model.ErrForbidden("you do not have access to this message")
 		}
-		if !member.CanRead {
-			return model.ErrForbidden("you do not have read access in this group")
-		}
-		return nil
+		return s.permSvc.RequireCommunication(ctx, model.ActionReadMessages, member, callerIsAdmin)
 	}
 	return model.ErrForbidden("you do not have access to this message")
 }

@@ -9,6 +9,7 @@ const serverItems = [
   { href: "/settings/server/map", label: "Map" },
   { href: "/settings/server/users", label: "Users" },
   { href: "/settings/server/groups", label: "Groups" },
+  { href: "/settings/server/permissions", label: "Permissions" },
   { href: "/settings/server/security", label: "Security" },
   { href: "/settings/server/audit-logs", label: "Audit Logs" },
 ];

@@ -64,6 +64,7 @@ type GroupRepo interface {
 	GetMember(ctx context.Context, groupID, userID uuid.UUID) (*model.GroupMember, error)
 	GetMemberByID(ctx context.Context, memberID uuid.UUID) (*model.GroupMember, error)
 	ListMembers(ctx context.Context, groupID uuid.UUID) ([]model.GroupMemberWithUser, error)
+	ListMembershipsByUserID(ctx context.Context, userID uuid.UUID) ([]model.GroupMember, error)
 	UpdateMember(ctx context.Context, member *model.GroupMember) error
 	RemoveMember(ctx context.Context, groupID, userID uuid.UUID) error
 }

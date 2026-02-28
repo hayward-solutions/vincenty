@@ -163,14 +163,15 @@ func main() {
 		os.Exit(1)
 	}
 
+	permissionPolicyService := service.NewPermissionPolicyService(serverSettingsRepo)
 	mfaService := service.NewMFAService(mfaRepo, userRepo, encryptor, rdb, wa)
 	authService := service.NewAuthService(userRepo, tokenRepo, jwtService, mfaService)
 	userService := service.NewUserService(userRepo, tokenRepo, storageSvc)
-	groupService := service.NewGroupService(groupRepo, userRepo)
+	groupService := service.NewGroupService(groupRepo, userRepo, permissionPolicyService)
 	locationService := service.NewLocationService(locationRepo, groupRepo, ps, cfg.WS.LocationThrottle)
 	mapConfigService := service.NewMapConfigService(mapConfigRepo, terrainConfigRepo, serverSettingsRepo, cfg.Map)
 	terrainConfigService := service.NewTerrainConfigService(terrainConfigRepo, cfg.Map)
-	auditService := service.NewAuditService(auditRepo, groupRepo)
+	auditService := service.NewAuditService(auditRepo, groupRepo, permissionPolicyService)
 	cotService := service.NewCotService(cotRepo, deviceRepo, userRepo, groupRepo, locationService)
 	apiTokenService := service.NewAPITokenService(apiTokenRepo)
 
@@ -194,13 +195,13 @@ func main() {
 		os.Exit(1)
 	}
 
-	messageService := service.NewMessageService(messageRepo, groupRepo, storageSvc, ps)
-	drawingService := service.NewDrawingService(drawingRepo, messageRepo, groupRepo, ps)
+	messageService := service.NewMessageService(messageRepo, groupRepo, storageSvc, ps, permissionPolicyService)
+	drawingService := service.NewDrawingService(drawingRepo, messageRepo, groupRepo, ps, permissionPolicyService)
 
 	// -----------------------------------------------------------------------
 	// WebSocket Hub
 	// -----------------------------------------------------------------------
-	hub := ws.NewHub(ps, locationService, groupRepo, userRepo)
+	hub := ws.NewHub(ps, locationService, permissionPolicyService, groupRepo, userRepo)
 	hubCtx, hubCancel := context.WithCancel(context.Background())
 	defer hubCancel()
 	go hub.Run(hubCtx)
@@ -223,6 +224,7 @@ func main() {
 	cotHandler := handler.NewCotHandler(cotService)
 	mfaHandler := handler.NewMFAHandler(mfaService, authService)
 	serverSettingsHandler := handler.NewServerSettingsHandler(serverSettingsRepo)
+	permissionPolicyHandler := handler.NewPermissionPolicyHandler(permissionPolicyService)
 	apiTokenHandler := handler.NewAPITokenHandler(apiTokenService)
 
 	// -----------------------------------------------------------------------
@@ -432,6 +434,10 @@ func main() {
 	// Server settings (admin)
 	mux.Handle("GET /api/v1/server/settings", authMW.RequireAdmin(http.HandlerFunc(serverSettingsHandler.GetSettings)))
 	mux.Handle("PUT /api/v1/server/settings", authMW.RequireAdmin(http.HandlerFunc(serverSettingsHandler.UpdateSettings)))
+
+	// Permission policy (admin — hardcoded, never subject to matrix)
+	mux.Handle("GET /api/v1/server/permissions", authMW.RequireAdmin(http.HandlerFunc(permissionPolicyHandler.GetPolicy)))
+	mux.Handle("PUT /api/v1/server/permissions", authMW.RequireAdmin(http.HandlerFunc(permissionPolicyHandler.UpdatePolicy)))
 
 	// CoT (Cursor on Target) - authenticated
 	mux.Handle("POST /api/v1/cot/events", authMW.Authenticate(http.HandlerFunc(cotHandler.IngestEvents)))

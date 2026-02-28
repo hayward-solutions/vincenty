@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/sitaware/api/internal/model"
 	"github.com/sitaware/api/internal/pubsub"
 	"github.com/sitaware/api/internal/repository"
 	"github.com/sitaware/api/internal/service"
@@ -25,6 +26,7 @@ type Hub struct {
 
 	ps          pubsub.PubSub
 	locationSvc *service.LocationService
+	permSvc     *service.PermissionPolicyService
 	groupRepo   repository.GroupRepo
 	userRepo    repository.UserRepo
 }
@@ -33,15 +35,17 @@ type Hub struct {
 func NewHub(
 	ps pubsub.PubSub,
 	locationSvc *service.LocationService,
+	permSvc *service.PermissionPolicyService,
 	groupRepo repository.GroupRepo,
 	userRepo repository.UserRepo,
 ) *Hub {
 	return &Hub{
-		clients:    make(map[uuid.UUID]map[*Client]struct{}),
-		register:   make(chan *Client),
-		unregister: make(chan *Client),
-		ps:         ps,
+		clients:     make(map[uuid.UUID]map[*Client]struct{}),
+		register:    make(chan *Client),
+		unregister:  make(chan *Client),
+		ps:          ps,
 		locationSvc: locationSvc,
+		permSvc:     permSvc,
 		groupRepo:   groupRepo,
 		userRepo:    userRepo,
 	}
@@ -106,7 +110,7 @@ func (h *Hub) addClient(client *Client) {
 	slog.Info("client connected",
 		"user_id", client.userID,
 		"device_id", client.deviceID,
-		"groups", len(client.groups),
+		"groups", len(client.groupMemberships),
 		"total_clients", h.totalClients(),
 	)
 }
@@ -183,11 +187,11 @@ func (h *Hub) routeMessage(msg pubsub.Message) {
 			return
 		}
 
-		// Send to all clients who are members of this group,
-		// except the sending device itself. Exclude by device ID (not user
-		// ID) so that the sender's other connected clients (e.g. their own
-		// web browser watching the CLI replay) still receive the update.
-		recipientCount := h.broadcastToGroupExcludeDevice(groupID, broadcast.DeviceID, data)
+		// Send to all clients who are members of this group and have
+		// view_locations permission, except the sending device itself.
+		// Exclude by device ID (not user ID) so that the sender's other
+		// connected clients still receive the update.
+		recipientCount := h.broadcastToGroupExcludeDevice(groupID, broadcast.DeviceID, model.ActionViewLocations, data)
 		slog.Debug("routeMessage: location broadcast sent",
 			"group_id", groupID,
 			"recipients", recipientCount,
@@ -220,7 +224,7 @@ func (h *Hub) routeMessage(msg pubsub.Message) {
 			return
 		}
 
-		recipientCount := h.broadcastToGroup(groupID, partial.SenderID, data)
+		recipientCount := h.broadcastToGroup(groupID, partial.SenderID, model.ActionReadMessages, data)
 		slog.Debug("routeMessage: group message broadcast",
 			"group_id", groupID,
 			"sender_id", partial.SenderID,
@@ -278,7 +282,7 @@ func (h *Hub) routeMessage(msg pubsub.Message) {
 		}
 
 		if strings.HasPrefix(channel, "group:") {
-			recipientCount := h.broadcastToGroup(targetID, partial.OwnerID, data)
+			recipientCount := h.broadcastToGroup(targetID, partial.OwnerID, model.ActionReadMessages, data)
 			slog.Debug("routeMessage: group drawing update",
 				"group_id", targetID,
 				"owner_id", partial.OwnerID,
@@ -295,22 +299,30 @@ func (h *Hub) routeMessage(msg pubsub.Message) {
 }
 
 // broadcastToGroup sends data to all connected clients who are members of
-// the given group, optionally excluding a specific user (the sender).
+// the given group and have the required permission, optionally excluding a
+// specific user (the sender).
 // Returns the number of clients the message was sent to.
-func (h *Hub) broadcastToGroup(groupID uuid.UUID, excludeUserID uuid.UUID, data []byte) int {
+func (h *Hub) broadcastToGroup(groupID uuid.UUID, excludeUserID uuid.UUID, requiredAction string, data []byte) int {
+	policy, _ := h.permSvc.GetPolicy(context.Background())
+
 	sent := 0
 	for userID, clients := range h.clients {
 		if userID == excludeUserID {
 			continue
 		}
 		for client := range clients {
-			if isMember(client.groups, groupID) {
-				select {
-				case client.send <- data:
-					sent++
-				default:
-					// Buffer full, skip
-				}
+			member := client.groupMemberships[groupID]
+			if member == nil {
+				continue
+			}
+			if policy != nil && !policy.CheckCommunication(requiredAction, member, client.isAdmin) {
+				continue
+			}
+			select {
+			case client.send <- data:
+				sent++
+			default:
+				// Buffer full, skip
 			}
 		}
 	}
@@ -318,24 +330,31 @@ func (h *Hub) broadcastToGroup(groupID uuid.UUID, excludeUserID uuid.UUID, data 
 }
 
 // broadcastToGroupExcludeDevice sends data to all connected clients who are
-// members of the given group, excluding only the specific sending device.
-// This is used for location broadcasts so that the sender's other clients
-// (e.g. a web browser watching a CLI replay) still receive the update.
+// members of the given group and have the required permission, excluding only
+// the specific sending device. Used for location broadcasts so that the
+// sender's other clients still receive the update.
 // Returns the number of clients the message was sent to.
-func (h *Hub) broadcastToGroupExcludeDevice(groupID uuid.UUID, excludeDeviceID uuid.UUID, data []byte) int {
+func (h *Hub) broadcastToGroupExcludeDevice(groupID uuid.UUID, excludeDeviceID uuid.UUID, requiredAction string, data []byte) int {
+	policy, _ := h.permSvc.GetPolicy(context.Background())
+
 	sent := 0
 	for _, clients := range h.clients {
 		for client := range clients {
 			if client.deviceID == excludeDeviceID {
 				continue
 			}
-			if isMember(client.groups, groupID) {
-				select {
-				case client.send <- data:
-					sent++
-				default:
-					// Buffer full, skip
-				}
+			member := client.groupMemberships[groupID]
+			if member == nil {
+				continue
+			}
+			if policy != nil && !policy.CheckCommunication(requiredAction, member, client.isAdmin) {
+				continue
+			}
+			select {
+			case client.send <- data:
+				sent++
+			default:
+				// Buffer full, skip
 			}
 		}
 	}
@@ -381,6 +400,17 @@ func (h *Hub) handleLocationUpdate(ctx context.Context, c *Client, payload *Loca
 		displayName = *user.DisplayName
 	}
 
+	// Filter groups to only those where the user has share_location permission
+	policy, _ := h.permSvc.GetPolicy(ctx)
+	allGroupIDs := c.groupIDs()
+	filteredGroups := make([]uuid.UUID, 0, len(allGroupIDs))
+	for _, gid := range allGroupIDs {
+		member := c.groupMemberships[gid]
+		if policy != nil && policy.CheckCommunication(model.ActionShareLocation, member, c.isAdmin) {
+			filteredGroups = append(filteredGroups, gid)
+		}
+	}
+
 	accepted, err := h.locationSvc.Update(
 		ctx,
 		c.userID, c.deviceID,
@@ -388,7 +418,7 @@ func (h *Hub) handleLocationUpdate(ctx context.Context, c *Client, payload *Loca
 		c.isPrimary,
 		payload.Lat, payload.Lng,
 		payload.Altitude, payload.Heading, payload.Speed, payload.Accuracy,
-		c.groups,
+		filteredGroups,
 	)
 	if err != nil {
 		slog.Debug("location_update processing failed",
@@ -410,7 +440,7 @@ func (h *Hub) handleLocationUpdate(ctx context.Context, c *Client, payload *Loca
 	slog.Debug("location_update accepted",
 		"user_id", c.userID,
 		"device_id", c.deviceID,
-		"groups", len(c.groups),
+		"groups", len(filteredGroups),
 	)
 }
 
@@ -436,19 +466,17 @@ func extractID(channel string) uuid.UUID {
 	return id
 }
 
-// isMember checks if a UUID is in a slice.
-func isMember(groups []uuid.UUID, id uuid.UUID) bool {
-	for _, g := range groups {
-		if g == id {
-			return true
-		}
-	}
-	return false
-}
 
-// SendSnapshot sends the initial location snapshot for all of a client's groups.
+
+// SendSnapshot sends the initial location snapshot for all of a client's groups
+// where the client has view_locations permission.
 func (h *Hub) SendSnapshot(ctx context.Context, client *Client) {
-	for _, groupID := range client.groups {
+	policy, _ := h.permSvc.GetPolicy(ctx)
+
+	for groupID, member := range client.groupMemberships {
+		if policy != nil && !policy.CheckCommunication(model.ActionViewLocations, member, client.isAdmin) {
+			continue
+		}
 		records, err := h.locationSvc.GetGroupSnapshot(ctx, groupID)
 		if err != nil {
 			slog.Error("failed to get group snapshot", "group_id", groupID, "error", err)
@@ -497,8 +525,8 @@ func (h *Hub) SendSnapshot(ctx context.Context, client *Client) {
 
 // SendConnected sends the initial "connected" acknowledgement.
 func (h *Hub) SendConnected(ctx context.Context, client *Client) {
-	groups := make([]ConnectedGroup, 0, len(client.groups))
-	for _, gid := range client.groups {
+	groups := make([]ConnectedGroup, 0, len(client.groupMemberships))
+	for gid := range client.groupMemberships {
 		group, err := h.groupRepo.GetByID(ctx, gid)
 		if err != nil {
 			continue

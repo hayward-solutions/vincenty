@@ -80,8 +80,8 @@ func TestHandler_APIToken_ValidToken(t *testing.T) {
 	deviceRepo.TouchLastSeenFn = func(_ context.Context, _ uuid.UUID, _ *string, _ *string) error {
 		return nil
 	}
-	groupRepo.ListByUserIDFn = func(_ context.Context, uid uuid.UUID) ([]model.Group, []int, error) {
-		return nil, nil, nil
+	groupRepo.ListMembershipsByUserIDFn = func(_ context.Context, uid uuid.UUID) ([]model.GroupMember, error) {
+		return nil, nil
 	}
 	h.hub.userRepo = &mock.UserRepo{
 		GetByIDFn: func(_ context.Context, id uuid.UUID) (*model.User, error) {
@@ -221,8 +221,8 @@ func TestHandler_GroupLoadFailure(t *testing.T) {
 	deviceRepo.TouchLastSeenFn = func(_ context.Context, _ uuid.UUID, _ *string, _ *string) error {
 		return nil
 	}
-	groupRepo.ListByUserIDFn = func(ctx context.Context, uid uuid.UUID) ([]model.Group, []int, error) {
-		return nil, nil, model.ErrNotFound("internal error")
+	groupRepo.ListMembershipsByUserIDFn = func(ctx context.Context, uid uuid.UUID) ([]model.GroupMember, error) {
+		return nil, model.ErrNotFound("internal error")
 	}
 
 	token, _ := jwt.GenerateAccessToken(userID, false)
@@ -246,8 +246,8 @@ func TestHandler_UserLoadFailure(t *testing.T) {
 	deviceRepo.TouchLastSeenFn = func(_ context.Context, _ uuid.UUID, _ *string, _ *string) error {
 		return nil
 	}
-	groupRepo.ListByUserIDFn = func(ctx context.Context, uid uuid.UUID) ([]model.Group, []int, error) {
-		return []model.Group{{ID: uuid.New(), Name: "G1"}}, []int{3}, nil
+	groupRepo.ListMembershipsByUserIDFn = func(ctx context.Context, uid uuid.UUID) ([]model.GroupMember, error) {
+		return []model.GroupMember{{GroupID: uuid.New()}}, nil
 	}
 	// Override the hub's userRepo to fail
 	h.hub.userRepo = &mock.UserRepo{

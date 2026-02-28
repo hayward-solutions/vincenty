@@ -39,7 +39,7 @@ func TestMessageService_Send_TextMessage(t *testing.T) {
 	}
 	ps := pubsub.NewMockPubSub()
 
-	svc := NewMessageService(msgRepo, groupRepo, nil, ps)
+	svc := NewMessageService(msgRepo, groupRepo, nil, ps, newTestPermSvc())
 
 	content := "Hello world"
 	msg, err := svc.Send(context.Background(), SendMessageRequest{
@@ -59,7 +59,7 @@ func TestMessageService_Send_TextMessage(t *testing.T) {
 }
 
 func TestMessageService_Send_NoTarget(t *testing.T) {
-	svc := NewMessageService(nil, nil, nil, nil)
+	svc := NewMessageService(nil, nil, nil, nil, nil)
 	content := "test"
 	_, err := svc.Send(context.Background(), SendMessageRequest{Content: &content})
 	if err == nil {
@@ -68,7 +68,7 @@ func TestMessageService_Send_NoTarget(t *testing.T) {
 }
 
 func TestMessageService_Send_BothTargets(t *testing.T) {
-	svc := NewMessageService(nil, nil, nil, nil)
+	svc := NewMessageService(nil, nil, nil, nil, nil)
 	gid := uuid.New()
 	rid := uuid.New()
 	content := "test"
@@ -83,7 +83,7 @@ func TestMessageService_Send_BothTargets(t *testing.T) {
 }
 
 func TestMessageService_Send_NoContentOrFiles(t *testing.T) {
-	svc := NewMessageService(nil, nil, nil, nil)
+	svc := NewMessageService(nil, nil, nil, nil, nil)
 	gid := uuid.New()
 	_, err := svc.Send(context.Background(), SendMessageRequest{GroupID: &gid})
 	if err == nil {
@@ -98,7 +98,7 @@ func TestMessageService_Send_NoWriteAccess(t *testing.T) {
 			return &model.GroupMember{CanWrite: false}, nil
 		},
 	}
-	svc := NewMessageService(nil, groupRepo, nil, nil)
+	svc := NewMessageService(nil, groupRepo, nil, nil, newTestPermSvc())
 
 	content := "test"
 	_, err := svc.Send(context.Background(), SendMessageRequest{
@@ -118,7 +118,7 @@ func TestMessageService_Send_FileTooLarge(t *testing.T) {
 			return &model.GroupMember{CanWrite: true}, nil
 		},
 	}
-	svc := NewMessageService(nil, groupRepo, nil, nil)
+	svc := NewMessageService(nil, groupRepo, nil, nil, newTestPermSvc())
 
 	_, err := svc.Send(context.Background(), SendMessageRequest{
 		SenderID: uuid.New(),
@@ -161,7 +161,7 @@ func TestMessageService_Send_WithAttachment(t *testing.T) {
 		},
 	}
 	ps := pubsub.NewMockPubSub()
-	svc := NewMessageService(msgRepo, groupRepo, storageMock, ps)
+	svc := NewMessageService(msgRepo, groupRepo, storageMock, ps, newTestPermSvc())
 
 	msg, err := svc.Send(context.Background(), SendMessageRequest{
 		SenderID: senderID,
@@ -184,7 +184,7 @@ func TestMessageService_ListGroupMessages_NonMember(t *testing.T) {
 			return nil, model.ErrNotFound("group member")
 		},
 	}
-	svc := NewMessageService(nil, groupRepo, nil, nil)
+	svc := NewMessageService(nil, groupRepo, nil, nil, newTestPermSvc())
 
 	_, err := svc.ListGroupMessages(context.Background(), uuid.New(), uuid.New(), false, nil, 50)
 	if err == nil {
@@ -198,7 +198,7 @@ func TestMessageService_ListGroupMessages_NoReadAccess(t *testing.T) {
 			return &model.GroupMember{CanRead: false}, nil
 		},
 	}
-	svc := NewMessageService(nil, groupRepo, nil, nil)
+	svc := NewMessageService(nil, groupRepo, nil, nil, newTestPermSvc())
 
 	_, err := svc.ListGroupMessages(context.Background(), uuid.New(), uuid.New(), false, nil, 50)
 	if err == nil {
@@ -214,7 +214,12 @@ func TestMessageService_ListGroupMessages_Admin(t *testing.T) {
 			return expected, nil
 		},
 	}
-	svc := NewMessageService(msgRepo, nil, nil, nil)
+	groupRepo := &mockrepo.GroupRepo{
+		GetMemberFn: func(ctx context.Context, gid, uid uuid.UUID) (*model.GroupMember, error) {
+			return &model.GroupMember{CanRead: true}, nil
+		},
+	}
+	svc := NewMessageService(msgRepo, groupRepo, nil, nil, newTestPermSvc())
 
 	msgs, err := svc.ListGroupMessages(context.Background(), groupID, uuid.New(), true, nil, 50)
 	if err != nil {
@@ -233,7 +238,12 @@ func TestMessageService_ListGroupMessages_LimitClamped(t *testing.T) {
 			return nil, nil
 		},
 	}
-	svc := NewMessageService(msgRepo, nil, nil, nil)
+	groupRepo := &mockrepo.GroupRepo{
+		GetMemberFn: func(ctx context.Context, gid, uid uuid.UUID) (*model.GroupMember, error) {
+			return &model.GroupMember{CanRead: true}, nil
+		},
+	}
+	svc := NewMessageService(msgRepo, groupRepo, nil, nil, newTestPermSvc())
 
 	svc.ListGroupMessages(context.Background(), uuid.New(), uuid.New(), true, nil, 0)
 	if capturedLimit != 50 {
@@ -266,7 +276,7 @@ func TestMessageService_DeleteMessage_Sender(t *testing.T) {
 	storageMock := &storage.MockStorage{
 		DeleteFn: func(ctx context.Context, key string) error { return nil },
 	}
-	svc := NewMessageService(msgRepo, nil, storageMock, nil)
+	svc := NewMessageService(msgRepo, nil, storageMock, nil, nil)
 
 	err := svc.DeleteMessage(context.Background(), messageID, senderID, false)
 	if err != nil {
@@ -283,7 +293,7 @@ func TestMessageService_DeleteMessage_NonSender(t *testing.T) {
 			return &model.MessageWithUser{Message: model.Message{SenderID: uuid.New()}}, nil
 		},
 	}
-	svc := NewMessageService(msgRepo, nil, nil, nil)
+	svc := NewMessageService(msgRepo, nil, nil, nil, nil)
 
 	err := svc.DeleteMessage(context.Background(), uuid.New(), uuid.New(), false)
 	if err == nil {
@@ -300,7 +310,7 @@ func TestMessageService_ListDMConversations(t *testing.T) {
 			}, nil
 		},
 	}
-	svc := NewMessageService(msgRepo, nil, nil, nil)
+	svc := NewMessageService(msgRepo, nil, nil, nil, nil)
 
 	convos, err := svc.ListDMConversations(context.Background(), uuid.New())
 	if err != nil {

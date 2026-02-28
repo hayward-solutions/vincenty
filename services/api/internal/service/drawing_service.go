@@ -37,6 +37,7 @@ type DrawingService struct {
 	messageRepo repository.MessageRepo
 	groupRepo   repository.GroupRepo
 	ps          pubsub.PubSub
+	permSvc     *PermissionPolicyService
 }
 
 // NewDrawingService creates a new DrawingService.
@@ -45,12 +46,14 @@ func NewDrawingService(
 	messageRepo repository.MessageRepo,
 	groupRepo repository.GroupRepo,
 	ps pubsub.PubSub,
+	permSvc *PermissionPolicyService,
 ) *DrawingService {
 	return &DrawingService{
 		drawingRepo: drawingRepo,
 		messageRepo: messageRepo,
 		groupRepo:   groupRepo,
 		ps:          ps,
+		permSvc:     permSvc,
 	}
 }
 
@@ -178,7 +181,7 @@ func (s *DrawingService) Delete(ctx context.Context, drawingID uuid.UUID, caller
 
 // Share creates a message that shares a drawing with a group or user.
 // The message has message_type "drawing" and metadata containing the drawing_id.
-func (s *DrawingService) Share(ctx context.Context, drawingID uuid.UUID, callerID uuid.UUID, req ShareDrawingRequest) (*model.MessageWithUser, error) {
+func (s *DrawingService) Share(ctx context.Context, drawingID uuid.UUID, callerID uuid.UUID, callerIsAdmin bool, req ShareDrawingRequest) (*model.MessageWithUser, error) {
 	// Validate target
 	if req.GroupID == nil && req.RecipientID == nil {
 		return nil, model.ErrValidation("group_id or recipient_id is required")
@@ -196,14 +199,14 @@ func (s *DrawingService) Share(ctx context.Context, drawingID uuid.UUID, callerI
 		return nil, model.ErrForbidden("you can only share your own drawings")
 	}
 
-	// If sharing to a group, verify the caller is a member with write access
+	// If sharing to a group, verify the caller is a member with share_drawings permission
 	if req.GroupID != nil {
 		member, err := s.groupRepo.GetMember(ctx, *req.GroupID, callerID)
 		if err != nil {
 			return nil, model.ErrForbidden("you are not a member of this group")
 		}
-		if !member.CanWrite {
-			return nil, model.ErrForbidden("you do not have write access in this group")
+		if err := s.permSvc.RequireCommunication(ctx, model.ActionShareDrawings, member, callerIsAdmin); err != nil {
+			return nil, err
 		}
 	}
 

@@ -559,3 +559,15 @@ export interface CreateApiTokenRequest {
 export interface CreateApiTokenResponse extends ApiToken {
   token: string;
 }
+
+// ---------------------------------------------------------------------------
+// Permission Policy
+// ---------------------------------------------------------------------------
+
+/** A mapping of action names to the roles allowed to perform them. */
+export interface PermissionPolicy {
+  group_communication: Record<string, string[]>;
+  group_management: Record<string, string[]>;
+}
+
+export type UpdatePermissionPolicyRequest = PermissionPolicy;
