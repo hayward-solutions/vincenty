@@ -147,19 +147,39 @@ struct MapContainerView: UIViewRepresentable {
         }
     }
 
+    /// Appends API keys to tile URLs for known providers, mirroring the web
+    /// client's `transformRequest` callback in `map-view.tsx`.
+    func transformURL(_ url: String, settings: MapSettings) -> String {
+        let mapboxToken = settings.mapboxAccessToken ?? ""
+        if !mapboxToken.isEmpty,
+           url.contains("mapbox.com") || url.contains("tiles.mapbox.com")
+        {
+            let separator = url.contains("?") ? "&" : "?"
+            return "\(url)\(separator)access_token=\(mapboxToken)"
+        }
+        let googleKey = settings.googleMapsApiKey ?? ""
+        if !googleKey.isEmpty, url.contains("googleapis.com") {
+            let separator = url.contains("?") ? "&" : "?"
+            return "\(url)\(separator)key=\(googleKey)"
+        }
+        return url
+    }
+
     private func buildRasterStyle(tileURL: String, settings: MapSettings) -> String {
         let center = [settings.centerLng, settings.centerLat]
         let zoom = Int(settings.zoom)
 
+        let authenticatedURL = transformURL(tileURL, settings: settings)
+
         let tileURLJSON: String
-        if tileURL.contains("{s}") {
+        if authenticatedURL.contains("{s}") {
             let subdomains = ["a", "b", "c"]
             let tiles = subdomains.map { s in
-                "\"\(tileURL.replacingOccurrences(of: "{s}", with: s))\""
+                "\"\(authenticatedURL.replacingOccurrences(of: "{s}", with: s))\""
             }
             tileURLJSON = "[\(tiles.joined(separator: ","))]"
         } else {
-            tileURLJSON = "[\"\(tileURL)\"]"
+            tileURLJSON = "[\"\(authenticatedURL)\"]"
         }
 
         return """
@@ -375,12 +395,13 @@ struct MapContainerView: UIViewRepresentable {
         private func addTerrainSource(
             to style: MLNStyle, terrainURL: String, settings: MapSettings
         ) {
+            let authenticatedURL = parent.transformURL(terrainURL, settings: settings)
             let encoding = settings.terrainEncoding.isEmpty ? "terrarium" : settings.terrainEncoding
             let tileSize = encoding == "mapbox" ? 512 : 256
             let options: [MLNTileSourceOption: Any] = [.tileSize: NSNumber(value: tileSize)]
             let source = MLNRasterDEMSource(
                 identifier: "terrain-dem",
-                tileURLTemplates: [terrainURL],
+                tileURLTemplates: [authenticatedURL],
                 options: options)
             style.addSource(source)
         }
