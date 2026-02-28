@@ -12,6 +12,17 @@ import (
 	mockrepo "github.com/sitaware/api/internal/repository/mock"
 )
 
+// newTestPermSvc creates a PermissionPolicyService backed by a mock that
+// returns no stored policy (so DefaultPermissionPolicy is used).
+func newTestPermSvc() *PermissionPolicyService {
+	settingsRepo := &mockrepo.ServerSettingsRepo{
+		GetFn: func(ctx context.Context, key string) (*model.ServerSetting, error) {
+			return nil, model.ErrNotFound("setting")
+		},
+	}
+	return NewPermissionPolicyService(settingsRepo)
+}
+
 func TestAuditService_LogAction(t *testing.T) {
 	var created *model.AuditLog
 	auditRepo := &mockrepo.AuditRepo{
@@ -20,7 +31,7 @@ func TestAuditService_LogAction(t *testing.T) {
 			return nil
 		},
 	}
-	svc := NewAuditService(auditRepo, nil)
+	svc := NewAuditService(auditRepo, nil, nil)
 
 	userID := uuid.New()
 	resID := uuid.New()
@@ -67,7 +78,7 @@ func TestAuditService_GetMyLogs(t *testing.T) {
 			return expected, 1, nil
 		},
 	}
-	svc := NewAuditService(auditRepo, nil)
+	svc := NewAuditService(auditRepo, nil, nil)
 
 	logs, total, err := svc.GetMyLogs(context.Background(), userID, model.AuditFilters{})
 	if err != nil {
@@ -91,7 +102,7 @@ func TestAuditService_GetGroupLogs_SystemAdmin(t *testing.T) {
 			return expected, 1, nil
 		},
 	}
-	svc := NewAuditService(auditRepo, nil)
+	svc := NewAuditService(auditRepo, nil, nil)
 
 	logs, total, err := svc.GetGroupLogs(context.Background(), groupID, callerID, true, model.AuditFilters{})
 	if err != nil {
@@ -116,7 +127,7 @@ func TestAuditService_GetGroupLogs_GroupAdmin(t *testing.T) {
 			return nil, 0, nil
 		},
 	}
-	svc := NewAuditService(auditRepo, groupRepo)
+	svc := NewAuditService(auditRepo, groupRepo, newTestPermSvc())
 
 	_, _, err := svc.GetGroupLogs(context.Background(), groupID, callerID, false, model.AuditFilters{})
 	if err != nil {
@@ -130,10 +141,10 @@ func TestAuditService_GetGroupLogs_NonAdmin_Forbidden(t *testing.T) {
 
 	groupRepo := &mockrepo.GroupRepo{
 		GetMemberFn: func(ctx context.Context, gid, uid uuid.UUID) (*model.GroupMember, error) {
-			return &model.GroupMember{IsGroupAdmin: false}, nil
+			return &model.GroupMember{IsGroupAdmin: false, CanRead: true}, nil
 		},
 	}
-	svc := NewAuditService(nil, groupRepo)
+	svc := NewAuditService(nil, groupRepo, newTestPermSvc())
 
 	_, _, err := svc.GetGroupLogs(context.Background(), groupID, callerID, false, model.AuditFilters{})
 	if err == nil {
@@ -150,7 +161,7 @@ func TestAuditService_GetGroupLogs_NotMember_Forbidden(t *testing.T) {
 			return nil, model.ErrNotFound("group member")
 		},
 	}
-	svc := NewAuditService(nil, groupRepo)
+	svc := NewAuditService(nil, groupRepo, newTestPermSvc())
 
 	_, _, err := svc.GetGroupLogs(context.Background(), groupID, callerID, false, model.AuditFilters{})
 	if err == nil {
@@ -165,7 +176,7 @@ func TestAuditService_GetAllLogs(t *testing.T) {
 			return expected, 5, nil
 		},
 	}
-	svc := NewAuditService(auditRepo, nil)
+	svc := NewAuditService(auditRepo, nil, nil)
 
 	logs, total, err := svc.GetAllLogs(context.Background(), model.AuditFilters{})
 	if err != nil {
@@ -197,7 +208,7 @@ func TestAuditService_ExportCSV(t *testing.T) {
 		},
 	}
 
-	svc := NewAuditService(nil, nil)
+	svc := NewAuditService(nil, nil, nil)
 	data, err := svc.ExportCSV(logs)
 	if err != nil {
 		t.Fatalf("ExportCSV() error = %v", err)
@@ -228,7 +239,7 @@ func TestAuditService_ExportCSV(t *testing.T) {
 }
 
 func TestAuditService_ExportCSV_Empty(t *testing.T) {
-	svc := NewAuditService(nil, nil)
+	svc := NewAuditService(nil, nil, nil)
 	data, err := svc.ExportCSV(nil)
 	if err != nil {
 		t.Fatalf("ExportCSV() error = %v", err)
@@ -251,7 +262,7 @@ func TestAuditService_ExportCSV_NoDisplayName(t *testing.T) {
 		},
 	}
 
-	svc := NewAuditService(nil, nil)
+	svc := NewAuditService(nil, nil, nil)
 	data, err := svc.ExportCSV(logs)
 	if err != nil {
 		t.Fatalf("ExportCSV() error = %v", err)
@@ -272,7 +283,7 @@ func TestAuditService_ExportJSON(t *testing.T) {
 		},
 	}
 
-	svc := NewAuditService(nil, nil)
+	svc := NewAuditService(nil, nil, nil)
 	data, err := svc.ExportJSON(logs)
 	if err != nil {
 		t.Fatalf("ExportJSON() error = %v", err)

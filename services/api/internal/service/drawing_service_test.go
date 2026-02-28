@@ -28,7 +28,7 @@ func TestDrawingService_Create(t *testing.T) {
 			}, nil
 		},
 	}
-	svc := NewDrawingService(drawingRepo, nil, nil, nil)
+	svc := NewDrawingService(drawingRepo, nil, nil, nil, nil)
 
 	req := CreateDrawingRequest{
 		Name:    "My Drawing",
@@ -44,7 +44,7 @@ func TestDrawingService_Create(t *testing.T) {
 }
 
 func TestDrawingService_Create_EmptyName(t *testing.T) {
-	svc := NewDrawingService(nil, nil, nil, nil)
+	svc := NewDrawingService(nil, nil, nil, nil, nil)
 	_, err := svc.Create(context.Background(), uuid.New(), CreateDrawingRequest{
 		Name:    "",
 		GeoJSON: json.RawMessage(`{"type":"Feature"}`),
@@ -55,7 +55,7 @@ func TestDrawingService_Create_EmptyName(t *testing.T) {
 }
 
 func TestDrawingService_Create_EmptyGeoJSON(t *testing.T) {
-	svc := NewDrawingService(nil, nil, nil, nil)
+	svc := NewDrawingService(nil, nil, nil, nil, nil)
 	_, err := svc.Create(context.Background(), uuid.New(), CreateDrawingRequest{
 		Name: "Test",
 	})
@@ -65,7 +65,7 @@ func TestDrawingService_Create_EmptyGeoJSON(t *testing.T) {
 }
 
 func TestDrawingService_Create_InvalidGeoJSON(t *testing.T) {
-	svc := NewDrawingService(nil, nil, nil, nil)
+	svc := NewDrawingService(nil, nil, nil, nil, nil)
 	_, err := svc.Create(context.Background(), uuid.New(), CreateDrawingRequest{
 		Name:    "Test",
 		GeoJSON: json.RawMessage(`{"not_type":"invalid"}`),
@@ -84,7 +84,7 @@ func TestDrawingService_Get_Owner(t *testing.T) {
 			}, nil
 		},
 	}
-	svc := NewDrawingService(drawingRepo, nil, nil, nil)
+	svc := NewDrawingService(drawingRepo, nil, nil, nil, nil)
 
 	dwu, err := svc.Get(context.Background(), uuid.New(), ownerID, false)
 	if err != nil {
@@ -103,7 +103,7 @@ func TestDrawingService_Get_Admin(t *testing.T) {
 			}, nil
 		},
 	}
-	svc := NewDrawingService(drawingRepo, nil, nil, nil)
+	svc := NewDrawingService(drawingRepo, nil, nil, nil, nil)
 
 	dwu, err := svc.Get(context.Background(), uuid.New(), uuid.New(), true)
 	if err != nil {
@@ -126,7 +126,7 @@ func TestDrawingService_Get_NonOwnerNoAccess(t *testing.T) {
 		},
 	}
 	groupRepo := &mockrepo.GroupRepo{}
-	svc := NewDrawingService(drawingRepo, nil, groupRepo, nil)
+	svc := NewDrawingService(drawingRepo, nil, groupRepo, nil, nil)
 
 	_, err := svc.Get(context.Background(), uuid.New(), uuid.New(), false)
 	if err == nil {
@@ -144,7 +144,7 @@ func TestDrawingService_ListOwn(t *testing.T) {
 			return []model.DrawingWithUser{{Drawing: model.Drawing{Name: "D1"}}}, nil
 		},
 	}
-	svc := NewDrawingService(drawingRepo, nil, nil, nil)
+	svc := NewDrawingService(drawingRepo, nil, nil, nil, nil)
 
 	drawings, err := svc.ListOwn(context.Background(), ownerID)
 	if err != nil {
@@ -167,7 +167,7 @@ func TestDrawingService_Delete_Owner(t *testing.T) {
 			return nil
 		},
 	}
-	svc := NewDrawingService(drawingRepo, nil, nil, nil)
+	svc := NewDrawingService(drawingRepo, nil, nil, nil, nil)
 
 	err := svc.Delete(context.Background(), uuid.New(), ownerID, false)
 	if err != nil {
@@ -184,7 +184,7 @@ func TestDrawingService_Delete_NonOwner_Forbidden(t *testing.T) {
 			return &model.DrawingWithUser{Drawing: model.Drawing{OwnerID: uuid.New()}}, nil
 		},
 	}
-	svc := NewDrawingService(drawingRepo, nil, nil, nil)
+	svc := NewDrawingService(drawingRepo, nil, nil, nil, nil)
 
 	err := svc.Delete(context.Background(), uuid.New(), uuid.New(), false)
 	if err == nil {
@@ -215,7 +215,7 @@ func TestDrawingService_Update_Owner(t *testing.T) {
 		},
 	}
 	ps := pubsub.NewMockPubSub()
-	svc := NewDrawingService(drawingRepo, nil, nil, ps)
+	svc := NewDrawingService(drawingRepo, nil, nil, ps, nil)
 
 	newName := "New Name"
 	dwu, err := svc.Update(context.Background(), drawingID, ownerID, false, UpdateDrawingRequest{Name: &newName})
@@ -233,7 +233,7 @@ func TestDrawingService_Update_NonOwner_Forbidden(t *testing.T) {
 			return &model.DrawingWithUser{Drawing: model.Drawing{OwnerID: uuid.New()}}, nil
 		},
 	}
-	svc := NewDrawingService(drawingRepo, nil, nil, nil)
+	svc := NewDrawingService(drawingRepo, nil, nil, nil, nil)
 
 	newName := "New"
 	_, err := svc.Update(context.Background(), uuid.New(), uuid.New(), false, UpdateDrawingRequest{Name: &newName})
@@ -249,7 +249,7 @@ func TestDrawingService_Update_EmptyName(t *testing.T) {
 			return &model.DrawingWithUser{Drawing: model.Drawing{OwnerID: ownerID}}, nil
 		},
 	}
-	svc := NewDrawingService(drawingRepo, nil, nil, nil)
+	svc := NewDrawingService(drawingRepo, nil, nil, nil, nil)
 
 	empty := ""
 	_, err := svc.Update(context.Background(), uuid.New(), ownerID, false, UpdateDrawingRequest{Name: &empty})
@@ -259,8 +259,8 @@ func TestDrawingService_Update_EmptyName(t *testing.T) {
 }
 
 func TestDrawingService_Share_NoTarget(t *testing.T) {
-	svc := NewDrawingService(nil, nil, nil, nil)
-	_, err := svc.Share(context.Background(), uuid.New(), uuid.New(), ShareDrawingRequest{})
+	svc := NewDrawingService(nil, nil, nil, nil, nil)
+	_, err := svc.Share(context.Background(), uuid.New(), uuid.New(), false, ShareDrawingRequest{})
 	if err == nil {
 		t.Fatal("expected error when neither group_id nor recipient_id is set")
 	}
@@ -269,8 +269,8 @@ func TestDrawingService_Share_NoTarget(t *testing.T) {
 func TestDrawingService_Share_BothTargets(t *testing.T) {
 	gid := uuid.New()
 	rid := uuid.New()
-	svc := NewDrawingService(nil, nil, nil, nil)
-	_, err := svc.Share(context.Background(), uuid.New(), uuid.New(), ShareDrawingRequest{
+	svc := NewDrawingService(nil, nil, nil, nil, nil)
+	_, err := svc.Share(context.Background(), uuid.New(), uuid.New(), false, ShareDrawingRequest{
 		GroupID:     &gid,
 		RecipientID: &rid,
 	})
@@ -286,10 +286,10 @@ func TestDrawingService_Share_NonOwner(t *testing.T) {
 			return &model.DrawingWithUser{Drawing: model.Drawing{OwnerID: ownerID}}, nil
 		},
 	}
-	svc := NewDrawingService(drawingRepo, nil, nil, nil)
+	svc := NewDrawingService(drawingRepo, nil, nil, nil, nil)
 
 	gid := uuid.New()
-	_, err := svc.Share(context.Background(), uuid.New(), uuid.New(), ShareDrawingRequest{GroupID: &gid})
+	_, err := svc.Share(context.Background(), uuid.New(), uuid.New(), false, ShareDrawingRequest{GroupID: &gid})
 	if err == nil {
 		t.Fatal("expected forbidden error when non-owner tries to share")
 	}
@@ -324,9 +324,9 @@ func TestDrawingService_Share_ToGroup(t *testing.T) {
 		},
 	}
 	ps := pubsub.NewMockPubSub()
-	svc := NewDrawingService(drawingRepo, messageRepo, groupRepo, ps)
+	svc := NewDrawingService(drawingRepo, messageRepo, groupRepo, ps, newTestPermSvc())
 
-	msg, err := svc.Share(context.Background(), drawingID, ownerID, ShareDrawingRequest{GroupID: &groupID})
+	msg, err := svc.Share(context.Background(), drawingID, ownerID, false, ShareDrawingRequest{GroupID: &groupID})
 	if err != nil {
 		t.Fatalf("Share() error = %v", err)
 	}
@@ -346,7 +346,7 @@ func TestDrawingService_ListShares_Owner(t *testing.T) {
 			return []model.DrawingShareInfo{{MessageID: uuid.New()}}, nil
 		},
 	}
-	svc := NewDrawingService(drawingRepo, nil, nil, nil)
+	svc := NewDrawingService(drawingRepo, nil, nil, nil, nil)
 
 	shares, err := svc.ListShares(context.Background(), drawingID, ownerID)
 	if err != nil {
@@ -363,7 +363,7 @@ func TestDrawingService_ListShares_NonOwner(t *testing.T) {
 			return &model.DrawingWithUser{Drawing: model.Drawing{OwnerID: uuid.New()}}, nil
 		},
 	}
-	svc := NewDrawingService(drawingRepo, nil, nil, nil)
+	svc := NewDrawingService(drawingRepo, nil, nil, nil, nil)
 
 	_, err := svc.ListShares(context.Background(), uuid.New(), uuid.New())
 	if err == nil {
@@ -397,7 +397,7 @@ func TestDrawingService_Unshare_Owner(t *testing.T) {
 			return nil
 		},
 	}
-	svc := NewDrawingService(drawingRepo, messageRepo, nil, nil)
+	svc := NewDrawingService(drawingRepo, messageRepo, nil, nil, nil)
 
 	err := svc.Unshare(context.Background(), drawingID, ownerID, messageID)
 	if err != nil {
@@ -417,7 +417,7 @@ func TestDrawingService_Unshare_NonOwner(t *testing.T) {
 			return &model.DrawingWithUser{Drawing: model.Drawing{OwnerID: uuid.New()}}, nil
 		},
 	}
-	svc := NewDrawingService(drawingRepo, nil, nil, nil)
+	svc := NewDrawingService(drawingRepo, nil, nil, nil, nil)
 
 	err := svc.Unshare(context.Background(), uuid.New(), uuid.New(), uuid.New())
 	if err == nil {

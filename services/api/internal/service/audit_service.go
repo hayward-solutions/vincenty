@@ -31,11 +31,12 @@ type CreateAuditParams struct {
 type AuditService struct {
 	auditRepo repository.AuditRepo
 	groupRepo repository.GroupRepo
+	permSvc   *PermissionPolicyService
 }
 
 // NewAuditService creates a new AuditService.
-func NewAuditService(auditRepo repository.AuditRepo, groupRepo repository.GroupRepo) *AuditService {
-	return &AuditService{auditRepo: auditRepo, groupRepo: groupRepo}
+func NewAuditService(auditRepo repository.AuditRepo, groupRepo repository.GroupRepo, permSvc *PermissionPolicyService) *AuditService {
+	return &AuditService{auditRepo: auditRepo, groupRepo: groupRepo, permSvc: permSvc}
 }
 
 // LogAction creates an audit log entry.
@@ -63,15 +64,15 @@ func (s *AuditService) GetMyLogs(ctx context.Context, callerID uuid.UUID, f mode
 }
 
 // GetGroupLogs returns audit logs scoped to a group.
-// Caller must be a group admin or system admin.
+// Server admins bypass via admin panel; non-admins need view_audit_logs permission.
 func (s *AuditService) GetGroupLogs(ctx context.Context, groupID, callerID uuid.UUID, callerIsAdmin bool, f model.AuditFilters) ([]model.AuditLogWithUser, int, error) {
 	if !callerIsAdmin {
 		member, err := s.groupRepo.GetMember(ctx, groupID, callerID)
 		if err != nil {
 			return nil, 0, model.ErrForbidden("you are not a member of this group")
 		}
-		if !member.IsGroupAdmin {
-			return nil, 0, model.ErrForbidden("group admin access required")
+		if err := s.permSvc.RequireManagement(ctx, model.ActionViewAuditLogs, member); err != nil {
+			return nil, 0, err
 		}
 	}
 	return s.auditRepo.ListByGroup(ctx, groupID, f)

@@ -323,6 +323,35 @@ func (r *GroupRepository) ListMembers(ctx context.Context, groupID uuid.UUID) ([
 	return members, rows.Err()
 }
 
+// ListMembershipsByUserID returns all group memberships for a user.
+func (r *GroupRepository) ListMembershipsByUserID(ctx context.Context, userID uuid.UUID) ([]model.GroupMember, error) {
+	query := `
+		SELECT id, group_id, user_id, can_read, can_write, is_group_admin, created_at, updated_at
+		FROM group_members
+		WHERE user_id = $1`
+
+	rows, err := r.pool.Query(ctx, query, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var members []model.GroupMember
+	for rows.Next() {
+		var m model.GroupMember
+		if err := rows.Scan(
+			&m.ID, &m.GroupID, &m.UserID,
+			&m.CanRead, &m.CanWrite, &m.IsGroupAdmin,
+			&m.CreatedAt, &m.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		members = append(members, m)
+	}
+
+	return members, rows.Err()
+}
+
 // UpdateMember modifies a group membership.
 func (r *GroupRepository) UpdateMember(ctx context.Context, member *model.GroupMember) error {
 	query := `

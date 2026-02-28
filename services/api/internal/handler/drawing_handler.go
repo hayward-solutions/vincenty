@@ -232,7 +232,7 @@ func (h *DrawingHandler) Share(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	msg, err := h.drawingService.Share(r.Context(), drawingID, claims.UserID, req)
+	msg, err := h.drawingService.Share(r.Context(), drawingID, claims.UserID, claims.IsAdmin, req)
 	if err != nil {
 		HandleError(w, err)
 		return

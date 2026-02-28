@@ -26,6 +26,7 @@ import {
   mockLatestLocation,
   mockApiToken,
   mockCreateApiTokenResponse,
+  mockPermissionPolicy,
 } from "./fixtures";
 
 // All handlers use relative URLs (no base URL) since the API client
@@ -418,5 +419,17 @@ export const handlers = [
   // API info (used by About page)
   http.get("/api/v1/", () => {
     return HttpResponse.json({ service: "sitaware-api", version: "dev" });
+  }),
+
+  // -----------------------------------------------------------------------
+  // Permission Policy
+  // -----------------------------------------------------------------------
+  http.get("/api/v1/server/permissions", () => {
+    return HttpResponse.json(mockPermissionPolicy);
+  }),
+
+  http.put("/api/v1/server/permissions", async ({ request }) => {
+    const body = await request.json();
+    return HttpResponse.json(body);
   }),
 ];

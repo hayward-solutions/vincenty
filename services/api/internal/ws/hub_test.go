@@ -42,24 +42,6 @@ func TestExtractID(t *testing.T) {
 	}
 }
 
-func TestIsMember(t *testing.T) {
-	a, b, c := uuid.New(), uuid.New(), uuid.New()
-	groups := []uuid.UUID{a, b}
-
-	if !isMember(groups, a) {
-		t.Error("expected a to be a member")
-	}
-	if !isMember(groups, b) {
-		t.Error("expected b to be a member")
-	}
-	if isMember(groups, c) {
-		t.Error("expected c to not be a member")
-	}
-	if isMember(nil, a) {
-		t.Error("expected nil groups to return false")
-	}
-}
-
 // ---------------------------------------------------------------------------
 // Hub client management
 // ---------------------------------------------------------------------------
@@ -72,14 +54,40 @@ func newTestHub() *Hub {
 	}
 }
 
-func newTestClient(hub *Hub, userID, deviceID uuid.UUID, groups []uuid.UUID) *Client {
+// newTestPermSvc creates a PermissionPolicyService backed by a mock that
+// returns no stored policy (so DefaultPermissionPolicy is used).
+func newTestPermSvc() *service.PermissionPolicyService {
+	settingsRepo := &mock.ServerSettingsRepo{
+		GetFn: func(ctx context.Context, key string) (*model.ServerSetting, error) {
+			return nil, model.ErrNotFound("setting")
+		},
+	}
+	return service.NewPermissionPolicyService(settingsRepo)
+}
+
+// makeMemberships builds a groupMemberships map with full permissions for the
+// given group IDs.
+func makeMemberships(groupIDs ...uuid.UUID) map[uuid.UUID]*model.GroupMember {
+	m := make(map[uuid.UUID]*model.GroupMember, len(groupIDs))
+	for _, id := range groupIDs {
+		m[id] = &model.GroupMember{
+			GroupID:      id,
+			CanRead:      true,
+			CanWrite:     true,
+			IsGroupAdmin: false,
+		}
+	}
+	return m
+}
+
+func newTestClient(hub *Hub, userID, deviceID uuid.UUID, groupIDs []uuid.UUID) *Client {
 	return &Client{
-		hub:      hub,
-		userID:   userID,
-		deviceID: deviceID,
-		groups:   groups,
-		send:     make(chan []byte, sendBufferSize),
-		username: "testuser",
+		hub:              hub,
+		userID:           userID,
+		deviceID:         deviceID,
+		groupMemberships: makeMemberships(groupIDs...),
+		send:             make(chan []byte, sendBufferSize),
+		username:         "testuser",
 	}
 }
 
@@ -153,6 +161,7 @@ func TestHub_RemoveClientIdempotent(t *testing.T) {
 
 func TestHub_BroadcastToGroup(t *testing.T) {
 	hub := newTestHub()
+	hub.permSvc = newTestPermSvc()
 	groupID := uuid.New()
 	senderID := uuid.New()
 	recipientID := uuid.New()
@@ -167,7 +176,7 @@ func TestHub_BroadcastToGroup(t *testing.T) {
 	hub.addClient(outsider)
 
 	data := []byte(`{"test":"broadcast"}`)
-	sent := hub.broadcastToGroup(groupID, senderID, data)
+	sent := hub.broadcastToGroup(groupID, senderID, model.ActionReadMessages, data)
 
 	if sent != 1 {
 		t.Errorf("expected 1 recipient, got %d", sent)
@@ -202,10 +211,11 @@ func TestHub_BroadcastToGroup(t *testing.T) {
 
 func TestHub_BroadcastToGroup_NoRecipients(t *testing.T) {
 	hub := newTestHub()
+	hub.permSvc = newTestPermSvc()
 	groupID := uuid.New()
 	data := []byte(`{"test":"empty"}`)
 
-	sent := hub.broadcastToGroup(groupID, uuid.New(), data)
+	sent := hub.broadcastToGroup(groupID, uuid.New(), model.ActionReadMessages, data)
 	if sent != 0 {
 		t.Errorf("expected 0 recipients, got %d", sent)
 	}
@@ -252,6 +262,7 @@ func TestHub_SendToUser_NoClients(t *testing.T) {
 
 func TestHub_RouteMessage_LocationBroadcast(t *testing.T) {
 	hub := newTestHub()
+	hub.permSvc = newTestPermSvc()
 	groupID := uuid.New()
 	senderID := uuid.New()
 	recipientID := uuid.New()
@@ -289,6 +300,7 @@ func TestHub_RouteMessage_LocationBroadcast(t *testing.T) {
 
 func TestHub_RouteMessage_GroupMessages(t *testing.T) {
 	hub := newTestHub()
+	hub.permSvc = newTestPermSvc()
 	groupID := uuid.New()
 	senderID := uuid.New()
 	recipientID := uuid.New()
@@ -352,6 +364,7 @@ func TestHub_RouteMessage_DirectMessage(t *testing.T) {
 
 func TestHub_RouteMessage_GroupDrawingUpdate(t *testing.T) {
 	hub := newTestHub()
+	hub.permSvc = newTestPermSvc()
 	groupID := uuid.New()
 	ownerID := uuid.New()
 	recipientID := uuid.New()
@@ -424,6 +437,7 @@ func TestHub_RouteMessage_InvalidChannel(t *testing.T) {
 
 func TestHub_RouteMessage_InvalidPayload(t *testing.T) {
 	hub := newTestHub()
+	hub.permSvc = newTestPermSvc()
 	groupID := uuid.New()
 	// Invalid JSON — should not panic
 	hub.routeMessage(pubsub.Message{
@@ -532,6 +546,7 @@ func TestHub_SendSnapshot(t *testing.T) {
 	hub := &Hub{
 		clients:     make(map[uuid.UUID]map[*Client]struct{}),
 		locationSvc: locationSvc,
+		permSvc:     newTestPermSvc(),
 	}
 
 	client := newTestClient(hub, userID, deviceID, []uuid.UUID{groupID})
@@ -587,6 +602,7 @@ func TestHub_SendSnapshot_NoLocations(t *testing.T) {
 	hub := &Hub{
 		clients:     make(map[uuid.UUID]map[*Client]struct{}),
 		locationSvc: locationSvc,
+		permSvc:     newTestPermSvc(),
 	}
 
 	client := newTestClient(hub, uuid.New(), uuid.New(), []uuid.UUID{groupID})
@@ -609,6 +625,7 @@ func TestHub_SendSnapshot_NoLocations(t *testing.T) {
 
 func TestHub_HandleLocationUpdate_DeviceMismatch(t *testing.T) {
 	hub := newTestHub()
+	hub.permSvc = newTestPermSvc()
 	clientDeviceID := uuid.New()
 	client := newTestClient(hub, uuid.New(), clientDeviceID, nil)
 
@@ -638,6 +655,7 @@ func TestHub_HandleLocationUpdate_DeviceMismatch(t *testing.T) {
 
 func TestHub_HandleLocationUpdate_InvalidDeviceID(t *testing.T) {
 	hub := newTestHub()
+	hub.permSvc = newTestPermSvc()
 	client := newTestClient(hub, uuid.New(), uuid.New(), nil)
 
 	payload := &LocationUpdatePayload{

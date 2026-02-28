@@ -12,11 +12,12 @@ import (
 type GroupService struct {
 	groupRepo repository.GroupRepo
 	userRepo  repository.UserRepo
+	permSvc   *PermissionPolicyService
 }
 
 // NewGroupService creates a new GroupService.
-func NewGroupService(groupRepo repository.GroupRepo, userRepo repository.UserRepo) *GroupService {
-	return &GroupService{groupRepo: groupRepo, userRepo: userRepo}
+func NewGroupService(groupRepo repository.GroupRepo, userRepo repository.UserRepo, permSvc *PermissionPolicyService) *GroupService {
+	return &GroupService{groupRepo: groupRepo, userRepo: userRepo, permSvc: permSvc}
 }
 
 // --------------------------------------------------------------------------
@@ -123,7 +124,7 @@ func (s *GroupService) Update(ctx context.Context, id uuid.UUID, req *model.Upda
 }
 
 // UpdateMarker updates a group's marker icon and color.
-// Accessible by group admins and system admins.
+// Accessible by server admins (via admin panel) or group members with update_marker permission.
 func (s *GroupService) UpdateMarker(ctx context.Context, groupID uuid.UUID, req *model.UpdateGroupMarkerRequest, callerID uuid.UUID, callerIsAdmin bool) (*model.Group, int, error) {
 	// Verify the group exists
 	group, err := s.groupRepo.GetByID(ctx, groupID)
@@ -131,9 +132,13 @@ func (s *GroupService) UpdateMarker(ctx context.Context, groupID uuid.UUID, req 
 		return nil, 0, err
 	}
 
-	// Check permission: must be system admin or group admin
+	// Admin panel bypass for server admins
 	if !callerIsAdmin {
-		if err := s.requireGroupAdmin(ctx, groupID, callerID); err != nil {
+		member, err := s.groupRepo.GetMember(ctx, groupID, callerID)
+		if err != nil {
+			return nil, 0, model.ErrForbidden("you do not have permission to manage this group")
+		}
+		if err := s.permSvc.RequireManagement(ctx, model.ActionUpdateMarker, member); err != nil {
 			return nil, 0, err
 		}
 	}
@@ -172,16 +177,20 @@ func (s *GroupService) Delete(ctx context.Context, id uuid.UUID) error {
 
 // AddMember adds a user to a group.
 // callerID + callerIsAdmin are used for permission checks.
-// System admins can always add members; group admins can add to their own groups.
+// Server admins bypass via admin panel; non-admins need add_members permission.
 func (s *GroupService) AddMember(ctx context.Context, groupID uuid.UUID, req *model.AddGroupMemberRequest, callerID uuid.UUID, callerIsAdmin bool) (*model.GroupMemberWithUser, error) {
 	// Verify the group exists
 	if _, err := s.groupRepo.GetByID(ctx, groupID); err != nil {
 		return nil, err
 	}
 
-	// Check permission: must be system admin or group admin
+	// Admin panel bypass for server admins
 	if !callerIsAdmin {
-		if err := s.requireGroupAdmin(ctx, groupID, callerID); err != nil {
+		member, err := s.groupRepo.GetMember(ctx, groupID, callerID)
+		if err != nil {
+			return nil, model.ErrForbidden("you do not have permission to manage this group")
+		}
+		if err := s.permSvc.RequireManagement(ctx, model.ActionAddMembers, member); err != nil {
 			return nil, err
 		}
 	}
@@ -254,7 +263,7 @@ func (s *GroupService) ListMembers(ctx context.Context, groupID uuid.UUID, calle
 }
 
 // UpdateMember modifies a member's permissions.
-// System admins can always update; group admins can update non-admin members in their groups.
+// Server admins bypass via admin panel; non-admins need update_members permission.
 func (s *GroupService) UpdateMember(ctx context.Context, groupID, memberUserID uuid.UUID, req *model.UpdateGroupMemberRequest, callerID uuid.UUID, callerIsAdmin bool) (*model.GroupMemberWithUser, error) {
 	// Get the existing membership
 	member, err := s.groupRepo.GetMember(ctx, groupID, memberUserID)
@@ -264,7 +273,11 @@ func (s *GroupService) UpdateMember(ctx context.Context, groupID, memberUserID u
 
 	// Check permission
 	if !callerIsAdmin {
-		if err := s.requireGroupAdmin(ctx, groupID, callerID); err != nil {
+		callerMember, err := s.groupRepo.GetMember(ctx, groupID, callerID)
+		if err != nil {
+			return nil, model.ErrForbidden("you do not have permission to manage this group")
+		}
+		if err := s.permSvc.RequireManagement(ctx, model.ActionUpdateMembers, callerMember); err != nil {
 			return nil, err
 		}
 		// Group admins cannot modify other group admins
@@ -305,7 +318,7 @@ func (s *GroupService) UpdateMember(ctx context.Context, groupID, memberUserID u
 }
 
 // RemoveMember removes a user from a group.
-// System admins can always remove; group admins can remove non-admin members.
+// Server admins bypass via admin panel; non-admins need remove_members permission.
 func (s *GroupService) RemoveMember(ctx context.Context, groupID, memberUserID uuid.UUID, callerID uuid.UUID, callerIsAdmin bool) error {
 	// Verify group exists
 	if _, err := s.groupRepo.GetByID(ctx, groupID); err != nil {
@@ -314,7 +327,11 @@ func (s *GroupService) RemoveMember(ctx context.Context, groupID, memberUserID u
 
 	// Check permission
 	if !callerIsAdmin {
-		if err := s.requireGroupAdmin(ctx, groupID, callerID); err != nil {
+		callerMember, err := s.groupRepo.GetMember(ctx, groupID, callerID)
+		if err != nil {
+			return model.ErrForbidden("you do not have permission to manage this group")
+		}
+		if err := s.permSvc.RequireManagement(ctx, model.ActionRemoveMembers, callerMember); err != nil {
 			return err
 		}
 		// Group admins cannot remove other group admins

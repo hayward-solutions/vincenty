@@ -24,6 +24,7 @@ import type {
   LatestLocationEntry,
   ApiToken,
   CreateApiTokenResponse,
+  PermissionPolicy,
 } from "@/types/api";
 
 // ---------------------------------------------------------------------------
@@ -324,4 +325,26 @@ export const mockApiToken: ApiToken = {
 export const mockCreateApiTokenResponse: CreateApiTokenResponse = {
   ...mockApiToken,
   token: "sat_0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+};
+
+// ---------------------------------------------------------------------------
+// Permission Policy
+// ---------------------------------------------------------------------------
+
+export const mockPermissionPolicy: PermissionPolicy = {
+  group_communication: {
+    send_messages: ["server_admin", "group_admin", "writer"],
+    read_messages: ["server_admin", "group_admin", "writer", "reader"],
+    send_attachments: ["server_admin", "group_admin", "writer"],
+    share_drawings: ["server_admin", "group_admin", "writer"],
+    share_location: ["server_admin", "group_admin", "writer", "reader"],
+    view_locations: ["server_admin", "group_admin", "writer", "reader"],
+  },
+  group_management: {
+    add_members: ["group_admin"],
+    remove_members: ["group_admin"],
+    update_members: ["group_admin"],
+    update_marker: ["group_admin"],
+    view_audit_logs: ["group_admin"],
+  },
 };
