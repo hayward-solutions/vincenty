@@ -111,9 +111,7 @@ export function LocationMarkers({
           popup.setHTML(buildPopupHTML(loc, color));
         }
 
-        if (loc.heading != null) {
-          existing.setRotation(loc.heading);
-        }
+        applyIconRotation(existing, loc.heading ?? null);
       } else {
         // Style changed or new marker — (re)create
         if (existing) {
@@ -133,14 +131,12 @@ export function LocationMarkers({
           maxWidth: "220px",
         }).setHTML(buildPopupHTML(loc, color));
 
-        const marker = new maplibregl.Marker({ element: el, anchor: "center" })
+        const marker = new maplibregl.Marker({ element: el, anchor: "center", subpixelPositioning: true })
           .setLngLat([loc.lng, loc.lat])
           .setPopup(popup)
           .addTo(map);
 
-        if (loc.heading != null) {
-          marker.setRotation(loc.heading);
-        }
+        applyIconRotation(marker, loc.heading ?? null);
 
         markersRef.current.set(deviceId, marker);
         styleRef.current.set(deviceId, styleKey);
@@ -172,6 +168,17 @@ export function LocationMarkers({
   return null; // markers are managed imperatively
 }
 
+/**
+ * Rotate only the SVG icon to reflect the device's heading, leaving the
+ * wrapper and label untouched so the label stays screen-upright and centred
+ * directly below the icon at all headings.
+ */
+function applyIconRotation(marker: maplibregl.Marker, heading: number | null): void {
+  const icon = marker.getElement().querySelector<SVGSVGElement>(".sa-marker-icon");
+  if (!icon) return;
+  icon.style.transform = heading != null ? `rotate(${heading}deg)` : "";
+}
+
 function createMarkerElement(
   label: string,
   icon: string,
@@ -179,16 +186,22 @@ function createMarkerElement(
 ): HTMLElement {
   const wrapper = document.createElement("div");
   wrapper.className = "sa-marker";
-  wrapper.style.cssText = "position:relative;width:18px;height:18px;cursor:pointer;";
+  wrapper.style.cssText = "width:18px;height:18px;cursor:pointer;";
 
-  // Shape icon — centered in the wrapper, determines the anchor point
+  // Shape icon — centered in the wrapper, determines the anchor point.
+  // Rotation is applied to this element only (not the wrapper) so the label
+  // position is unaffected by heading changes.
   const svg = createMarkerSVG(icon, color, 18);
-  svg.style.cssText = "position:absolute;top:0;left:0;";
+  svg.setAttribute("class", "sa-marker-icon");
+  svg.style.cssText = "position:absolute;top:0;left:0;transform-origin:center center;";
   svg.style.filter = "drop-shadow(0 1px 3px rgba(0,0,0,0.4))";
   wrapper.appendChild(svg);
 
-  // Label — absolutely positioned below the pin, outside the wrapper's layout
+  // Label — absolutely positioned below the pin, outside the wrapper's layout.
+  // Because only the SVG icon rotates (not the wrapper), this stays horizontal
+  // and centred below the icon regardless of heading.
   const text = document.createElement("div");
+  text.className = "sa-marker-label";
   text.textContent = label;
   text.style.cssText = `
     position:absolute;top:20px;left:50%;transform:translateX(-50%);
