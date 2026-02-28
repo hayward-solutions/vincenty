@@ -32,7 +32,7 @@ func TestReadyz(t *testing.T) {
 
 func TestAPIInfo(t *testing.T) {
 	e := getEnv(t)
-	resp := e.Do(t, "GET", "/api/v1/", "", nil, "")
+	resp := e.Do(t, "GET", "/api/v1", "", nil, "")
 	defer resp.Body.Close()
 	testutil.RequireStatus(t, resp, http.StatusOK)
 

@@ -283,7 +283,7 @@ func main() {
 	})
 
 	// API info (public)
-	mux.HandleFunc("GET /api/v1/", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("GET /api/v1", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		fmt.Fprintf(w, `{"service":"sitaware-api","version":%q}`, version)
 	})

@@ -417,7 +417,7 @@ export const handlers = [
   }),
 
   // API info (used by About page)
-  http.get("/api/v1/", () => {
+  http.get("/api/v1", () => {
     return HttpResponse.json({ service: "sitaware-api", version: "dev" });
   }),
 
