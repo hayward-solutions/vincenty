@@ -167,7 +167,7 @@ func main() {
 	mfaService := service.NewMFAService(mfaRepo, userRepo, encryptor, rdb, wa)
 	authService := service.NewAuthService(userRepo, tokenRepo, jwtService, mfaService)
 	userService := service.NewUserService(userRepo, tokenRepo, storageSvc)
-	groupService := service.NewGroupService(groupRepo, userRepo, permissionPolicyService)
+	groupService := service.NewGroupService(groupRepo, userRepo, permissionPolicyService, ps)
 	locationService := service.NewLocationService(locationRepo, groupRepo, ps, cfg.WS.LocationThrottle)
 	mapConfigService := service.NewMapConfigService(mapConfigRepo, terrainConfigRepo, serverSettingsRepo, cfg.Map)
 	terrainConfigService := service.NewTerrainConfigService(terrainConfigRepo, cfg.Map)

@@ -17,7 +17,7 @@ func TestGroupService_Create(t *testing.T) {
 			return nil
 		},
 	}
-	svc := NewGroupService(groupRepo, nil, nil)
+	svc := NewGroupService(groupRepo, nil, nil, nil)
 
 	callerID := uuid.New()
 	icon := "shield"
@@ -54,7 +54,7 @@ func TestGroupService_GetByID(t *testing.T) {
 			return 5, nil
 		},
 	}
-	svc := NewGroupService(groupRepo, nil, nil)
+	svc := NewGroupService(groupRepo, nil, nil, nil)
 
 	group, count, err := svc.GetByID(context.Background(), groupID)
 	if err != nil {
@@ -74,7 +74,7 @@ func TestGroupService_GetByID_NotFound(t *testing.T) {
 			return nil, model.ErrNotFound("group")
 		},
 	}
-	svc := NewGroupService(groupRepo, nil, nil)
+	svc := NewGroupService(groupRepo, nil, nil, nil)
 
 	_, _, err := svc.GetByID(context.Background(), uuid.New())
 	if err == nil {
@@ -95,7 +95,7 @@ func TestGroupService_Update(t *testing.T) {
 			return 3, nil
 		},
 	}
-	svc := NewGroupService(groupRepo, nil, nil)
+	svc := NewGroupService(groupRepo, nil, nil, nil)
 
 	newName := "New Name"
 	group, count, err := svc.Update(context.Background(), groupID, &model.UpdateGroupRequest{Name: &newName})
@@ -117,7 +117,7 @@ func TestGroupService_Update_EmptyName(t *testing.T) {
 			return &model.Group{ID: groupID, Name: "Old"}, nil
 		},
 	}
-	svc := NewGroupService(groupRepo, nil, nil)
+	svc := NewGroupService(groupRepo, nil, nil, nil)
 
 	emptyName := ""
 	_, _, err := svc.Update(context.Background(), groupID, &model.UpdateGroupRequest{Name: &emptyName})
@@ -133,7 +133,7 @@ func TestGroupService_Update_LongName(t *testing.T) {
 			return &model.Group{ID: groupID, Name: "Old"}, nil
 		},
 	}
-	svc := NewGroupService(groupRepo, nil, nil)
+	svc := NewGroupService(groupRepo, nil, nil, nil)
 
 	longName := string(make([]byte, 256))
 	_, _, err := svc.Update(context.Background(), groupID, &model.UpdateGroupRequest{Name: &longName})
@@ -150,7 +150,7 @@ func TestGroupService_Delete(t *testing.T) {
 			return nil
 		},
 	}
-	svc := NewGroupService(groupRepo, nil, nil)
+	svc := NewGroupService(groupRepo, nil, nil, nil)
 
 	err := svc.Delete(context.Background(), uuid.New())
 	if err != nil {
@@ -179,7 +179,7 @@ func TestGroupService_AddMember_SystemAdmin(t *testing.T) {
 			return &model.User{ID: userID, Username: "bob"}, nil
 		},
 	}
-	svc := NewGroupService(groupRepo, userRepo, nil)
+	svc := NewGroupService(groupRepo, userRepo, nil, nil)
 
 	req := &model.AddGroupMemberRequest{UserID: userID.String()}
 	member, err := svc.AddMember(context.Background(), groupID, req, callerID, true)
@@ -215,7 +215,7 @@ func TestGroupService_AddMember_NonAdmin_GroupAdmin(t *testing.T) {
 			return &model.User{ID: userID, Username: "alice"}, nil
 		},
 	}
-	svc := NewGroupService(groupRepo, userRepo, newTestPermSvc())
+	svc := NewGroupService(groupRepo, userRepo, newTestPermSvc(), nil)
 
 	req := &model.AddGroupMemberRequest{UserID: userID.String()}
 	member, err := svc.AddMember(context.Background(), groupID, req, callerID, false)
@@ -245,7 +245,7 @@ func TestGroupService_AddMember_NonAdminCannotGrantGroupAdmin(t *testing.T) {
 			return &model.User{ID: userID}, nil
 		},
 	}
-	svc := NewGroupService(groupRepo, userRepo, newTestPermSvc())
+	svc := NewGroupService(groupRepo, userRepo, newTestPermSvc(), nil)
 
 	isGroupAdmin := true
 	req := &model.AddGroupMemberRequest{UserID: userID.String(), IsGroupAdmin: &isGroupAdmin}
@@ -267,7 +267,7 @@ func TestGroupService_ListMembers_SystemAdmin(t *testing.T) {
 			return expected, nil
 		},
 	}
-	svc := NewGroupService(groupRepo, nil, nil)
+	svc := NewGroupService(groupRepo, nil, nil, nil)
 
 	members, err := svc.ListMembers(context.Background(), groupID, uuid.New(), true)
 	if err != nil {
@@ -290,7 +290,7 @@ func TestGroupService_ListMembers_NonMember_Forbidden(t *testing.T) {
 			return nil, model.ErrNotFound("group member")
 		},
 	}
-	svc := NewGroupService(groupRepo, nil, nil)
+	svc := NewGroupService(groupRepo, nil, nil, nil)
 
 	_, err := svc.ListMembers(context.Background(), groupID, callerID, false)
 	if err == nil {
@@ -312,7 +312,7 @@ func TestGroupService_RemoveMember_SystemAdmin(t *testing.T) {
 			return nil
 		},
 	}
-	svc := NewGroupService(groupRepo, nil, nil)
+	svc := NewGroupService(groupRepo, nil, nil, nil)
 
 	err := svc.RemoveMember(context.Background(), groupID, memberID, uuid.New(), true)
 	if err != nil {
@@ -337,7 +337,7 @@ func TestGroupService_RemoveMember_GroupAdmin_CannotRemoveOtherAdmin(t *testing.
 			return &model.GroupMember{IsGroupAdmin: true}, nil
 		},
 	}
-	svc := NewGroupService(groupRepo, nil, newTestPermSvc())
+	svc := NewGroupService(groupRepo, nil, newTestPermSvc(), nil)
 
 	err := svc.RemoveMember(context.Background(), groupID, targetID, callerID, false)
 	if err == nil {

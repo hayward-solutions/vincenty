@@ -183,6 +183,7 @@ type LocationRepo struct {
 	GetVisibleHistoryFn    func(ctx context.Context, callerID uuid.UUID, from, to time.Time) ([]repository.LocationRecord, error)
 	GetAllHistoryFn        func(ctx context.Context, from, to time.Time) ([]repository.LocationRecord, error)
 	UsersShareGroupFn      func(ctx context.Context, userA, userB uuid.UUID) (bool, error)
+	GetLatestByUserFn      func(ctx context.Context, userID uuid.UUID) ([]repository.LocationRecord, error)
 	GetAllLatestFn         func(ctx context.Context) ([]repository.LocationRecord, error)
 }
 
@@ -209,6 +210,9 @@ func (m *LocationRepo) GetAllHistory(ctx context.Context, from, to time.Time) ([
 }
 func (m *LocationRepo) UsersShareGroup(ctx context.Context, userA, userB uuid.UUID) (bool, error) {
 	return m.UsersShareGroupFn(ctx, userA, userB)
+}
+func (m *LocationRepo) GetLatestByUser(ctx context.Context, userID uuid.UUID) ([]repository.LocationRecord, error) {
+	return m.GetLatestByUserFn(ctx, userID)
 }
 func (m *LocationRepo) GetAllLatest(ctx context.Context) ([]repository.LocationRecord, error) {
 	return m.GetAllLatestFn(ctx)

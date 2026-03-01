@@ -536,6 +536,9 @@ func TestHub_SendSnapshot(t *testing.T) {
 			}
 			return nil, nil
 		},
+		GetLatestByUserFn: func(ctx context.Context, uid uuid.UUID) ([]repository.LocationRecord, error) {
+			return nil, nil
+		},
 	}
 
 	// Need a LocationService — construct with minimal deps
@@ -594,12 +597,16 @@ func TestHub_SendSnapshot_NoLocations(t *testing.T) {
 		GetLatestByGroupFn: func(ctx context.Context, gid uuid.UUID) ([]repository.LocationRecord, error) {
 			return nil, nil
 		},
+		GetLatestByUserFn: func(ctx context.Context, uid uuid.UUID) ([]repository.LocationRecord, error) {
+			return nil, nil
+		},
 	}
 
 	ps := pubsub.NewMockPubSub()
 	locationSvc := service.NewLocationService(locationRepo, &mock.GroupRepo{}, ps, time.Second)
 
 	hub := &Hub{
+
 		clients:     make(map[uuid.UUID]map[*Client]struct{}),
 		locationSvc: locationSvc,
 		permSvc:     newTestPermSvc(),

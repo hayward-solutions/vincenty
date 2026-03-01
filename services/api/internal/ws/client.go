@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"log/slog"
+	"sync"
 	"time"
 
 	"github.com/google/uuid"
@@ -30,16 +31,22 @@ const (
 
 // Client represents a single WebSocket connection.
 type Client struct {
-	hub              *Hub
-	conn             *websocket.Conn
-	userID           uuid.UUID
-	deviceID         uuid.UUID
-	deviceName       string
-	isPrimary        bool
-	username         string
-	isAdmin          bool
+	hub        *Hub
+	conn       *websocket.Conn
+	userID     uuid.UUID
+	deviceID   uuid.UUID
+	deviceName string
+	isPrimary  bool
+	username   string
+	isAdmin    bool
+
+	// groupMemberships is protected by mu because it is read by the client's
+	// readPump goroutine (handleLocationUpdate) and written by the hub's event
+	// loop goroutine (refreshClientMemberships).
+	mu               sync.RWMutex
 	groupMemberships map[uuid.UUID]*model.GroupMember
-	send             chan []byte
+
+	send chan []byte
 }
 
 // NewClient creates a new Client.
@@ -58,13 +65,43 @@ func NewClient(hub *Hub, conn *websocket.Conn, userID, deviceID uuid.UUID, devic
 	}
 }
 
-// groupIDs returns just the group UUIDs for backward compatibility.
+// groupIDs returns a snapshot of the current group UUIDs.
+// Safe to call from any goroutine.
 func (c *Client) groupIDs() []uuid.UUID {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
 	ids := make([]uuid.UUID, 0, len(c.groupMemberships))
 	for id := range c.groupMemberships {
 		ids = append(ids, id)
 	}
 	return ids
+}
+
+// membership returns the GroupMember for the given group, or nil if not a member.
+// Safe to call from any goroutine.
+func (c *Client) membership(groupID uuid.UUID) *model.GroupMember {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	return c.groupMemberships[groupID]
+}
+
+// setGroupMemberships atomically replaces the membership map and returns the
+// previous map so callers can diff old vs new.
+// Must only be called from the hub's event loop goroutine.
+func (c *Client) setGroupMemberships(m map[uuid.UUID]*model.GroupMember) map[uuid.UUID]*model.GroupMember {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	old := c.groupMemberships
+	c.groupMemberships = m
+	return old
+}
+
+// membershipCount returns the number of groups the client belongs to.
+// Safe to call from any goroutine.
+func (c *Client) membershipCount() int {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	return len(c.groupMemberships)
 }
 
 // Run starts the client's read and write pumps. It blocks until the

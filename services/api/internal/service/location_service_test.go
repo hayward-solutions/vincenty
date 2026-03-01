@@ -49,8 +49,8 @@ func TestLocationService_Update_Accepted(t *testing.T) {
 		t.Error("expected device location to be updated")
 	}
 	published := len(ps.Published())
-	if published != 2 {
-		t.Errorf("published = %d, want 2 (one per group)", published)
+	if published != 3 {
+		t.Errorf("published = %d, want 3 (one per group + one user self-broadcast)", published)
 	}
 }
 

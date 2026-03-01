@@ -292,7 +292,7 @@ func Setup(t *testing.T) *TestEnv {
 	env.AuthService = authService
 	userService := service.NewUserService(env.UserRepo, env.TokenRepo, storageSvc)
 	env.UserService = userService
-	groupService := service.NewGroupService(env.GroupRepo, env.UserRepo, permissionPolicyService)
+	groupService := service.NewGroupService(env.GroupRepo, env.UserRepo, permissionPolicyService, nil)
 	locationService := service.NewLocationService(env.LocationRepo, env.GroupRepo, ps, cfg.WS.LocationThrottle)
 	env.LocationSvc = locationService
 	mapConfigService := service.NewMapConfigService(env.MapConfigRepo, env.TerrainConfigRepo, env.ServerSettingsRepo, cfg.Map)
