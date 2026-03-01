@@ -301,3 +301,15 @@ private struct AnyEncodable: Encodable {
         try encode(encoder)
     }
 }
+
+// MARK: - Shared JSONDecoder
+
+extension JSONDecoder {
+    /// Shared decoder with snake_case → camelCase key conversion.
+    /// Used by WebSocket message handlers to decode server payloads directly from raw bytes.
+    static let snakeCase: JSONDecoder = {
+        let d = JSONDecoder()
+        d.keyDecodingStrategy = .convertFromSnakeCase
+        return d
+    }()
+}

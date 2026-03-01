@@ -201,16 +201,19 @@ final class DrawingsViewModel {
     // MARK: - WebSocket
 
     func subscribeToUpdates(webSocket: WebSocketService, currentUserId: String?) {
-        wsUnsubscribe = webSocket.subscribe { [weak self] type, payload in
+        struct DrawingEnvelope: Decodable { let payload: DrawingResponse }
+        struct MessageEnvelope: Decodable { let payload: MessageResponse }
+
+        wsUnsubscribe = webSocket.subscribe { [weak self] type, data in
             Task { @MainActor [weak self] in
-                guard let self, let payload else { return }
+                guard let self else { return }
 
                 switch type {
                 case WSMessageType.drawingUpdated:
-                    if let data = try? JSONSerialization.data(withJSONObject: payload.value),
-                       let updated = try? JSONDecoder.snakeCase.decode(
-                        DrawingResponse.self, from: data)
-                    {
+                    do {
+                        let envelope = try JSONDecoder.snakeCase.decode(
+                            DrawingEnvelope.self, from: data)
+                        let updated = envelope.payload
                         if updated.ownerId == currentUserId {
                             if let idx = self.ownDrawings.firstIndex(where: { $0.id == updated.id }) {
                                 self.ownDrawings[idx] = updated
@@ -224,17 +227,20 @@ final class DrawingsViewModel {
                                 self.sharedDrawings.insert(updated, at: 0)
                             }
                         }
+                    } catch {
+                        AppLogger.shared.error(.ws, "drawing_updated decode failed: \(error)")
                     }
 
                 case WSMessageType.messageNew:
-                    if let data = try? JSONSerialization.data(withJSONObject: payload.value),
-                       let msg = try? JSONDecoder.snakeCase.decode(
-                        MessageResponse.self, from: data)
-                    {
+                    do {
+                        let envelope = try JSONDecoder.snakeCase.decode(
+                            MessageEnvelope.self, from: data)
+                        let msg = envelope.payload
                         if msg.messageType == "drawing" && msg.senderId != currentUserId {
-                            // Refetch shared drawings
                             await self.loadDrawings()
                         }
+                    } catch {
+                        AppLogger.shared.error(.ws, "message_new (drawing) decode failed: \(error)")
                     }
 
                 default:

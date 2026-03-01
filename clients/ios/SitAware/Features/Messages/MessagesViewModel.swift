@@ -206,15 +206,18 @@ final class MessagesViewModel {
 
     /// Subscribe to real-time messages.
     func subscribeToMessages(webSocket: WebSocketService, currentUserId: String?) {
-        wsUnsubscribe = webSocket.subscribe { [weak self] type, payload in
+        struct MessageEnvelope: Decodable { let payload: MessageResponse }
+
+        wsUnsubscribe = webSocket.subscribe { [weak self] type, data in
             guard type == WSMessageType.messageNew else { return }
 
             Task { @MainActor [weak self] in
-                guard let self, let payload else { return }
+                guard let self else { return }
 
-                if let data = try? JSONSerialization.data(withJSONObject: payload.value),
-                   let msg = try? JSONDecoder.snakeCase.decode(MessageResponse.self, from: data)
-                {
+                do {
+                    let envelope = try JSONDecoder.snakeCase.decode(MessageEnvelope.self, from: data)
+                    let msg = envelope.payload
+
                     // Skip own messages (already added optimistically)
                     if msg.senderId == currentUserId { return }
 
@@ -237,6 +240,8 @@ final class MessagesViewModel {
                         let name = msg.displayName.isEmpty ? msg.username : msg.displayName
                         self.addDmConversation(userId: msg.senderId, displayName: name)
                     }
+                } catch {
+                    AppLogger.shared.error(.ws, "message_new decode failed: \(error)")
                 }
             }
         }

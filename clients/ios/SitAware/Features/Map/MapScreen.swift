@@ -73,7 +73,7 @@ struct MapScreen: View {
         .onChange(of: viewModel.displayLocations) { _, locations in
             locationMarkers.update(
                 locations: locations,
-                currentUserId: auth.user?.id,
+                currentDeviceId: deviceManager.deviceId,
                 groups: viewModel.groups)
         }
         .onChange(of: locationSharing.currentPosition?.lat) { _, _ in
@@ -173,6 +173,14 @@ struct MapScreen: View {
                 // Re-apply current position immediately — handles the case where
                 // the map was recreated and onChange won't fire (value unchanged).
                 updateSelfPosition()
+                // Re-apply other device locations — handles the common race where
+                // the WS location_snapshot arrives before the map style finishes
+                // loading, causing the onChange to no-op (mapView was nil).
+                locationMarkers.update(
+                    locations: viewModel.displayLocations,
+                    currentDeviceId: deviceManager.deviceId,
+                    groups: viewModel.groups
+                )
             },
             onCameraChanged: { bearing, pitch, zoom in
                 viewModel.onCameraChanged(bearing: bearing, pitch: pitch, zoom: zoom)
