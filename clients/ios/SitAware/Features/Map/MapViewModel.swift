@@ -131,9 +131,9 @@ final class MapViewModel {
 
     /// Subscribe to WebSocket location updates.
     func subscribeToLocations(webSocket: WebSocketService) {
-        wsUnsubscribe = webSocket.subscribe { [weak self] type, payload in
+        wsUnsubscribe = webSocket.subscribe { [weak self] type, data in
             Task { @MainActor [weak self] in
-                self?.handleWSMessage(type: type, payload: payload)
+                self?.handleWSMessage(type: type, data: data)
             }
         }
     }
@@ -264,32 +264,37 @@ final class MapViewModel {
 
     // MARK: - WebSocket Message Handling
 
-    private func handleWSMessage(type: String, payload: AnyCodable?) {
+    // Typed envelope wrappers — one per message type — for direct single-pass decoding.
+    private struct BroadcastEnvelope: Decodable {
+        let payload: WSLocationBroadcast
+    }
+    private struct SnapshotEnvelope: Decodable {
+        let payload: WSLocationSnapshot
+    }
+
+    private func handleWSMessage(type: String, data: Data) {
         switch type {
         case WSMessageType.locationBroadcast:
-            guard let payload else { return }
-            if let data = try? JSONSerialization.data(withJSONObject: payload.value),
-               let broadcast = try? JSONDecoder.snakeCase.decode(
-                WSLocationBroadcast.self, from: data)
-            {
-                let location = UserLocation(from: broadcast)
+            do {
+                let envelope = try JSONDecoder.snakeCase.decode(BroadcastEnvelope.self, from: data)
+                let location = UserLocation(from: envelope.payload)
                 allLocations[location.deviceId] = location
+            } catch {
+                AppLogger.shared.error(.ws, "location_broadcast decode failed: \(error)")
             }
 
         case WSMessageType.locationSnapshot:
-            guard let payload else { return }
-            if let data = try? JSONSerialization.data(withJSONObject: payload.value),
-               let snapshot = try? JSONDecoder.snakeCase.decode(
-                WSLocationSnapshot.self, from: data)
-            {
-                for broadcast in snapshot.locations {
+            do {
+                let envelope = try JSONDecoder.snakeCase.decode(SnapshotEnvelope.self, from: data)
+                for broadcast in envelope.payload.locations {
                     let location = UserLocation(from: broadcast)
                     allLocations[location.deviceId] = location
                 }
+            } catch {
+                AppLogger.shared.error(.ws, "location_snapshot decode failed: \(error)")
             }
 
         case WSMessageType.connected:
-            // Connection acknowledged — could log group info
             break
 
         default:
@@ -298,13 +303,4 @@ final class MapViewModel {
     }
 }
 
-// MARK: - JSONDecoder Extension
 
-extension JSONDecoder {
-    /// A decoder with snake_case key strategy.
-    static let snakeCase: JSONDecoder = {
-        let d = JSONDecoder()
-        d.keyDecodingStrategy = .convertFromSnakeCase
-        return d
-    }()
-}

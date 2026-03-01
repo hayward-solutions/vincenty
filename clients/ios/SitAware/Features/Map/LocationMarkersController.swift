@@ -13,7 +13,7 @@ import UIKit
 final class LocationMarkersController {
 
     private var mapView: MLNMapView?
-    private var annotations: [String: MLNPointAnnotation] = [:]  // deviceId -> annotation
+    private var annotations: [String: LocationAnnotation] = [:]  // deviceId -> annotation
     private var userColors: [String: UIColor] = [:]  // userId -> color
     private var colorIndex = 0
 
@@ -42,11 +42,11 @@ final class LocationMarkersController {
     // MARK: - Update
 
     /// Sync annotations with the current set of locations.
-    /// `currentUserId` is excluded (rendered by SelfMarkerController).
+    /// `currentDeviceId` is excluded (rendered by SelfMarkerController).
     /// `groups` is used to resolve per-group marker colors.
     func update(
         locations: [UserLocation],
-        currentUserId: String?,
+        currentDeviceId: String?,
         groups: [Group]
     ) {
         guard let mapView else { return }
@@ -57,21 +57,25 @@ final class LocationMarkersController {
         var activeDeviceIds = Set<String>()
 
         for loc in locations {
-            if loc.userId == currentUserId { continue }
+            if loc.deviceId == currentDeviceId { continue }
             activeDeviceIds.insert(loc.deviceId)
 
+            let color = resolveColor(for: loc, groupMap: groupMap)
+
             if let existing = annotations[loc.deviceId] {
-                // Update position
+                // Update position, label, and colour
                 existing.coordinate = CLLocationCoordinate2D(latitude: loc.lat, longitude: loc.lng)
                 existing.title = loc.displayName.isEmpty ? loc.username : loc.displayName
                 existing.subtitle = formatSubtitle(loc)
+                existing.color = color
             } else {
-                // Create new annotation
-                let annotation = MLNPointAnnotation()
+                // Create new typed annotation so the delegate renders it correctly
+                let annotation = LocationAnnotation()
                 annotation.coordinate = CLLocationCoordinate2D(
                     latitude: loc.lat, longitude: loc.lng)
                 annotation.title = loc.displayName.isEmpty ? loc.username : loc.displayName
                 annotation.subtitle = formatSubtitle(loc)
+                annotation.color = color
                 mapView.addAnnotation(annotation)
                 annotations[loc.deviceId] = annotation
             }

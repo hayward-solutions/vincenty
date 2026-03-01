@@ -283,6 +283,15 @@ struct MapContainerView: UIViewRepresentable {
         func mapView(_ mapView: MLNMapView, viewFor annotation: MLNAnnotation) -> MLNAnnotationView? {
             guard let point = annotation as? MLNPointAnnotation else { return nil }
 
+            // Location markers — identified by type, not title, so any display name works.
+            if let locAnnotation = point as? LocationAnnotation {
+                let reuseId = "location-marker"
+                let view = (mapView.dequeueReusableAnnotationView(withIdentifier: reuseId)
+                    as? LocationAnnotationView) ?? LocationAnnotationView(reuseIdentifier: reuseId)
+                view.configure(color: locAnnotation.color)
+                return view
+            }
+
             switch point.title {
             case "You":
                 let reuseId = "self-marker"
@@ -461,6 +470,52 @@ private final class SmallDotAnnotationView: MLNAnnotationView {
     }
 
     required init?(coder: NSCoder) { nil }
+}
+
+// MARK: - Location Annotation
+
+/// Point annotation subclass for other users' device positions.
+/// Carries a `color` property so the delegate can render a per-group/per-user
+/// coloured marker. Using a distinct type allows the delegate to route it
+/// independently of the title-based tool annotations.
+final class LocationAnnotation: MLNPointAnnotation {
+    var color: UIColor = .systemBlue
+}
+
+// MARK: - Location Annotation View
+
+/// Coloured circle for another user's device position.
+/// 14 pt — slightly smaller than the 16 pt self-marker to give visual hierarchy.
+private final class LocationAnnotationView: MLNAnnotationView {
+
+    private static let size: CGFloat = 14
+
+    override init(reuseIdentifier: String?) {
+        super.init(reuseIdentifier: reuseIdentifier)
+        build()
+    }
+
+    required init?(coder: NSCoder) { nil }
+
+    /// Apply a colour to this view. Called after dequeue so reused views
+    /// get the correct colour for the annotation they are now representing.
+    func configure(color: UIColor) {
+        backgroundColor = color
+    }
+
+    private func build() {
+        let s = Self.size
+        bounds = CGRect(x: 0, y: 0, width: s, height: s)
+        backgroundColor = .systemBlue
+        layer.cornerRadius = s / 2
+        layer.borderColor = UIColor.white.cgColor
+        layer.borderWidth = 2
+        layer.shadowColor = UIColor.black.cgColor
+        layer.shadowOpacity = 0.25
+        layer.shadowOffset = CGSize(width: 0, height: 1)
+        layer.shadowRadius = 2
+        centerOffset = CGVector(dx: 0, dy: 0)
+    }
 }
 
 // MARK: - Tool Double-Tap Recognizer
