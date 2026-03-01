@@ -291,6 +291,51 @@ func (r *LocationRepository) UsersShareGroup(ctx context.Context, userA, userB u
 	return exists, err
 }
 
+// GetLatestByUser returns the most recent location for each of a specific user's
+// devices within the past hour. Used to send a self-snapshot on WebSocket connect
+// so the user sees their own other devices immediately, regardless of group membership.
+func (r *LocationRepository) GetLatestByUser(ctx context.Context, userID uuid.UUID) ([]LocationRecord, error) {
+	query := `
+		SELECT DISTINCT ON (lh.device_id)
+			lh.user_id, lh.device_id,
+			ST_Y(lh.location) AS lat, ST_X(lh.location) AS lng,
+			lh.altitude, lh.heading, lh.speed, lh.accuracy,
+			lh.recorded_at,
+			u.username, u.display_name,
+			d.name AS device_name,
+			COALESCE(d.is_primary, false) AS is_primary
+		FROM location_history lh
+		INNER JOIN users u ON u.id = lh.user_id
+		LEFT JOIN devices d ON d.id = lh.device_id
+		WHERE lh.user_id = $1
+		  AND lh.recorded_at > NOW() - INTERVAL '1 hour'
+		ORDER BY lh.device_id, lh.recorded_at DESC`
+
+	rows, err := r.pool.Query(ctx, query, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var records []LocationRecord
+	for rows.Next() {
+		var rec LocationRecord
+		if err := rows.Scan(
+			&rec.UserID, &rec.DeviceID,
+			&rec.Lat, &rec.Lng,
+			&rec.Altitude, &rec.Heading, &rec.Speed, &rec.Accuracy,
+			&rec.RecordedAt,
+			&rec.Username, &rec.DisplayName,
+			&rec.DeviceName,
+			&rec.IsPrimary,
+		); err != nil {
+			return nil, err
+		}
+		records = append(records, rec)
+	}
+	return records, rows.Err()
+}
+
 // GetAllLatest returns the most recent location for each device across all groups.
 // Used by admin to see all device positions.
 func (r *LocationRepository) GetAllLatest(ctx context.Context) ([]LocationRecord, error) {

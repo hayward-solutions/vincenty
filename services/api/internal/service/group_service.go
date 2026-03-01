@@ -2,22 +2,50 @@ package service
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
+	"log/slog"
 
 	"github.com/google/uuid"
 	"github.com/sitaware/api/internal/model"
+	"github.com/sitaware/api/internal/pubsub"
 	"github.com/sitaware/api/internal/repository"
 )
+
+// membershipChangedEvent is published to user:<userID>:membership whenever a
+// user's group memberships are added, updated, or removed.
+type membershipChangedEvent struct {
+	UserID uuid.UUID `json:"user_id"`
+}
 
 // GroupService handles group management business logic.
 type GroupService struct {
 	groupRepo repository.GroupRepo
 	userRepo  repository.UserRepo
 	permSvc   *PermissionPolicyService
+	ps        pubsub.PubSub // may be nil in tests
 }
 
 // NewGroupService creates a new GroupService.
-func NewGroupService(groupRepo repository.GroupRepo, userRepo repository.UserRepo, permSvc *PermissionPolicyService) *GroupService {
-	return &GroupService{groupRepo: groupRepo, userRepo: userRepo, permSvc: permSvc}
+func NewGroupService(groupRepo repository.GroupRepo, userRepo repository.UserRepo, permSvc *PermissionPolicyService, ps pubsub.PubSub) *GroupService {
+	return &GroupService{groupRepo: groupRepo, userRepo: userRepo, permSvc: permSvc, ps: ps}
+}
+
+// publishMembershipChanged notifies the WebSocket hub that a user's group
+// memberships have changed so connected clients can refresh their state.
+func (s *GroupService) publishMembershipChanged(ctx context.Context, userID uuid.UUID) {
+	if s.ps == nil {
+		return
+	}
+	data, err := json.Marshal(membershipChangedEvent{UserID: userID})
+	if err != nil {
+		slog.Error("group service: failed to marshal membership event", "user_id", userID, "error", err)
+		return
+	}
+	channel := fmt.Sprintf("user:%s:membership", userID)
+	if err := s.ps.Publish(ctx, channel, data); err != nil {
+		slog.Error("group service: failed to publish membership event", "user_id", userID, "error", err)
+	}
 }
 
 // --------------------------------------------------------------------------
@@ -231,6 +259,8 @@ func (s *GroupService) AddMember(ctx context.Context, groupID uuid.UUID, req *mo
 		return nil, err
 	}
 
+	s.publishMembershipChanged(ctx, userID)
+
 	// Fetch the user details for the response
 	user, err := s.userRepo.GetByID(ctx, userID)
 	if err != nil {
@@ -304,6 +334,8 @@ func (s *GroupService) UpdateMember(ctx context.Context, groupID, memberUserID u
 		return nil, err
 	}
 
+	s.publishMembershipChanged(ctx, memberUserID)
+
 	// Fetch user details for response
 	user, err := s.userRepo.GetByID(ctx, memberUserID)
 	if err != nil {
@@ -344,7 +376,12 @@ func (s *GroupService) RemoveMember(ctx context.Context, groupID, memberUserID u
 		}
 	}
 
-	return s.groupRepo.RemoveMember(ctx, groupID, memberUserID)
+	if err := s.groupRepo.RemoveMember(ctx, groupID, memberUserID); err != nil {
+		return err
+	}
+
+	s.publishMembershipChanged(ctx, memberUserID)
+	return nil
 }
 
 // requireGroupAdmin checks that the caller is a group admin for the given group.

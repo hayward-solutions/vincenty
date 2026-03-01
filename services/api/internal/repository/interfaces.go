@@ -83,6 +83,7 @@ type LocationRepo interface {
 	GetVisibleHistory(ctx context.Context, callerID uuid.UUID, from, to time.Time) ([]LocationRecord, error)
 	GetAllHistory(ctx context.Context, from, to time.Time) ([]LocationRecord, error)
 	UsersShareGroup(ctx context.Context, userA, userB uuid.UUID) (bool, error)
+	GetLatestByUser(ctx context.Context, userID uuid.UUID) ([]LocationRecord, error)
 	GetAllLatest(ctx context.Context) ([]LocationRecord, error)
 }
 

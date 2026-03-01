@@ -111,6 +111,13 @@ func (s *LocationService) Update(
 	}
 
 	// --- Broadcast to all user's groups ---
+	if len(groups) == 0 {
+		slog.Warn("location service: no groups to broadcast to — update persisted but no real-time broadcast will occur",
+			"user_id", userID,
+			"device_id", deviceID,
+		)
+	}
+
 	broadcast := LocationBroadcast{
 		UserID:      userID,
 		Username:    username,
@@ -144,7 +151,30 @@ func (s *LocationService) Update(
 		}
 	}
 
+	// Also publish to the user's personal channel so their other connected
+	// devices receive the update even when they share no common group.
+	broadcast.GroupID = uuid.Nil
+	if selfData, err := json.Marshal(broadcast); err != nil {
+		slog.Error("failed to marshal self location broadcast", "error", err)
+	} else {
+		selfChannel := fmt.Sprintf("user:%s:location", userID)
+		if err := s.ps.Publish(ctx, selfChannel, selfData); err != nil {
+			slog.Error("failed to publish self location", "error", err, "channel", selfChannel)
+		} else {
+			slog.Debug("location service: published to user self-channel",
+				"channel", selfChannel,
+				"user_id", userID,
+			)
+		}
+	}
+
 	return true, nil
+}
+
+// GetUserSnapshot returns the latest position per device for a specific user.
+// Used to populate a self-snapshot on WebSocket connect.
+func (s *LocationService) GetUserSnapshot(ctx context.Context, userID uuid.UUID) ([]repository.LocationRecord, error) {
+	return s.locationRepo.GetLatestByUser(ctx, userID)
 }
 
 // GetGroupSnapshot returns the latest position per user in a group.
