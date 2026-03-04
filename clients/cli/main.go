@@ -42,6 +42,7 @@ import (
 	"time"
 
 	"github.com/sitaware/cli/internal/client"
+	s3dl "github.com/sitaware/cli/internal/s3"
 	"github.com/sitaware/cli/internal/track"
 )
 
@@ -74,17 +75,6 @@ func main() {
 	slog.SetDefault(slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: logLevel})))
 
 	// -----------------------------------------------------------------------
-	// Parse track file
-	// -----------------------------------------------------------------------
-	slog.Info("loading track file", "path", cfg.File)
-	points, err := track.Load(cfg.File)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "error: %v\n", err)
-		os.Exit(1)
-	}
-	slog.Info("loaded track", "points", len(points), "has_timestamps", points[0].Time != nil)
-
-	// -----------------------------------------------------------------------
 	// Context with signal handling
 	// -----------------------------------------------------------------------
 	ctx, cancel := context.WithCancel(context.Background())
@@ -97,6 +87,33 @@ func main() {
 		slog.Info("received signal, shutting down", "signal", sig)
 		cancel()
 	}()
+
+	// -----------------------------------------------------------------------
+	// Resolve track file (download from S3 if needed)
+	// -----------------------------------------------------------------------
+	filePath := cfg.File
+	if s3dl.IsS3URI(cfg.File) {
+		slog.Info("downloading track from S3", "uri", cfg.File)
+		tmpPath, err := s3dl.Download(ctx, cfg.File)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "error downloading from S3: %v\n", err)
+			os.Exit(1)
+		}
+		defer os.Remove(tmpPath)
+		filePath = tmpPath
+		slog.Info("downloaded track from S3", "local_path", tmpPath)
+	}
+
+	// -----------------------------------------------------------------------
+	// Parse track file
+	// -----------------------------------------------------------------------
+	slog.Info("loading track file", "path", filePath)
+	points, err := track.Load(filePath)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "error: %v\n", err)
+		os.Exit(1)
+	}
+	slog.Info("loaded track", "points", len(points), "has_timestamps", points[0].Time != nil)
 
 	// -----------------------------------------------------------------------
 	// Create API client, authenticating if username/password provided
