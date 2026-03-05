@@ -3,7 +3,7 @@ import Foundation
 // MARK: - Location History Entry
 
 /// A single recorded location point from the history API.
-struct LocationHistoryEntry: Codable, Sendable, Identifiable {
+struct LocationHistoryEntry: Codable, Sendable, Identifiable, Equatable {
     var id: String { "\(userId):\(deviceId):\(recordedAt)" }
 
     let userId: String
