@@ -33,7 +33,7 @@ enum ReplayScope: Sendable {
 /// Mirrors the web client's replay functionality:
 /// - Fetches location history for a time range
 /// - Animates through history with configurable speed
-/// - Uses `CADisplayLink`-equivalent timer (1s real = 1min replay at 1x)
+/// - Uses a 30fps Timer (1s real = 1min replay at 1x)
 /// - Provides current playback time for marker interpolation
 @Observable @MainActor
 final class ReplayViewModel {
@@ -43,6 +43,8 @@ final class ReplayViewModel {
     private(set) var isActive = false
     private(set) var isPlaying = false
     private(set) var isLoading = false
+    /// Set when a fetch fails so the UI can show a message.
+    private(set) var errorMessage: String? = nil
 
     var speed: ReplaySpeed = .x1
 
@@ -61,33 +63,47 @@ final class ReplayViewModel {
         return min(max(elapsed / total, 0), 1)
     }
 
-    /// History data points.
+    /// Raw history data points (all of them, regardless of playback position).
     private(set) var historyEntries: [LocationHistoryEntry] = []
 
-    /// Entries visible at the current playback time.
+    /// Pre-parsed dates parallel to `historyEntries` — avoids allocating a
+    /// new ISO8601DateFormatter for every entry on every animation frame.
+    private(set) var parsedEntryDates: [Date] = []
+
+    /// Entries visible at the current playback time (recorded_at <= currentTime).
     var visibleEntries: [LocationHistoryEntry] {
-        historyEntries.filter { entry in
-            guard let date = ISO8601DateFormatter().date(from: entry.recordedAt) else { return false }
-            return date <= currentTime
-        }
+        zip(historyEntries, parsedEntryDates)
+            .filter { _, date in date <= currentTime }
+            .map(\.0)
     }
 
     // MARK: - Private
 
     private let api = APIClient.shared
     private var displayLink: Timer?
+    private static let isoFormatter: ISO8601DateFormatter = {
+        let f = ISO8601DateFormatter()
+        f.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        return f
+    }()
 
     // MARK: - Lifecycle
 
-    /// Start a replay session: fetch history and begin playback.
+    /// Start a replay session: fetch history for the configured time range and scope.
+    ///
+    /// `isActive` is set to `true` only after a successful fetch so the setup
+    /// panel's loading spinner stays visible during the network call. On failure,
+    /// `isActive` remains `false` and `errorMessage` is populated so the user
+    /// can retry without reopening the panel.
     func start(scope: ReplayScope) async {
-        isActive = true
         isLoading = true
+        errorMessage = nil
         currentTime = startDate
 
-        let isoStart = ISO8601DateFormatter().string(from: startDate)
-        let isoEnd = ISO8601DateFormatter().string(from: endDate)
-        let params = ["start": isoStart, "end": isoEnd]
+        // API expects "from" and "to" as RFC3339 strings.
+        let isoStart = Self.isoFormatter.string(from: startDate)
+        let isoEnd   = Self.isoFormatter.string(from: endDate)
+        let params   = ["from": isoStart, "to": isoEnd]
 
         do {
             let entries: [LocationHistoryEntry]
@@ -104,18 +120,30 @@ final class ReplayViewModel {
             }
 
             historyEntries = entries
+            // Pre-parse dates once so visibleEntries filter is O(n) with no allocations.
+            parsedEntryDates = entries.map {
+                Self.isoFormatter.date(from: $0.recordedAt) ?? Date.distantPast
+            }
+            // Only activate once data is ready — keeps the setup panel visible
+            // with a loading spinner for the full duration of the fetch.
+            isActive = true
         } catch {
             historyEntries = []
+            parsedEntryDates = []
+            errorMessage = error.localizedDescription
+            // isActive stays false so the setup panel remains visible for retry.
         }
 
         isLoading = false
     }
 
-    /// Stop replay and clear data.
+    /// Stop replay and clear all data.
     func stop() {
         pause()
         isActive = false
         historyEntries = []
+        parsedEntryDates = []
+        errorMessage = nil
         currentTime = startDate
     }
 
@@ -125,7 +153,7 @@ final class ReplayViewModel {
         isPlaying = true
 
         // Timer fires at ~30fps; each tick advances currentTime by (speed * interval * 60)
-        // 1 second real = 1 minute replay at 1x speed
+        // so 1 real second = 1 replay minute at 1x speed.
         displayLink = Timer.scheduledTimer(withTimeInterval: 1.0 / 30.0, repeats: true) {
             [weak self] _ in
             Task { @MainActor [weak self] in
@@ -141,7 +169,7 @@ final class ReplayViewModel {
         displayLink = nil
     }
 
-    /// Seek to a specific progress (0.0 - 1.0).
+    /// Seek to a specific progress value (0.0 – 1.0).
     func seek(to progress: Double) {
         let total = endDate.timeIntervalSince(startDate)
         let offset = total * min(max(progress, 0), 1)
@@ -153,11 +181,11 @@ final class ReplayViewModel {
     private func tick() {
         guard isPlaying else { return }
 
-        // Advance by (1/30 sec * speed * 60) seconds of replay time
+        // Advance by (1/30 sec * speed * 60) seconds of replay time.
         let replayAdvance = (1.0 / 30.0) * speed.rawValue * 60.0
         currentTime = currentTime.addingTimeInterval(replayAdvance)
 
-        // Stop at end
+        // Auto-stop at end.
         if currentTime >= endDate {
             currentTime = endDate
             pause()

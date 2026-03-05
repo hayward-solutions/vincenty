@@ -8,13 +8,15 @@ import CoreLocation
 /// - MapToolbarView top-left
 /// - MapControlsView top-right
 /// - MapFilterPanel below toolbar (when active)
+/// - ReplaySetupView below toolbar (when replay is open but not yet active)
 /// - MeasurePanelView below toolbar (when measure active)
 /// - DrawPanelView below toolbar (when draw active)
-/// - ReplayControlsView at bottom (when replay active)
+/// - ReplayControlsView at bottom (when replay is active / playing)
 /// - Loading spinner while settings load
 ///
-/// Tap and double-tap gestures are forwarded to the active tool controller
-/// (measure or draw), providing point-by-point interaction on the map.
+/// The `.onChange` modifier chain is split across three computed properties
+/// (`coreView` → `mapToolView` → `body`) to prevent the Swift type-checker
+/// from timing out on a single large expression.
 struct MapScreen: View {
     @Environment(AuthManager.self) private var auth
     @Environment(WebSocketService.self) private var webSocket
@@ -39,28 +41,87 @@ struct MapScreen: View {
     // MARK: - Replay State
 
     @State private var replayViewModel = ReplayViewModel()
+    @State private var historyTracksController = HistoryTracksController()
+
+    // MARK: - Body
 
     var body: some View {
+        mapToolView
+            // Phase 1: replay session activated — data ready, create stable layers.
+            .onChange(of: replayViewModel.isActive) { _, isNowActive in
+                if isNowActive {
+                    historyTracksController.setupLayers(
+                        allEntries: replayViewModel.historyEntries)
+                    historyTracksController.updateData(
+                        visibleEntries: replayViewModel.visibleEntries)
+                }
+            }
+            // Phase 2: playback cursor moved — update source data only (no layer churn).
+            .onChange(of: replayViewModel.currentTime) { _, _ in
+                guard replayViewModel.isActive else { return }
+                historyTracksController.updateData(
+                    visibleEntries: replayViewModel.visibleEntries)
+            }
+    }
+
+    // MARK: - Map Tool View (draw + measure onChange)
+
+    /// Applies draw/measure tool lifecycle modifiers on top of `coreView`.
+    private var mapToolView: some View {
+        coreView
+            .onChange(of: viewModel.showMeasurePanel) { _, isActive in
+                if isActive {
+                    measureController.activate(mode: measureMode)
+                    measureController.onMeasurementsChange = { result in
+                        measureResult = result
+                    }
+                } else {
+                    measureController.deactivate()
+                    measureResult = .empty
+                }
+            }
+            .onChange(of: viewModel.showDrawPanel) { _, isActive in
+                if isActive {
+                    drawController.activate(
+                        mode: drawingsViewModel.drawMode,
+                        style: drawingsViewModel.drawStyle)
+                    drawController.onShapeComplete = { feature, mode in
+                        drawingsViewModel.completedShapes.append(
+                            CompletedShape(feature: feature, shapeType: mode))
+                    }
+                    drawController.updateCompletedShapes(drawingsViewModel.completedShapes)
+                } else {
+                    drawController.deactivate()
+                }
+            }
+            .onChange(of: drawingsViewModel.completedShapes.count) { _, _ in
+                if drawController.isActive {
+                    drawController.updateCompletedShapes(drawingsViewModel.completedShapes)
+                }
+            }
+            .onChange(of: drawingsViewModel.drawMode) { _, newMode in
+                if drawController.isActive { drawController.updateMode(newMode) }
+            }
+            .onChange(of: drawingsViewModel.drawStyle) { _, newStyle in
+                if drawController.isActive { drawController.updateStyle(newStyle) }
+            }
+    }
+
+    // MARK: - Core View (ZStack + tasks + location/replay onChange)
+
+    /// ZStack containing the map and overlays, plus task and location modifiers.
+    private var coreView: some View {
         ZStack {
             if viewModel.isLoadingSettings {
-                // Loading state while fetching map config
                 LoadingStateView(message: "Loading map...", style: .fullScreen)
             } else {
-                // Map base layer
                 mapContainerView
-
-                // Overlaid controls
                 mapOverlays
             }
         }
+        .task { await viewModel.loadInitialData() }
+        .task { viewModel.subscribeToLocations(webSocket: webSocket) }
         .task {
-            await viewModel.loadInitialData()
-        }
-        .task {
-            viewModel.subscribeToLocations(webSocket: webSocket)
-        }
-        .task {
-            // Start location sharing once map appears
             if let deviceId = deviceManager.deviceId {
                 locationSharing.startSharing(webSocket: webSocket, deviceId: deviceId)
             }
@@ -70,7 +131,9 @@ struct MapScreen: View {
             measureController.deactivate()
             drawController.deactivate()
         }
+        // Live location markers — suppressed while replay is active.
         .onChange(of: viewModel.displayLocations) { _, locations in
+            guard !replayViewModel.isActive else { return }
             locationMarkers.update(
                 locations: locations,
                 currentDeviceId: deviceManager.deviceId,
@@ -82,64 +145,31 @@ struct MapScreen: View {
         .onChange(of: locationSharing.currentPosition?.lng) { _, _ in
             updateSelfPosition()
         }
-        // Measure tool lifecycle
-        .onChange(of: viewModel.showMeasurePanel) { _, isActive in
-            if isActive {
-                measureController.activate(mode: measureMode)
-                measureController.onMeasurementsChange = { result in
-                    measureResult = result
-                }
-            } else {
-                measureController.deactivate()
-                measureResult = .empty
-            }
-        }
-        // Draw tool lifecycle
-        .onChange(of: viewModel.showDrawPanel) { _, isActive in
-            if isActive {
-                drawController.activate(mode: drawingsViewModel.drawMode, style: drawingsViewModel.drawStyle)
-                drawController.onShapeComplete = { feature, mode in
-                    drawingsViewModel.completedShapes.append(CompletedShape(feature: feature, shapeType: mode))
-                }
-                // Restore any shapes completed before the panel was re-opened
-                drawController.updateCompletedShapes(drawingsViewModel.completedShapes)
-            } else {
-                drawController.deactivate()
-            }
-        }
-        // Sync completed shapes to map whenever the list changes
-        .onChange(of: drawingsViewModel.completedShapes.count) { _, _ in
-            if drawController.isActive {
-                drawController.updateCompletedShapes(drawingsViewModel.completedShapes)
-            }
-        }
-        // Sync draw mode/style changes to controller
-        .onChange(of: drawingsViewModel.drawMode) { _, newMode in
-            if drawController.isActive {
-                drawController.updateMode(newMode)
-            }
-        }
-        .onChange(of: drawingsViewModel.drawStyle) { _, newStyle in
-            if drawController.isActive {
-                drawController.updateStyle(newStyle)
+        // Replay panel toggle: tear down session and restore live markers on close.
+        .onChange(of: viewModel.showReplayPanel) { _, isOpen in
+            if !isOpen {
+                replayViewModel.stop()
+                historyTracksController.removeAll()
+                locationMarkers.update(
+                    locations: viewModel.displayLocations,
+                    currentDeviceId: deviceManager.deviceId,
+                    groups: viewModel.groups)
             }
         }
     }
 
     // MARK: - Location Updates
 
-    /// Sync the latest GPS position to the view model and self-marker.
     private func updateSelfPosition() {
         viewModel.selfPosition = locationSharing.currentPosition
         selfMarker.update(
             position: viewModel.showSelf ? viewModel.selfPosition : nil,
-            autoCenter: true)
+            autoCenter: !replayViewModel.isActive)
         viewModel.updateTrackingIfNeeded()
     }
 
     // MARK: - Tap Handling
 
-    /// Route map taps to the active tool controller.
     private func handleMapTap(_ coordinate: CLLocationCoordinate2D) {
         if measureController.isActive {
             measureController.handleTap(at: coordinate)
@@ -148,7 +178,6 @@ struct MapScreen: View {
         }
     }
 
-    /// Route map double-taps to the active tool controller.
     private func handleMapDoubleTap(_ coordinate: CLLocationCoordinate2D) {
         if measureController.isActive {
             measureController.handleDoubleTap(at: coordinate)
@@ -157,9 +186,22 @@ struct MapScreen: View {
         }
     }
 
+    // MARK: - Replay Scope
+
+    /// Auto-detect scope from current filter selections, mirroring the web client's logic.
+    private var resolvedReplayScope: ReplayScope {
+        if viewModel.selectedUserIds.count == 1,
+           let userId = viewModel.selectedUserIds.first {
+            return .user(userId)
+        } else if viewModel.selectedGroupIds.count == 1,
+                  let groupId = viewModel.selectedGroupIds.first {
+            return .group(groupId)
+        }
+        return .all
+    }
+
     // MARK: - Map Container
 
-    /// Extracted to a separate property to keep `body` short enough for the Swift type-checker.
     @ViewBuilder
     private var mapContainerView: some View {
         MapContainerView(
@@ -170,24 +212,19 @@ struct MapScreen: View {
                 selfMarker.attach(to: mapView)
                 measureController.attach(to: mapView)
                 drawController.attach(to: mapView)
-                // Re-apply current position immediately — handles the case where
-                // the map was recreated and onChange won't fire (value unchanged).
+                historyTracksController.attach(to: mapView)
                 updateSelfPosition()
-                // Re-apply other device locations — handles the common race where
-                // the WS location_snapshot arrives before the map style finishes
-                // loading, causing the onChange to no-op (mapView was nil).
-                locationMarkers.update(
-                    locations: viewModel.displayLocations,
-                    currentDeviceId: deviceManager.deviceId,
-                    groups: viewModel.groups
-                )
+                if !replayViewModel.isActive {
+                    locationMarkers.update(
+                        locations: viewModel.displayLocations,
+                        currentDeviceId: deviceManager.deviceId,
+                        groups: viewModel.groups)
+                }
             },
             onCameraChanged: { bearing, pitch, zoom in
                 viewModel.onCameraChanged(bearing: bearing, pitch: pitch, zoom: zoom)
             },
-            onUserDragBegan: {
-                viewModel.onUserDragBegan()
-            },
+            onUserDragBegan: { viewModel.onUserDragBegan() },
             onTap: handleMapTap,
             onDoubleTap: handleMapDoubleTap,
             drawStrokeColor: drawingsViewModel.drawStyle.stroke,
@@ -211,6 +248,16 @@ struct MapScreen: View {
                     .transition(.opacity.combined(with: .move(edge: .top)))
             }
 
+            // Replay setup: shown when the panel is open but no session is active yet.
+            if viewModel.showReplayPanel && !replayViewModel.isActive {
+                ReplaySetupView(
+                    viewModel: replayViewModel,
+                    scope: resolvedReplayScope,
+                    onCancel: { viewModel.showReplayPanel = false }
+                )
+                .transition(.opacity.combined(with: .move(edge: .top)))
+            }
+
             if viewModel.showMeasurePanel {
                 MeasurePanelView(
                     mode: measureMode,
@@ -224,9 +271,7 @@ struct MapScreen: View {
                         measureController.clear()
                         measureResult = .empty
                     },
-                    onClose: {
-                        viewModel.toggleMeasure()
-                    }
+                    onClose: { viewModel.toggleMeasure() }
                 )
                 .transition(.opacity.combined(with: .move(edge: .top)))
             }
@@ -235,9 +280,7 @@ struct MapScreen: View {
                 DrawPanelView(
                     viewModel: drawingsViewModel,
                     groups: viewModel.groups,
-                    onClose: {
-                        viewModel.toggleDraw()
-                    }
+                    onClose: { viewModel.toggleDraw() }
                 )
                 .transition(.opacity.combined(with: .move(edge: .top)))
             }
@@ -248,6 +291,7 @@ struct MapScreen: View {
         .padding(.top, 12)
         .frame(maxWidth: .infinity, alignment: .leading)
         .animation(.easeInOut(duration: 0.2), value: viewModel.showFilterPanel)
+        .animation(.easeInOut(duration: 0.2), value: viewModel.showReplayPanel)
         .animation(.easeInOut(duration: 0.2), value: viewModel.showMeasurePanel)
         .animation(.easeInOut(duration: 0.2), value: viewModel.showDrawPanel)
 
@@ -260,7 +304,7 @@ struct MapScreen: View {
         .padding(.top, 12)
         .frame(maxWidth: .infinity, alignment: .trailing)
 
-        // Top-center: WebSocket connection status (hidden when connected)
+        // Top-center: WebSocket status banner (hidden when connected)
         if webSocket.connectionState != .connected {
             VStack {
                 StatusBanner(
@@ -278,21 +322,19 @@ struct MapScreen: View {
             .animation(.easeInOut(duration: 0.2), value: webSocket.connectionState)
         }
 
-        // Bottom: replay controls (when active)
-        if viewModel.showReplayPanel {
+        // Bottom: replay playback controls (shown once the session is active)
+        if replayViewModel.isActive {
             VStack {
                 Spacer()
                 ReplayControlsView(
                     viewModel: replayViewModel,
-                    onStop: {
-                        viewModel.toggleReplay()
-                    }
+                    onStop: { viewModel.showReplayPanel = false }
                 )
                 .padding(.horizontal, 12)
                 .padding(.bottom, 12)
             }
             .transition(.opacity.combined(with: .move(edge: .bottom)))
-            .animation(.easeInOut(duration: 0.2), value: viewModel.showReplayPanel)
+            .animation(.easeInOut(duration: 0.2), value: replayViewModel.isActive)
         }
     }
 }
