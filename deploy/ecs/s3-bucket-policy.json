@@ -7,8 +7,8 @@
       "Principal": "*",
       "Action": "s3:*",
       "Resource": [
-        "arn:aws:s3:::sitaware-files",
-        "arn:aws:s3:::sitaware-files/*"
+        "arn:aws:s3:::vincenty-files",
+        "arn:aws:s3:::vincenty-files/*"
       ],
       "Condition": {
         "Bool": {
@@ -22,13 +22,13 @@
       "Principal": "*",
       "Action": "s3:*",
       "Resource": [
-        "arn:aws:s3:::sitaware-files",
-        "arn:aws:s3:::sitaware-files/*"
+        "arn:aws:s3:::vincenty-files",
+        "arn:aws:s3:::vincenty-files/*"
       ],
       "Condition": {
         "StringNotLike": {
           "aws:PrincipalArn": [
-            "arn:aws:iam::ACCOUNT_ID:role/sitaware-api-task-role",
+            "arn:aws:iam::ACCOUNT_ID:role/vincenty-api-task-role",
             "arn:aws:iam::ACCOUNT_ID:root"
           ]
         }

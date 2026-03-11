@@ -1,10 +1,16 @@
-# SitAware
+# Vincenty
+
+> **vincenty** /ˈvɪn.sɛn.ti/ — The Vincenty formulae, developed by Polish-American geodesist
+> Thaddeus Vincenty (1920–2002), are the algorithms that calculate precise distances between
+> two coordinates on the surface of an ellipsoidal Earth. Used in every GPS receiver, mapping
+> platform, and navigation system that needs accurate real-world measurements. Vincenty's work
+> is why your phone knows exactly how far you are from where you need to be.
 
 A modern, lightweight situational awareness platform. Built as an alternative to TAK Server for teams that need real-time location tracking, secure messaging, and map-based coordination — deployable to the cloud or fully air-gapped environments with zero internet dependency.
 
-## Why SitAware?
+## Why Vincenty?
 
-TAK Server is powerful but heavy — complex to deploy, tightly coupled to specific clients, and difficult to run in constrained environments. SitAware takes a different approach:
+TAK Server is powerful but heavy — complex to deploy, tightly coupled to specific clients, and difficult to run in constrained environments. Vincenty takes a different approach:
 
 - **Lightweight** — Go API with minimal dependencies, distroless container images
 - **Air-gap ready** — No CDN calls, no external fonts, local tile serving. Works on an isolated network with `docker compose up`
@@ -17,8 +23,8 @@ TAK Server is powerful but heavy — complex to deploy, tightly coupled to speci
 Prerequisites: [Docker](https://docs.docker.com/get-docker/) and [Docker Compose](https://docs.docker.com/compose/install/)
 
 ```bash
-git clone https://github.com/sitaware/sitaware.git
-cd sitaware
+git clone https://github.com/vincenty/vincenty.git
+cd vincenty
 make dev
 ```
 
@@ -56,7 +62,7 @@ For the iOS client, see [Contributing — iOS Client Setup](CONTRIBUTING.md#ios-
 ## Repository Structure
 
 ```
-sitaware/
+vincenty/
 ├── services/api/          # Go API service
 │   ├── cmd/server/        # Entrypoint, DI, route registration
 │   ├── internal/
@@ -86,7 +92,7 @@ sitaware/
 │   ├── main.go
 │   └── Dockerfile
 ├── clients/ios/           # iOS client (SwiftUI, XcodeGen)
-│   ├── SitAware/
+│   ├── Vincenty/
 │   │   ├── App/           # Entry point, root views
 │   │   ├── Models/        # Codable API models
 │   │   ├── Core/          # Services (API, auth, WebSocket, sync)
@@ -96,7 +102,7 @@ sitaware/
 ├── deploy/
 │   ├── caddy/             # Reverse proxy config (production)
 │   ├── k8s/               # Kubernetes manifests
-│   ├── helm/sitaware/     # Helm chart
+│   ├── helm/vincenty/     # Helm chart
 │   └── ecs/               # AWS ECS Fargate task definitions
 ├── docker-compose.yml     # Development stack
 ├── docker-compose.prod.yml # Production stack (Caddy + TLS)
@@ -224,7 +230,7 @@ cp .env.example .env
 |---|---|---|
 | `ADMIN_USERNAME` | `admin` | Bootstrap admin username |
 | `ADMIN_PASSWORD` | `changeme` | Bootstrap admin password |
-| `ADMIN_EMAIL` | `admin@sitaware.local` | Bootstrap admin email |
+| `ADMIN_EMAIL` | `admin@vincenty.local` | Bootstrap admin email |
 | `API_HOST` | `0.0.0.0` | API listen address |
 | `API_PORT` | `8080` | API listen port |
 | `API_LOG_LEVEL` | `debug` | Log level (debug, info, warn, error) |
@@ -233,9 +239,9 @@ cp .env.example .env
 | `JWT_REFRESH_TOKEN_TTL` | `168h` | Refresh token lifetime (7 days) |
 | `DB_HOST` | `localhost` | PostgreSQL host |
 | `DB_PORT` | `5432` | PostgreSQL port |
-| `DB_USER` | `sitaware` | PostgreSQL user |
-| `DB_PASSWORD` | `sitaware` | PostgreSQL password |
-| `DB_NAME` | `sitaware` | PostgreSQL database |
+| `DB_USER` | `vincenty` | PostgreSQL user |
+| `DB_PASSWORD` | `vincenty` | PostgreSQL password |
+| `DB_NAME` | `vincenty` | PostgreSQL database |
 | `DB_SSLMODE` | `disable` | PostgreSQL SSL mode |
 | `REDIS_HOST` | `localhost` | Redis host |
 | `REDIS_PORT` | `6379` | Redis port |
@@ -243,9 +249,9 @@ cp .env.example .env
 | `REDIS_TLS` | `false` | Enable TLS for Redis (required for ElastiCache with transit encryption) |
 | `REDIS_CLUSTER` | `false` | Enable Redis Cluster mode (required for ElastiCache with cluster mode enabled) |
 | `S3_ENDPOINT` | `http://localhost:9000` | S3/Minio endpoint |
-| `S3_ACCESS_KEY` | `sitaware` | S3 access key |
-| `S3_SECRET_KEY` | `sitaware123` | S3 secret key |
-| `S3_BUCKET` | `sitaware` | S3 bucket name |
+| `S3_ACCESS_KEY` | `vincenty` | S3 access key |
+| `S3_SECRET_KEY` | `vincenty123` | S3 secret key |
+| `S3_BUCKET` | `vincenty` | S3 bucket name |
 | `S3_REGION` | `us-east-1` | S3 region |
 | `S3_USE_PATH_STYLE` | `true` | Path-style S3 (true for Minio) |
 | `WS_LOCATION_THROTTLE` | `1s` | Min interval between location updates |
@@ -256,7 +262,7 @@ cp .env.example .env
 | `MAX_REQUEST_BODY_BYTES` | `10485760` | Max request body (10MB) |
 | `TOKEN_CLEANUP_INTERVAL` | `1h` | Expired token purge interval |
 | `WEBAUTHN_RP_ID` | `localhost` | WebAuthn Relying Party ID (your domain, no port) |
-| `WEBAUTHN_RP_DISPLAY_NAME` | `SitAware` | Display name shown in browser credential prompts |
+| `WEBAUTHN_RP_DISPLAY_NAME` | `Vincenty` | Display name shown in browser credential prompts |
 | `WEBAUTHN_RP_ORIGINS` | `http://localhost:3000` | Comma-separated allowed WebAuthn origins |
 | `MFA_KMS_KEY_ARN` | (empty) | AWS KMS key ARN for TOTP secret encryption. When empty, uses AES-256-GCM derived from `JWT_SECRET` via HKDF |
 | `MAP_DEFAULT_TILE_URL` | OSM tiles | Default map tile URL template |
@@ -290,7 +296,7 @@ cp .env.example .env
 
 ## Deployment
 
-SitAware supports multiple deployment targets. See the [Architecture Guide](ARCHITECTURE.md) for details.
+Vincenty supports multiple deployment targets. See the [Architecture Guide](ARCHITECTURE.md) for details.
 
 ### Docker Compose (Production)
 
@@ -312,8 +318,8 @@ kubectl apply -f deploy/k8s/
 ### Helm
 
 ```bash
-helm install sitaware deploy/helm/sitaware/ \
-  --namespace sitaware \
+helm install vincenty deploy/helm/vincenty/ \
+  --namespace vincenty \
   --create-namespace \
   -f my-values.yaml
 ```
@@ -324,7 +330,7 @@ Task definitions and service configs in `deploy/ecs/`. See [`deploy/ecs/README.m
 
 ## Air-Gapped Deployment
 
-SitAware is designed to run with zero internet access:
+Vincenty is designed to run with zero internet access:
 
 1. Pre-pull and export all container images
 2. Upload map tiles to the S3-compatible object store (Minio in Docker Compose, or any S3 endpoint)

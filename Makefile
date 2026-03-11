@@ -40,7 +40,7 @@ web-dev:
 
 ## Build CLI binary
 cli-build:
-	cd clients/cli && CGO_ENABLED=0 go build -o bin/sitaware-cli .
+	cd clients/cli && CGO_ENABLED=0 go build -o bin/vincenty-cli .
 
 ## Run CLI locally (pass args via ARGS, e.g. make cli-dev ARGS="--token=sat_... --file=track.gpx")
 cli-dev:
@@ -52,7 +52,7 @@ cli-dev:
 
 ## Open psql shell
 db-shell:
-	docker compose exec postgres psql -U sitaware -d sitaware
+	docker compose exec postgres psql -U vincenty -d vincenty
 
 # ---------------------------------------------------------------------------
 # Build

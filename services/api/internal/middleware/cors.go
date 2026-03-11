@@ -3,7 +3,7 @@ package middleware
 import (
 	"net/http"
 
-	"github.com/sitaware/api/internal/config"
+	"github.com/vincenty/api/internal/config"
 )
 
 // CORS returns middleware that adds Cross-Origin Resource Sharing headers.

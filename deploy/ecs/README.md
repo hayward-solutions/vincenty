@@ -1,6 +1,6 @@
-# SitAware — AWS ECS Deployment
+# Vincenty — AWS ECS Deployment
 
-Deploy SitAware on AWS ECS Fargate with ALB, RDS (PostgreSQL + PostGIS), ElastiCache (Redis), and S3.
+Deploy Vincenty on AWS ECS Fargate with ALB, RDS (PostgreSQL + PostGIS), ElastiCache (Redis), and S3.
 
 > **Redis Cluster Mode**: If your ElastiCache cluster has cluster mode enabled, set `REDIS_CLUSTER=true` in the API task definition. The API will use a Redis Cluster client that discovers shard topology automatically via the configuration endpoint.
 
@@ -8,14 +8,14 @@ Deploy SitAware on AWS ECS Fargate with ALB, RDS (PostgreSQL + PostGIS), ElastiC
 
 ```
 Internet → ALB (TLS) → ECS Fargate
-                          ├── sitaware-api (port 8080) → RDS PostgreSQL
+                          ├── vincenty-api (port 8080) → RDS PostgreSQL
                           │                            → ElastiCache Redis
                           │                            → S3 bucket
-                          └── sitaware-web (port 3000) → api (Service Connect)
+                          └── vincenty-web (port 3000) → api (Service Connect)
 ```
 
 - **ALB** handles TLS termination (no Caddy needed)
-- **Service Connect** gives the web container a stable DNS name (`api.sitaware.local`) to reach the API internally
+- **Service Connect** gives the web container a stable DNS name (`api.vincenty.local`) to reach the API internally
 - **S3** is used directly via IAM task role — no static credentials needed
 - **Fargate** provides serverless container hosting — no EC2 instances to manage
 
@@ -27,15 +27,15 @@ Before deploying, you need the following AWS resources:
 |---|---|
 | **VPC** with 2+ private subnets | Container networking |
 | **ALB** with HTTPS listener | TLS termination, routing |
-| **ALB target group: `sitaware-api`** | Routes `/api/*`, `/healthz`, `/readyz`, `/ws` to API |
-| **ALB target group: `sitaware-web`** | Routes everything else to web |
+| **ALB target group: `vincenty-api`** | Routes `/api/*`, `/healthz`, `/readyz`, `/ws` to API |
+| **ALB target group: `vincenty-web`** | Routes everything else to web |
 | **RDS PostgreSQL 16** with PostGIS | Database (enable `postgis` extension) |
 | **ElastiCache Redis** | Pub/sub messaging (enable transit encryption) |
 | **S3 bucket** | File/tile storage |
-| **ECR repositories** | `sitaware/api` and `sitaware/web` |
-| **CloudWatch log groups** | `/ecs/sitaware-api` and `/ecs/sitaware-web` |
-| **ECS cluster** named `sitaware` | Container orchestration |
-| **Cloud Map namespace** `sitaware.local` | Service Connect (service-to-service discovery) |
+| **ECR repositories** | `vincenty/api` and `vincenty/web` |
+| **CloudWatch log groups** | `/ecs/vincenty-api` and `/ecs/vincenty-web` |
+| **ECS cluster** named `vincenty` | Container orchestration |
+| **Cloud Map namespace** `vincenty.local` | Service Connect (service-to-service discovery) |
 | **IAM execution role** | Pull ECR images, read SSM parameters, write CloudWatch logs |
 | **IAM API task role** | S3 access (GetObject, PutObject, DeleteObject, ListBucket) |
 | **IAM web task role** | Minimal (no special permissions needed) |
@@ -46,16 +46,16 @@ Before deploying, you need the following AWS resources:
 Store secrets in SSM Parameter Store (SecureString):
 
 ```bash
-aws ssm put-parameter --name /sitaware/admin-password --type SecureString --value "YOUR_ADMIN_PASSWORD"
-aws ssm put-parameter --name /sitaware/jwt-secret      --type SecureString --value "YOUR_JWT_SECRET"
-aws ssm put-parameter --name /sitaware/db-password      --type SecureString --value "YOUR_DB_PASSWORD"
-aws ssm put-parameter --name /sitaware/redis-password   --type SecureString --value "YOUR_REDIS_PASSWORD"
+aws ssm put-parameter --name /vincenty/admin-password --type SecureString --value "YOUR_ADMIN_PASSWORD"
+aws ssm put-parameter --name /vincenty/jwt-secret      --type SecureString --value "YOUR_JWT_SECRET"
+aws ssm put-parameter --name /vincenty/db-password      --type SecureString --value "YOUR_DB_PASSWORD"
+aws ssm put-parameter --name /vincenty/redis-password   --type SecureString --value "YOUR_REDIS_PASSWORD"
 
 # Optional: KMS key ARN for encrypting TOTP secrets (omit to use HKDF from JWT_SECRET)
-# aws ssm put-parameter --name /sitaware/mfa-kms-key-arn --type SecureString --value "arn:aws:kms:REGION:ACCOUNT_ID:key/YOUR_KEY_ID"
+# aws ssm put-parameter --name /vincenty/mfa-kms-key-arn --type SecureString --value "arn:aws:kms:REGION:ACCOUNT_ID:key/YOUR_KEY_ID"
 ```
 
-> **WebAuthn configuration**: The API task definition includes `WEBAUTHN_RP_ID` and `WEBAUTHN_RP_ORIGINS` which must match your production domain. Update `sitaware.example.com` to your actual domain in the task definition before deploying.
+> **WebAuthn configuration**: The API task definition includes `WEBAUTHN_RP_ID` and `WEBAUTHN_RP_ORIGINS` which must match your production domain. Update `vincenty.example.com` to your actual domain in the task definition before deploying.
 
 ## Step 2: Create S3 Bucket and IAM Roles
 
@@ -63,41 +63,41 @@ Create the S3 bucket, apply the bucket policy, and set up IAM roles:
 
 ```bash
 # Create the bucket
-aws s3api create-bucket --bucket sitaware-files --region $REGION
+aws s3api create-bucket --bucket vincenty-files --region $REGION
 
 # Apply the strict bucket policy (denies non-HTTPS, restricts to task role, requires SSE-S3)
 # NOTE: Replace ACCOUNT_ID in s3-bucket-policy.json before applying
-aws s3api put-bucket-policy --bucket sitaware-files --policy file://deploy/ecs/s3-bucket-policy.json
+aws s3api put-bucket-policy --bucket vincenty-files --policy file://deploy/ecs/s3-bucket-policy.json
 
 # Create the API task role (allows ECS tasks to assume it)
 aws iam create-role \
-  --role-name sitaware-api-task-role \
+  --role-name vincenty-api-task-role \
   --assume-role-policy-document file://deploy/ecs/api-task-role-trust-policy.json
 
 # Attach the S3 access policy to the task role
 aws iam put-role-policy \
-  --role-name sitaware-api-task-role \
-  --policy-name sitaware-api-s3-access \
+  --role-name vincenty-api-task-role \
+  --policy-name vincenty-api-s3-access \
   --policy-document file://deploy/ecs/api-task-role-policy.json
 
 # Create the web task role (no special permissions needed)
 aws iam create-role \
-  --role-name sitaware-web-task-role \
+  --role-name vincenty-web-task-role \
   --assume-role-policy-document file://deploy/ecs/api-task-role-trust-policy.json
 
 # Create the ECS execution role
 aws iam create-role \
-  --role-name sitaware-ecs-execution-role \
+  --role-name vincenty-ecs-execution-role \
   --assume-role-policy-document file://deploy/ecs/api-task-role-trust-policy.json
 ```
 
-> **Bucket policy**: The policy files contain `ACCOUNT_ID` placeholders. Run the `sed` command in Step 5 before applying, or replace manually. After replacing placeholders, apply the bucket policy with: `aws s3api put-bucket-policy --bucket sitaware-files --policy file://deploy/ecs/s3-bucket-policy.json`
+> **Bucket policy**: The policy files contain `ACCOUNT_ID` placeholders. Run the `sed` command in Step 5 before applying, or replace manually. After replacing placeholders, apply the bucket policy with: `aws s3api put-bucket-policy --bucket vincenty-files --policy file://deploy/ecs/s3-bucket-policy.json`
 
 ## Step 3: Create CloudWatch Log Groups
 
 ```bash
-aws logs create-log-group --log-group-name /ecs/sitaware-api
-aws logs create-log-group --log-group-name /ecs/sitaware-web
+aws logs create-log-group --log-group-name /ecs/vincenty-api
+aws logs create-log-group --log-group-name /ecs/vincenty-web
 ```
 
 ## Step 4: Build and Push Docker Images
@@ -107,14 +107,14 @@ aws logs create-log-group --log-group-name /ecs/sitaware-web
 aws ecr get-login-password --region REGION | docker login --username AWS --password-stdin ACCOUNT_ID.dkr.ecr.REGION.amazonaws.com
 
 # Build and push API
-docker build -t sitaware/api:latest -f services/api/Dockerfile .
-docker tag sitaware/api:latest ACCOUNT_ID.dkr.ecr.REGION.amazonaws.com/sitaware/api:latest
-docker push ACCOUNT_ID.dkr.ecr.REGION.amazonaws.com/sitaware/api:latest
+docker build -t vincenty/api:latest -f services/api/Dockerfile .
+docker tag vincenty/api:latest ACCOUNT_ID.dkr.ecr.REGION.amazonaws.com/vincenty/api:latest
+docker push ACCOUNT_ID.dkr.ecr.REGION.amazonaws.com/vincenty/api:latest
 
 # Build and push Web
-docker build -t sitaware/web:latest -f clients/web/Dockerfile .
-docker tag sitaware/web:latest ACCOUNT_ID.dkr.ecr.REGION.amazonaws.com/sitaware/web:latest
-docker push ACCOUNT_ID.dkr.ecr.REGION.amazonaws.com/sitaware/web:latest
+docker build -t vincenty/web:latest -f clients/web/Dockerfile .
+docker tag vincenty/web:latest ACCOUNT_ID.dkr.ecr.REGION.amazonaws.com/vincenty/web:latest
+docker push ACCOUNT_ID.dkr.ecr.REGION.amazonaws.com/vincenty/web:latest
 ```
 
 ## Step 5: Update Placeholder Values
@@ -125,14 +125,14 @@ Before registering task definitions, replace placeholders in the JSON files:
 |---|---|
 | `ACCOUNT_ID` | Your AWS account ID (e.g., `123456789012`) |
 | `REGION` | Your AWS region (e.g., `us-east-1`) |
-| `sitaware-db.cluster-xxxx.REGION.rds.amazonaws.com` | Your RDS endpoint |
-| `sitaware-redis.xxxx.REGION.cache.amazonaws.com` | Your ElastiCache endpoint |
-| `sitaware.example.com` (in `WEBAUTHN_RP_ID` and `WEBAUTHN_RP_ORIGINS`) | Your actual domain |
+| `vincenty-db.cluster-xxxx.REGION.rds.amazonaws.com` | Your RDS endpoint |
+| `vincenty-redis.xxxx.REGION.cache.amazonaws.com` | Your ElastiCache endpoint |
+| `vincenty.example.com` (in `WEBAUTHN_RP_ID` and `WEBAUTHN_RP_ORIGINS`) | Your actual domain |
 
 > **Redis TLS**: The task definition sets `REDIS_TLS=true` because ElastiCache requires transit encryption. If your ElastiCache cluster has transit encryption disabled, set this to `false`.
 
 > **Redis Cluster**: The task definition defaults `REDIS_CLUSTER` to `false`. If your ElastiCache cluster has cluster mode enabled, change this to `true`. The single `REDIS_HOST` address serves as the cluster configuration endpoint.
-| `sitaware.example.com` | Your actual domain |
+| `vincenty.example.com` | Your actual domain |
 | `subnet-PRIVATE_1`, `subnet-PRIVATE_2` | Your private subnet IDs |
 | `sg-API_SG`, `sg-WEB_SG` | Your security group IDs |
 | Target group ARNs | Your actual ALB target group ARNs |
@@ -158,7 +158,7 @@ aws ecs register-task-definition --cli-input-json file://deploy/ecs/web-task-def
 ## Step 7: Create ECS Cluster (if not already created)
 
 ```bash
-aws ecs create-cluster --cluster-name sitaware --service-connect-defaults namespace=sitaware.local
+aws ecs create-cluster --cluster-name vincenty --service-connect-defaults namespace=vincenty.local
 ```
 
 ## Step 8: Create Services
@@ -210,18 +210,18 @@ aws elbv2 modify-listener \
 
 ```bash
 # Check service status
-aws ecs describe-services --cluster sitaware --services sitaware-api sitaware-web
+aws ecs describe-services --cluster vincenty --services vincenty-api vincenty-web
 
 # Watch task status
-aws ecs list-tasks --cluster sitaware --service-name sitaware-api
-aws ecs describe-tasks --cluster sitaware --tasks TASK_ARN
+aws ecs list-tasks --cluster vincenty --service-name vincenty-api
+aws ecs describe-tasks --cluster vincenty --tasks TASK_ARN
 
 # Tail logs
-aws logs tail /ecs/sitaware-api --follow
-aws logs tail /ecs/sitaware-web --follow
+aws logs tail /ecs/vincenty-api --follow
+aws logs tail /ecs/vincenty-web --follow
 
 # Test health endpoint
-curl https://sitaware.example.com/healthz
+curl https://vincenty.example.com/healthz
 ```
 
 ## Step 11: Update Deployment
@@ -232,8 +232,8 @@ To deploy a new version:
 # Build and push new images (Step 4)
 
 # Force new deployment (pulls latest image)
-aws ecs update-service --cluster sitaware --service sitaware-api --force-new-deployment
-aws ecs update-service --cluster sitaware --service sitaware-web --force-new-deployment
+aws ecs update-service --cluster vincenty --service vincenty-api --force-new-deployment
+aws ecs update-service --cluster vincenty --service vincenty-web --force-new-deployment
 ```
 
 ## IAM Policy Reference
@@ -260,7 +260,7 @@ aws ecs update-service --cluster sitaware --service sitaware-web --force-new-dep
         "ssm:GetParameters",
         "ssm:GetParameter"
       ],
-      "Resource": "arn:aws:ssm:REGION:ACCOUNT_ID:parameter/sitaware/*"
+      "Resource": "arn:aws:ssm:REGION:ACCOUNT_ID:parameter/vincenty/*"
     },
     {
       "Effect": "Allow",
@@ -268,7 +268,7 @@ aws ecs update-service --cluster sitaware --service sitaware-web --force-new-dep
         "logs:CreateLogStream",
         "logs:PutLogEvents"
       ],
-      "Resource": "arn:aws:logs:REGION:ACCOUNT_ID:log-group:/ecs/sitaware-*:*"
+      "Resource": "arn:aws:logs:REGION:ACCOUNT_ID:log-group:/ecs/vincenty-*:*"
     }
   ]
 }

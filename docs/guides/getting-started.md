@@ -1,14 +1,14 @@
 # Getting Started
 
-This guide walks you through your first login and orients you around the SitAware interface.
+This guide walks you through your first login and orients you around the Vincenty interface.
 
 ## Prerequisites
 
-SitAware must be running. If you are deploying it yourself, see the [Quick Start](../../README.md#quick-start) section in the README.
+Vincenty must be running. If you are deploying it yourself, see the [Quick Start](../../README.md#quick-start) section in the README.
 
 ## First Login
 
-1. Open your browser and navigate to your SitAware instance (default: `http://localhost:3000`).
+1. Open your browser and navigate to your Vincenty instance (default: `http://localhost:3000`).
 2. You will see the login screen.
 
 ![Login screen](../screenshots/login.png)
@@ -65,7 +65,7 @@ Groups are how teams are organized. You must be a member of a group to see its m
 - **Group Admin** -- manage members within the group
 
 ### Devices
-A device represents an endpoint you use to access SitAware (e.g., your laptop browser, a phone, a tablet). Devices are auto-registered when you log in from a web browser. One device can be marked as **Primary**.
+A device represents an endpoint you use to access Vincenty (e.g., your laptop browser, a phone, a tablet). Devices are auto-registered when you log in from a web browser. One device can be marked as **Primary**.
 
 ## Next Steps
 

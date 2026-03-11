@@ -6,15 +6,15 @@ services:
     image: postgis/postgis:16-3.4
     platform: linux/amd64
     environment:
-      POSTGRES_USER: ${DB_USER:-sitaware}
-      POSTGRES_PASSWORD: ${DB_PASSWORD:-sitaware}
-      POSTGRES_DB: ${DB_NAME:-sitaware}
+      POSTGRES_USER: ${DB_USER:-vincenty}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-vincenty}
+      POSTGRES_DB: ${DB_NAME:-vincenty}
     ports:
       - "5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-sitaware} -d ${DB_NAME:-sitaware}"]
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-vincenty} -d ${DB_NAME:-vincenty}"]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -35,8 +35,8 @@ services:
     image: minio/minio
     command: server /data --console-address ":9001"
     environment:
-      MINIO_ROOT_USER: ${S3_ACCESS_KEY:-sitaware}
-      MINIO_ROOT_PASSWORD: ${S3_SECRET_KEY:-sitaware123}
+      MINIO_ROOT_USER: ${S3_ACCESS_KEY:-vincenty}
+      MINIO_ROOT_PASSWORD: ${S3_SECRET_KEY:-vincenty123}
     ports:
       - "9000:9000"
       - "9001:9001"
@@ -57,12 +57,12 @@ services:
     entrypoint: >
       /bin/sh -c "
         mc alias set sa http://minio:9000 $${MINIO_ROOT_USER} $${MINIO_ROOT_PASSWORD};
-        mc mb sa/${S3_BUCKET:-sitaware} --ignore-existing;
+        mc mb sa/${S3_BUCKET:-vincenty} --ignore-existing;
         exit 0;
       "
     environment:
-      MINIO_ROOT_USER: ${S3_ACCESS_KEY:-sitaware}
-      MINIO_ROOT_PASSWORD: ${S3_SECRET_KEY:-sitaware123}
+      MINIO_ROOT_USER: ${S3_ACCESS_KEY:-vincenty}
+      MINIO_ROOT_PASSWORD: ${S3_SECRET_KEY:-vincenty123}
 
   # ---------------------------------------------------------------------------
   # Application
@@ -114,11 +114,11 @@ services:
       context: ./clients/cli
       dockerfile: Dockerfile
     environment:
-      - SITAWARE_SERVER=http://api:${API_PORT:-8080}
-      - SITAWARE_USERNAME=${ADMIN_USERNAME}
-      - SITAWARE_PASSWORD=${ADMIN_PASSWORD}
-      - SITAWARE_DEVICE_NAME=Round Britain
-      - SITAWARE_FILE=/data/route.gpx
+      - VINCENTY_SERVER=http://api:${API_PORT:-8080}
+      - VINCENTY_USERNAME=${ADMIN_USERNAME}
+      - VINCENTY_PASSWORD=${ADMIN_PASSWORD}
+      - VINCENTY_DEVICE_NAME=Round Britain
+      - VINCENTY_FILE=/data/route.gpx
     volumes:
       - .gpx:/data
     depends_on:
@@ -130,11 +130,11 @@ services:
       context: ./clients/cli
       dockerfile: Dockerfile
     environment:
-      - SITAWARE_SERVER=http://api:${API_PORT:-8080}
-      - SITAWARE_USERNAME=${ADMIN_USERNAME}
-      - SITAWARE_PASSWORD=${ADMIN_PASSWORD}
-      - SITAWARE_DEVICE_NAME=Routeburn
-      - SITAWARE_FILE=/data/Routeburn.gpx
+      - VINCENTY_SERVER=http://api:${API_PORT:-8080}
+      - VINCENTY_USERNAME=${ADMIN_USERNAME}
+      - VINCENTY_PASSWORD=${ADMIN_PASSWORD}
+      - VINCENTY_DEVICE_NAME=Routeburn
+      - VINCENTY_FILE=/data/Routeburn.gpx
     volumes:
       - .gpx:/data
     depends_on:

@@ -1,5 +1,5 @@
 // Package client provides REST and WebSocket communication with the
-// SitAware API server for the CLI tool.
+// Vincenty API server for the CLI tool.
 package client
 
 import (
@@ -17,7 +17,7 @@ import (
 	"nhooyr.io/websocket"
 )
 
-// Client communicates with the SitAware API.
+// Client communicates with the Vincenty API.
 type Client struct {
 	baseURL string
 	token   string
@@ -117,7 +117,7 @@ func (c *Client) Login(ctx context.Context, username, password string) error {
 	}
 	_ = json.Unmarshal(body, &mfaCheck)
 	if mfaCheck.MFARequired {
-		return fmt.Errorf("account requires MFA; use SITAWARE_TOKEN with a pre-generated API token instead")
+		return fmt.Errorf("account requires MFA; use VINCENTY_TOKEN with a pre-generated API token instead")
 	}
 
 	var loginResp loginResponse

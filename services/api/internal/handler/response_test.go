@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/sitaware/api/internal/model"
+	"github.com/vincenty/api/internal/model"
 )
 
 func TestJSON_WritesCorrectHeaders(t *testing.T) {

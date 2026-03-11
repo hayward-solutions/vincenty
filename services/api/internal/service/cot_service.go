@@ -6,9 +6,9 @@ import (
 	"log/slog"
 
 	"github.com/google/uuid"
-	"github.com/sitaware/api/internal/cot"
-	"github.com/sitaware/api/internal/model"
-	"github.com/sitaware/api/internal/repository"
+	"github.com/vincenty/api/internal/cot"
+	"github.com/vincenty/api/internal/model"
+	"github.com/vincenty/api/internal/repository"
 )
 
 // CotService handles CoT event ingestion, storage, and bridging to internal systems.

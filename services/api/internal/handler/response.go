@@ -7,7 +7,7 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/sitaware/api/internal/model"
+	"github.com/vincenty/api/internal/model"
 )
 
 // errorBody is the JSON error envelope.

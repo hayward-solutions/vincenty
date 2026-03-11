@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/sitaware/api/internal/config"
+	"github.com/vincenty/api/internal/config"
 )
 
 func newTestJWTService() *JWTService {
@@ -49,8 +49,8 @@ func TestValidateAccessToken_Valid(t *testing.T) {
 	if !claims.IsAdmin {
 		t.Error("claims.IsAdmin = false, want true")
 	}
-	if claims.Issuer != "sitaware" {
-		t.Errorf("claims.Issuer = %q, want %q", claims.Issuer, "sitaware")
+	if claims.Issuer != "vincenty" {
+		t.Errorf("claims.Issuer = %q, want %q", claims.Issuer, "vincenty")
 	}
 	if claims.Subject != userID.String() {
 		t.Errorf("claims.Subject = %q, want %q", claims.Subject, userID.String())

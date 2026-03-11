@@ -85,7 +85,7 @@ function makeServerResponse() {
   return {
     publicKey: {
       challenge: "dGVzdA", // base64url of "test"
-      rp: { name: "SitAware" },
+      rp: { name: "Vincenty" },
       user: { id: "dXNlcg", name: "testuser", displayName: "Test User" },
       pubKeyCredParams: [],
       excludeCredentials: [],

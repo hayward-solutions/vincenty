@@ -20,7 +20,7 @@ const geistMono = Geist_Mono({
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "SitAware",
+  title: "Vincenty",
   description: "Situational Awareness Platform",
 };
 

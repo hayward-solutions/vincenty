@@ -12,6 +12,7 @@ const mocks = vi.hoisted(() => {
     remove: vi.fn(),
     getPopup: vi.fn(() => popup),
     setRotation: vi.fn(),
+    getElement: vi.fn(() => ({ querySelector: vi.fn(() => null) })),
   };
   return {
     Marker: vi.fn(function () { return { ...marker }; }),

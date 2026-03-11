@@ -423,7 +423,7 @@ Raw manifests in `deploy/k8s/` (namespace, configmap, secret, StatefulSet for Po
 
 ### Helm
 
-Full Helm chart in `deploy/helm/sitaware/` with configurable values for all resources. Supports toggling between in-cluster PostgreSQL/Redis and external managed services (RDS, ElastiCache).
+Full Helm chart in `deploy/helm/vincenty/` with configurable values for all resources. Supports toggling between in-cluster PostgreSQL/Redis and external managed services (RDS, ElastiCache).
 
 ### AWS ECS Fargate
 
@@ -432,14 +432,14 @@ Task definitions and service configs in `deploy/ecs/`. Uses ALB for TLS terminat
 ## Configuration Philosophy
 
 - **Environment variables only** — no config files, no CLI flags. Every setting has a sensible default
-- **No prefix** — variables are named directly (`DB_HOST`, not `SITAWARE_DB_HOST`)
+- **No prefix** — variables are named directly (`DB_HOST`, not `VINCENTY_DB_HOST`)
 - **Build-time vs runtime** — `NEXT_PUBLIC_*` variables are inlined at Next.js build time. All others are runtime
 - **Secret management** — in Docker Compose: `.env` file. In Kubernetes: Secrets. In ECS: SSM Parameter Store
 - **Migrations are automatic** — the API runs migrations on startup. No separate migration step needed
 
 ## Multi-Factor Authentication
 
-SitAware supports three MFA methods, all optional per-user unless the admin enables server-wide enforcement.
+Vincenty supports three MFA methods, all optional per-user unless the admin enables server-wide enforcement.
 
 ```
 ┌─────────────────────────────────────────────────────┐
@@ -484,7 +484,7 @@ When `server_settings.mfa_required` is `true`, the MFA enforcement middleware bl
 
 ## Cursor on Target (CoT) Ingestion
 
-SitAware can ingest Cursor on Target XML events, making it compatible with ATAK, iTAK, and other TAK ecosystem devices.
+Vincenty can ingest Cursor on Target XML events, making it compatible with ATAK, iTAK, and other TAK ecosystem devices.
 
 ```
 ATAK/iTAK Device

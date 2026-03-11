@@ -66,7 +66,7 @@ func Download(ctx context.Context, uri string) (string, error) {
 		ext = ".gpx"
 	}
 
-	tmpFile, err := os.CreateTemp("", "sitaware-*"+ext)
+	tmpFile, err := os.CreateTemp("", "vincenty-*"+ext)
 	if err != nil {
 		return "", fmt.Errorf("create temp file: %w", err)
 	}

@@ -4,7 +4,7 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/sitaware/api/internal/testutil"
+	"github.com/vincenty/api/internal/testutil"
 )
 
 func TestAuditLogs_GetMyLogs(t *testing.T) {

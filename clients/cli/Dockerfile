@@ -12,13 +12,13 @@ RUN go mod download
 # Copy source and build
 COPY . .
 ARG GIT_COMMIT=dev
-RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w -X main.version=${GIT_COMMIT}" -o /build/sitaware-cli .
+RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w -X main.version=${GIT_COMMIT}" -o /build/vincenty-cli .
 
 # =============================================================================
 # Runtime stage
 # =============================================================================
 FROM gcr.io/distroless/static-debian12
 
-COPY --from=builder /build/sitaware-cli /sitaware-cli
+COPY --from=builder /build/vincenty-cli /vincenty-cli
 
-ENTRYPOINT ["/sitaware-cli"]
+ENTRYPOINT ["/vincenty-cli"]

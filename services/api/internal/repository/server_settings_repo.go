@@ -6,7 +6,7 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/sitaware/api/internal/model"
+	"github.com/vincenty/api/internal/model"
 )
 
 // ServerSettingsRepository handles database operations for server settings.

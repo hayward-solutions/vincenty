@@ -1,32 +1,32 @@
-// Command sitaware-cli streams GPX or GeoJSON track files to the SitAware
+// Command vincenty-cli streams GPX or GeoJSON track files to the Vincenty
 // API over WebSocket, simulating a moving device. Useful for demonstrations,
 // load testing, and resource rightsizing.
 //
 // Usage:
 //
-//	sitaware-cli [flags]
+//	vincenty-cli [flags]
 //
 // Authentication (one of the following is required):
 //
-//	-token                    API token (sat_...)     env: SITAWARE_TOKEN
-//	-username / -password     Login credentials       env: SITAWARE_USERNAME / SITAWARE_PASSWORD
+//	-token                    API token (sat_...)     env: VINCENTY_TOKEN
+//	-username / -password     Login credentials       env: VINCENTY_USERNAME / VINCENTY_PASSWORD
 //
 // When username and password are used, the CLI logs in at startup and mints a
 // short-lived API token automatically. If the account has MFA enabled, use a
-// pre-generated API token via -token / SITAWARE_TOKEN instead.
+// pre-generated API token via -token / VINCENTY_TOKEN instead.
 //
 // Required (flag or environment variable):
 //
-//	-file    Path to a .gpx or .geojson   env: SITAWARE_FILE
+//	-file    Path to a .gpx or .geojson   env: VINCENTY_FILE
 //
 // Optional:
 //
-//	-server        API base URL            env: SITAWARE_SERVER      (default http://localhost:8080)
-//	-device-name   Device name             env: SITAWARE_DEVICE_NAME (default cli-<random>)
-//	-speed         Playback speed          env: SITAWARE_SPEED       (default 1.0)
-//	-interval      Send interval           env: SITAWARE_INTERVAL    (default 1s)
-//	-loop          Loop the track          env: SITAWARE_LOOP        (default false)
-//	-quiet         Suppress per-point log  env: SITAWARE_QUIET       (default false)
+//	-server        API base URL            env: VINCENTY_SERVER      (default http://localhost:8080)
+//	-device-name   Device name             env: VINCENTY_DEVICE_NAME (default cli-<random>)
+//	-speed         Playback speed          env: VINCENTY_SPEED       (default 1.0)
+//	-interval      Send interval           env: VINCENTY_INTERVAL    (default 1s)
+//	-loop          Loop the track          env: VINCENTY_LOOP        (default false)
+//	-quiet         Suppress per-point log  env: VINCENTY_QUIET       (default false)
 //	-version       Print version and exit
 //
 // Flags take precedence over environment variables.
@@ -41,9 +41,9 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/sitaware/cli/internal/client"
-	s3dl "github.com/sitaware/cli/internal/s3"
-	"github.com/sitaware/cli/internal/track"
+	"github.com/vincenty/cli/internal/client"
+	s3dl "github.com/vincenty/cli/internal/s3"
+	"github.com/vincenty/cli/internal/track"
 )
 
 // version is set at build time via -ldflags "-X main.version=<value>".

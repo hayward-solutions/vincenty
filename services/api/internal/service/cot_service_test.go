@@ -6,10 +6,10 @@ import (
 	"testing"
 
 	"github.com/google/uuid"
-	"github.com/sitaware/api/internal/model"
-	"github.com/sitaware/api/internal/pubsub"
-	"github.com/sitaware/api/internal/repository"
-	mockrepo "github.com/sitaware/api/internal/repository/mock"
+	"github.com/vincenty/api/internal/model"
+	"github.com/vincenty/api/internal/pubsub"
+	"github.com/vincenty/api/internal/repository"
+	mockrepo "github.com/vincenty/api/internal/repository/mock"
 )
 
 const validCotXML = `<?xml version="1.0" encoding="UTF-8"?>

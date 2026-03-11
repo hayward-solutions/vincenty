@@ -154,7 +154,7 @@ func Load() (*Config, error) {
 		Admin: AdminConfig{
 			Username: envStr("ADMIN_USERNAME", "admin"),
 			Password: envStr("ADMIN_PASSWORD", "changeme"),
-			Email:    envStr("ADMIN_EMAIL", "admin@sitaware.local"),
+			Email:    envStr("ADMIN_EMAIL", "admin@vincenty.local"),
 		},
 		Server: ServerConfig{
 			Host:     envStr("API_HOST", "0.0.0.0"),
@@ -169,9 +169,9 @@ func Load() (*Config, error) {
 		DB: DBConfig{
 			Host:     envStr("DB_HOST", "localhost"),
 			Port:     envInt("DB_PORT", 5432),
-			User:     envStr("DB_USER", "sitaware"),
-			Password: envStr("DB_PASSWORD", "sitaware"),
-			Name:     envStr("DB_NAME", "sitaware"),
+			User:     envStr("DB_USER", "vincenty"),
+			Password: envStr("DB_PASSWORD", "vincenty"),
+			Name:     envStr("DB_NAME", "vincenty"),
 			SSLMode:  envStr("DB_SSLMODE", "disable"),
 		},
 		Redis: RedisConfig{
@@ -190,7 +190,7 @@ func Load() (*Config, error) {
 				Endpoint:     envStr("S3_ENDPOINT", fmt.Sprintf("https://s3.%s.amazonaws.com", region)),
 				AccessKey:    envStr("S3_ACCESS_KEY", ""),
 				SecretKey:    envStr("S3_SECRET_KEY", ""),
-				Bucket:       envStr("S3_BUCKET", "sitaware"),
+				Bucket:       envStr("S3_BUCKET", "vincenty"),
 				Region:       region,
 				UsePathStyle: envBool("S3_USE_PATH_STYLE", false),
 			}
@@ -205,7 +205,7 @@ func Load() (*Config, error) {
 		},
 		WebAuthn: WebAuthnConfig{
 			RPID:          envStr("WEBAUTHN_RP_ID", "localhost"),
-			RPDisplayName: envStr("WEBAUTHN_RP_DISPLAY_NAME", "SitAware"),
+			RPDisplayName: envStr("WEBAUTHN_RP_DISPLAY_NAME", "Vincenty"),
 			RPOrigins:     envStrSlice("WEBAUTHN_RP_ORIGINS", []string{"http://localhost:3000"}),
 		},
 		CORS: CORSConfig{

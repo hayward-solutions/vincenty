@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/sitaware/api/internal/testutil"
+	"github.com/vincenty/api/internal/testutil"
 )
 
 // timeRange returns from/to query parameters for a 1-hour window ending now.

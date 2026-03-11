@@ -62,8 +62,8 @@ vi.mock("./recovery-codes-dialog", () => ({
 const mockSetup: TOTPSetupResponse = {
   method_id: "mfa-1",
   secret: "JBSWY3DPEHPK3PXP",
-  uri: "otpauth://totp/SitAware:testuser?secret=JBSWY3DPEHPK3PXP&issuer=SitAware",
-  issuer: "SitAware",
+  uri: "otpauth://totp/Vincenty:testuser?secret=JBSWY3DPEHPK3PXP&issuer=Vincenty",
+  issuer: "Vincenty",
   account: "testuser",
 };
 

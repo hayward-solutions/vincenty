@@ -1,8 +1,8 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: sitaware-config
-  namespace: sitaware
+  name: vincenty-config
+  namespace: vincenty
 data:
   # Server
   API_HOST: "0.0.0.0"
@@ -12,7 +12,7 @@ data:
   # Database
   DB_HOST: postgres
   DB_PORT: "5432"
-  DB_NAME: sitaware
+  DB_NAME: vincenty
   DB_SSLMODE: disable
 
   # Redis
@@ -22,7 +22,7 @@ data:
   REDIS_CLUSTER: "false"
 
   # S3
-  S3_BUCKET: sitaware
+  S3_BUCKET: vincenty
   S3_REGION: us-east-1
   S3_USE_PATH_STYLE: "false"
 

@@ -12,8 +12,8 @@ import (
 	"strings"
 
 	"github.com/google/uuid"
-	"github.com/sitaware/api/internal/auth"
-	"github.com/sitaware/api/internal/service"
+	"github.com/vincenty/api/internal/auth"
+	"github.com/vincenty/api/internal/service"
 )
 
 // auditAction describes how to log a matched route.

@@ -2,7 +2,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: web
-  namespace: sitaware
+  namespace: vincenty
 spec:
   replicas: 2
   selector:
@@ -15,15 +15,15 @@ spec:
     spec:
       containers:
         - name: web
-          image: sitaware/web:latest
+          image: vincenty/web:latest
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 3000
           env:
             - name: NEXT_PUBLIC_API_URL
-              value: "https://sitaware.example.com"
+              value: "https://vincenty.example.com"
             - name: WS_URL
-              value: "wss://sitaware.example.com"
+              value: "wss://vincenty.example.com"
             - name: API_INTERNAL_URL
               value: "http://api:8080"
           resources:

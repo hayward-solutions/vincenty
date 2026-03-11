@@ -4,8 +4,8 @@ import (
 	"net/http"
 
 	"github.com/google/uuid"
-	"github.com/sitaware/api/internal/middleware"
-	"github.com/sitaware/api/internal/service"
+	"github.com/vincenty/api/internal/middleware"
+	"github.com/vincenty/api/internal/service"
 )
 
 // DrawingHandler handles drawing HTTP endpoints.

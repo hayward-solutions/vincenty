@@ -5,9 +5,9 @@ import (
 	"log/slog"
 
 	"github.com/google/uuid"
-	"github.com/sitaware/api/internal/config"
-	"github.com/sitaware/api/internal/model"
-	"github.com/sitaware/api/internal/repository"
+	"github.com/vincenty/api/internal/config"
+	"github.com/vincenty/api/internal/model"
+	"github.com/vincenty/api/internal/repository"
 )
 
 // TerrainConfigService handles terrain configuration business logic.

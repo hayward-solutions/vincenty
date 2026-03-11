@@ -1,6 +1,6 @@
 # CLI Client
 
-The SitAware CLI streams GPX or GeoJSON track files to the API over WebSocket, simulating a moving device. Useful for demonstrations, load testing, and connection capacity planning.
+The Vincenty CLI streams GPX or GeoJSON track files to the API over WebSocket, simulating a moving device. Useful for demonstrations, load testing, and connection capacity planning.
 
 Each CLI invocation creates a temporary device, streams the track, and cleans up the device on exit. Run multiple instances in parallel to simulate concurrent users.
 
@@ -11,7 +11,7 @@ Each CLI invocation creates a temporary device, streams the track, and cleans up
 No installation needed. The image is published to GHCR on every merge to `main`:
 
 ```bash
-docker run --rm ghcr.io/<org>/sitaware/cli --help
+docker run --rm ghcr.io/<org>/vincenty/cli --help
 ```
 
 ### Build from source
@@ -19,14 +19,14 @@ docker run --rm ghcr.io/<org>/sitaware/cli --help
 ```bash
 # From the repository root
 make cli-build
-./clients/cli/bin/sitaware-cli --help
+./clients/cli/bin/vincenty-cli --help
 ```
 
 ### Go install
 
 ```bash
-go install github.com/sitaware/cli@latest
-sitaware-cli --help
+go install github.com/vincenty/cli@latest
+vincenty-cli --help
 ```
 
 ## Creating an API Token
@@ -77,21 +77,21 @@ All parameters can be set via flags or environment variables. Flags take precede
 
 | Flag | Env var | Required | Default | Description |
 |---|---|---|---|---|
-| `-token` | `SITAWARE_TOKEN` | Yes | | API token (`sat_...`) |
-| `-file` | `SITAWARE_FILE` | Yes | | Path to `.gpx` or `.geojson` file |
-| `-server` | `SITAWARE_SERVER` | No | `http://localhost:8080` | API base URL |
-| `-device-name` | `SITAWARE_DEVICE_NAME` | No | `cli-<random>` | Device name |
-| `-speed` | `SITAWARE_SPEED` | No | `1.0` | Playback speed multiplier |
-| `-interval` | `SITAWARE_INTERVAL` | No | `1s` | Send interval (when track has no timestamps) |
-| `-loop` | `SITAWARE_LOOP` | No | `false` | Loop the track continuously |
-| `-quiet` | `SITAWARE_QUIET` | No | `false` | Suppress per-point log output |
+| `-token` | `VINCENTY_TOKEN` | Yes | | API token (`sat_...`) |
+| `-file` | `VINCENTY_FILE` | Yes | | Path to `.gpx` or `.geojson` file |
+| `-server` | `VINCENTY_SERVER` | No | `http://localhost:8080` | API base URL |
+| `-device-name` | `VINCENTY_DEVICE_NAME` | No | `cli-<random>` | Device name |
+| `-speed` | `VINCENTY_SPEED` | No | `1.0` | Playback speed multiplier |
+| `-interval` | `VINCENTY_INTERVAL` | No | `1s` | Send interval (when track has no timestamps) |
+| `-loop` | `VINCENTY_LOOP` | No | `false` | Loop the track continuously |
+| `-quiet` | `VINCENTY_QUIET` | No | `false` | Suppress per-point log output |
 
 ## Usage
 
 ### Local binary
 
 ```bash
-sitaware-cli \
+vincenty-cli \
   --server=https://api.example.com \
   --token=sat_a1b2c3... \
   --file=path/to/track.gpx
@@ -104,10 +104,10 @@ Mount the track file into the container and pass config via environment variable
 ```bash
 docker run --rm \
   -v /path/to/tracks:/data:ro \
-  -e SITAWARE_SERVER=https://api.example.com \
-  -e SITAWARE_TOKEN=sat_a1b2c3... \
-  -e SITAWARE_FILE=/data/track.gpx \
-  ghcr.io/<org>/sitaware/cli
+  -e VINCENTY_SERVER=https://api.example.com \
+  -e VINCENTY_TOKEN=sat_a1b2c3... \
+  -e VINCENTY_FILE=/data/track.gpx \
+  ghcr.io/<org>/vincenty/cli
 ```
 
 Or use flags directly:
@@ -115,7 +115,7 @@ Or use flags directly:
 ```bash
 docker run --rm \
   -v /path/to/tracks:/data:ro \
-  ghcr.io/<org>/sitaware/cli \
+  ghcr.io/<org>/vincenty/cli \
   --server=https://api.example.com \
   --token=sat_a1b2c3... \
   --file=/data/track.gpx
@@ -144,7 +144,7 @@ GeoJSON can be a bare geometry, a Feature, or a FeatureCollection. Coordinates a
 Stream a track at 10x speed:
 
 ```bash
-sitaware-cli --token=sat_... --file=track.gpx --speed=10
+vincenty-cli --token=sat_... --file=track.gpx --speed=10
 ```
 
 ### Continuous loop
@@ -152,7 +152,7 @@ sitaware-cli --token=sat_... --file=track.gpx --speed=10
 Loop a track indefinitely (useful for demos):
 
 ```bash
-sitaware-cli --token=sat_... --file=track.gpx --loop
+vincenty-cli --token=sat_... --file=track.gpx --loop
 ```
 
 ### Multiple concurrent devices
@@ -160,9 +160,9 @@ sitaware-cli --token=sat_... --file=track.gpx --loop
 Open several terminals (or use `&` for background jobs):
 
 ```bash
-sitaware-cli --token=sat_... --file=route-a.gpx --device-name=vehicle-1 &
-sitaware-cli --token=sat_... --file=route-b.gpx --device-name=vehicle-2 &
-sitaware-cli --token=sat_... --file=route-c.gpx --device-name=vehicle-3 &
+vincenty-cli --token=sat_... --file=route-a.gpx --device-name=vehicle-1 &
+vincenty-cli --token=sat_... --file=route-b.gpx --device-name=vehicle-2 &
+vincenty-cli --token=sat_... --file=route-c.gpx --device-name=vehicle-3 &
 ```
 
 ### Quiet mode with Docker Compose environment
@@ -171,15 +171,15 @@ sitaware-cli --token=sat_... --file=route-c.gpx --device-name=vehicle-3 &
 docker run --rm \
   -v ./tracks:/data:ro \
   --env-file=cli.env \
-  ghcr.io/<org>/sitaware/cli
+  ghcr.io/<org>/vincenty/cli
 ```
 
 Where `cli.env` contains:
 
 ```
-SITAWARE_SERVER=https://api.example.com
-SITAWARE_TOKEN=sat_a1b2c3...
-SITAWARE_FILE=/data/track.gpx
-SITAWARE_LOOP=true
-SITAWARE_QUIET=true
+VINCENTY_SERVER=https://api.example.com
+VINCENTY_TOKEN=sat_a1b2c3...
+VINCENTY_FILE=/data/track.gpx
+VINCENTY_LOOP=true
+VINCENTY_QUIET=true
 ```

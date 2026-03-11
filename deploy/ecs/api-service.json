@@ -1,7 +1,7 @@
 {
-  "serviceName": "sitaware-api",
-  "cluster": "sitaware",
-  "taskDefinition": "sitaware-api",
+  "serviceName": "vincenty-api",
+  "cluster": "vincenty",
+  "taskDefinition": "vincenty-api",
   "desiredCount": 2,
   "launchType": "FARGATE",
   "platformVersion": "LATEST",
@@ -19,7 +19,7 @@
   },
   "loadBalancers": [
     {
-      "targetGroupArn": "arn:aws:elasticloadbalancing:REGION:ACCOUNT_ID:targetgroup/sitaware-api/xxxx",
+      "targetGroupArn": "arn:aws:elasticloadbalancing:REGION:ACCOUNT_ID:targetgroup/vincenty-api/xxxx",
       "containerName": "api",
       "containerPort": 8080
     }
@@ -35,7 +35,7 @@
   },
   "serviceConnectConfiguration": {
     "enabled": true,
-    "namespace": "sitaware.local",
+    "namespace": "vincenty.local",
     "services": [
       {
         "portName": "api",
@@ -43,7 +43,7 @@
         "clientAliases": [
           {
             "port": 8080,
-            "dnsName": "api.sitaware.local"
+            "dnsName": "api.vincenty.local"
           }
         ]
       }

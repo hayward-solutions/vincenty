@@ -20,8 +20,8 @@ For iOS development (optional — only needed if working on `clients/ios/`):
 
 ```bash
 # Clone the repository
-git clone https://github.com/sitaware/sitaware.git
-cd sitaware
+git clone https://github.com/vincenty/vincenty.git
+cd vincenty
 
 # Start the full stack
 make dev
@@ -56,10 +56,10 @@ cd clients/ios
 xcodegen generate
 
 # Open in Xcode
-open SitAware.xcodeproj
+open Vincenty.xcodeproj
 ```
 
-In Xcode, select the **SitAware** scheme and an iOS Simulator (e.g., iPhone 16), then **Cmd+R** to build and run. The first build takes a few minutes while SPM fetches the MapLibre SDK.
+In Xcode, select the **Vincenty** scheme and an iOS Simulator (e.g., iPhone 16), then **Cmd+R** to build and run. The first build takes a few minutes while SPM fetches the MapLibre SDK.
 
 The app needs the API running. On first launch, the server URL screen prompts for the API address:
 
@@ -72,7 +72,7 @@ Log in with the default admin credentials (`admin` / `changeme`).
 
 1. You need an Apple Developer account (free tier works for personal testing)
 2. In Xcode, go to **Signing & Capabilities** and select your team
-3. If needed, change the bundle identifier to something unique (e.g., `com.yourname.sitaware`)
+3. If needed, change the bundle identifier to something unique (e.g., `com.yourname.vincenty`)
 4. Connect your device via USB or Wi-Fi and run
 
 Background location features require a real device — the simulator does not support CLLocationManager background modes.
@@ -82,7 +82,7 @@ Background location features require a real device — the simulator does not su
 ```bash
 cd clients/ios
 xcodegen generate
-xcodebuild test -scheme SitAware -destination 'platform=iOS Simulator,name=iPhone 16'
+xcodebuild test -scheme Vincenty -destination 'platform=iOS Simulator,name=iPhone 16'
 ```
 
 ### Useful Commands
@@ -129,7 +129,7 @@ clients/cli/               # CLI track streamer (Go)
   Dockerfile               # Distroless container image
 
 clients/ios/               # iOS client (SwiftUI)
-  SitAware/
+  Vincenty/
     App/                   # @main entry point, ContentView, MainTabView
     Models/                # Codable API models (User, Group, Message, etc.)
     Core/                  # Services (APIClient, AuthManager, WebSocket, SyncManager, etc.)
@@ -142,7 +142,7 @@ clients/ios/               # iOS client (SwiftUI)
 deploy/                    # Deployment configurations
   caddy/                   # Caddyfile + TLS cert placeholder
   k8s/                     # Kubernetes manifests
-  helm/sitaware/           # Helm chart
+  helm/vincenty/           # Helm chart
   ecs/                     # AWS ECS task definitions
 ```
 
@@ -182,7 +182,7 @@ deploy/                    # Deployment configurations
 
 **Architecture** — MVVM with Swift Observation framework (`@Observable` macro). Views observe view models directly. Services (`APIClient`, `AuthManager`, `WebSocketService`, etc.) are injected via SwiftUI `.environment()`.
 
-**Project generation** — The Xcode project is generated from `clients/ios/project.yml` using XcodeGen. Do not check in `SitAware.xcodeproj` — regenerate it with `xcodegen generate`. The only external SPM dependency is MapLibre Native SDK.
+**Project generation** — The Xcode project is generated from `clients/ios/project.yml` using XcodeGen. Do not check in `Vincenty.xcodeproj` — regenerate it with `xcodegen generate`. The only external SPM dependency is MapLibre Native SDK.
 
 **SwiftUI conventions** — iOS 17+ minimum. Files use **kebab-case** naming to match the web client convention (e.g., `map-screen.swift`). Exception: model files use **PascalCase** (e.g., `User.swift`). Components use **named exports** — `struct MapScreen: View`, no default exports. Add `"use client"` equivalent `@Observable` on view models and services.
 
@@ -200,7 +200,7 @@ deploy/                    # Deployment configurations
 
 **Accessibility** — All icon-only buttons must have `.accessibilityLabel`. Interactive elements with visual state (selected, active) should use `.accessibilityValue`. Use `.accessibilityElement(children: .combine)` for composite elements. Test with VoiceOver on a real device.
 
-**Testing** — Xcode test targets are defined in `project.yml`. Unit tests in `SitAwareTests/`, UI tests in `SitAwareUITests/`.
+**Testing** — Xcode test targets are defined in `project.yml`. Unit tests in `VincentyTests/`, UI tests in `VincentyUITests/`.
 
 ## Adding a New Feature
 
@@ -284,8 +284,8 @@ If your change affects deployment configurations, update all relevant targets:
 | `docker-compose.yml` | Development stack |
 | `docker-compose.prod.yml` | Production Docker Compose |
 | `deploy/k8s/*.yaml` | Kubernetes manifests |
-| `deploy/helm/sitaware/values.yaml` | Helm chart values |
-| `deploy/helm/sitaware/templates/*.yaml` | Helm templates |
+| `deploy/helm/vincenty/values.yaml` | Helm chart values |
+| `deploy/helm/vincenty/templates/*.yaml` | Helm templates |
 | `deploy/ecs/*.json` | ECS task definitions |
 | `deploy/ecs/README.md` | ECS deployment guide |
 

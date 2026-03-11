@@ -7,8 +7,8 @@ import (
 	"strings"
 
 	"github.com/google/uuid"
-	"github.com/sitaware/api/internal/auth"
-	"github.com/sitaware/api/internal/model"
+	"github.com/vincenty/api/internal/auth"
+	"github.com/vincenty/api/internal/model"
 )
 
 type contextKey string

@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/sitaware/api/internal/testutil"
+	"github.com/vincenty/api/internal/testutil"
 )
 
 func TestCoT_IngestSingleEvent(t *testing.T) {

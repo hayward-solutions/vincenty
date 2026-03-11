@@ -5,9 +5,9 @@ import (
 	"testing"
 
 	"github.com/google/uuid"
-	"github.com/sitaware/api/internal/config"
-	"github.com/sitaware/api/internal/model"
-	mockrepo "github.com/sitaware/api/internal/repository/mock"
+	"github.com/vincenty/api/internal/config"
+	"github.com/vincenty/api/internal/model"
+	mockrepo "github.com/vincenty/api/internal/repository/mock"
 )
 
 func TestMapConfigService_BootstrapMapConfigs_SkipsWhenExist(t *testing.T) {

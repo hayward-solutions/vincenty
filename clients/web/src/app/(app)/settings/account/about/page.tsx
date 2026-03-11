@@ -74,7 +74,7 @@ export default function AboutSettingsPage() {
         <CardHeader>
           <CardTitle>Version Information</CardTitle>
           <CardDescription>
-            Software versions for each component of this SitAware instance.
+            Software versions for each component of this Vincenty instance.
           </CardDescription>
         </CardHeader>
         <CardContent>

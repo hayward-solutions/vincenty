@@ -3,8 +3,8 @@ package handler
 import (
 	"net/http"
 
-	"github.com/sitaware/api/internal/model"
-	"github.com/sitaware/api/internal/service"
+	"github.com/vincenty/api/internal/model"
+	"github.com/vincenty/api/internal/service"
 )
 
 // PermissionPolicyHandler handles permission policy endpoints.

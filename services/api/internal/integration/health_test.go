@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/sitaware/api/internal/testutil"
+	"github.com/vincenty/api/internal/testutil"
 )
 
 func TestHealthz(t *testing.T) {
@@ -40,8 +40,8 @@ func TestAPIInfo(t *testing.T) {
 	if err := json.NewDecoder(resp.Body).Decode(&body); err != nil {
 		t.Fatalf("decode api info: %v", err)
 	}
-	if body["service"] != "sitaware-api" {
-		t.Errorf("service = %q, want %q", body["service"], "sitaware-api")
+	if body["service"] != "vincenty-api" {
+		t.Errorf("service = %q, want %q", body["service"], "vincenty-api")
 	}
 	if body["version"] == "" {
 		t.Error("version field must not be empty")

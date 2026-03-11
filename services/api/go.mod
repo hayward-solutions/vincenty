@@ -1,4 +1,4 @@
-module github.com/sitaware/api
+module github.com/vincenty/api
 
 go 1.25.0
 

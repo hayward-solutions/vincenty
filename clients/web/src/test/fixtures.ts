@@ -265,8 +265,8 @@ export const mockMFAMethod: MFAMethod = {
 export const mockTOTPSetup: TOTPSetupResponse = {
   method_id: "mfa-method-1",
   secret: "JBSWY3DPEHPK3PXP",
-  uri: "otpauth://totp/SitAware:testuser?secret=JBSWY3DPEHPK3PXP&issuer=SitAware",
-  issuer: "SitAware",
+  uri: "otpauth://totp/Vincenty:testuser?secret=JBSWY3DPEHPK3PXP&issuer=Vincenty",
+  issuer: "Vincenty",
   account: "testuser",
 };
 

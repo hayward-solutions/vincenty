@@ -69,14 +69,14 @@ func TestParseConfig_FlagsOnly(t *testing.T) {
 
 func TestParseConfig_EnvOnly(t *testing.T) {
 	env := mockEnv(map[string]string{
-		"SITAWARE_SERVER":      "https://env.example.com",
-		"SITAWARE_TOKEN":       "sat_envtoken",
-		"SITAWARE_FILE":        "env-track.geojson",
-		"SITAWARE_DEVICE_NAME": "env-device",
-		"SITAWARE_SPEED":       "3.0",
-		"SITAWARE_INTERVAL":    "2s",
-		"SITAWARE_LOOP":        "true",
-		"SITAWARE_QUIET":       "1",
+		"VINCENTY_SERVER":      "https://env.example.com",
+		"VINCENTY_TOKEN":       "sat_envtoken",
+		"VINCENTY_FILE":        "env-track.geojson",
+		"VINCENTY_DEVICE_NAME": "env-device",
+		"VINCENTY_SPEED":       "3.0",
+		"VINCENTY_INTERVAL":    "2s",
+		"VINCENTY_LOOP":        "true",
+		"VINCENTY_QUIET":       "1",
 	})
 	cfg, err := parseConfig(nil, env)
 	if err != nil {
@@ -114,9 +114,9 @@ func TestParseConfig_EnvOnly(t *testing.T) {
 
 func TestParseConfig_FlagOverridesEnv(t *testing.T) {
 	env := mockEnv(map[string]string{
-		"SITAWARE_SERVER": "https://env.example.com",
-		"SITAWARE_TOKEN":  "sat_envtoken",
-		"SITAWARE_FILE":   "env-track.gpx",
+		"VINCENTY_SERVER": "https://env.example.com",
+		"VINCENTY_TOKEN":  "sat_envtoken",
+		"VINCENTY_FILE":   "env-track.gpx",
 	})
 	args := []string{
 		"-server", "https://flag.example.com",
@@ -206,9 +206,9 @@ func TestParseConfig_UsernamePassword(t *testing.T) {
 
 func TestParseConfig_UsernamePasswordFromEnv(t *testing.T) {
 	env := mockEnv(map[string]string{
-		"SITAWARE_USERNAME": "admin",
-		"SITAWARE_PASSWORD": "secret",
-		"SITAWARE_FILE":     "track.gpx",
+		"VINCENTY_USERNAME": "admin",
+		"VINCENTY_PASSWORD": "secret",
+		"VINCENTY_FILE":     "track.gpx",
 	})
 	cfg, err := parseConfig(nil, env)
 	if err != nil {
@@ -290,31 +290,31 @@ func TestParseConfig_InvalidSpeed(t *testing.T) {
 
 func TestParseConfig_InvalidSpeedEnv(t *testing.T) {
 	env := mockEnv(map[string]string{
-		"SITAWARE_TOKEN": "sat_tok",
-		"SITAWARE_FILE":  "t.gpx",
-		"SITAWARE_SPEED": "notanumber",
+		"VINCENTY_TOKEN": "sat_tok",
+		"VINCENTY_FILE":  "t.gpx",
+		"VINCENTY_SPEED": "notanumber",
 	})
 	_, err := parseConfig(nil, env)
 	if err == nil {
-		t.Fatal("expected error for invalid SITAWARE_SPEED")
+		t.Fatal("expected error for invalid VINCENTY_SPEED")
 	}
-	if !strings.Contains(err.Error(), "SITAWARE_SPEED") {
-		t.Errorf("error %q should mention SITAWARE_SPEED", err.Error())
+	if !strings.Contains(err.Error(), "VINCENTY_SPEED") {
+		t.Errorf("error %q should mention VINCENTY_SPEED", err.Error())
 	}
 }
 
 func TestParseConfig_InvalidIntervalEnv(t *testing.T) {
 	env := mockEnv(map[string]string{
-		"SITAWARE_TOKEN":    "sat_tok",
-		"SITAWARE_FILE":     "t.gpx",
-		"SITAWARE_INTERVAL": "badvalue",
+		"VINCENTY_TOKEN":    "sat_tok",
+		"VINCENTY_FILE":     "t.gpx",
+		"VINCENTY_INTERVAL": "badvalue",
 	})
 	_, err := parseConfig(nil, env)
 	if err == nil {
-		t.Fatal("expected error for invalid SITAWARE_INTERVAL")
+		t.Fatal("expected error for invalid VINCENTY_INTERVAL")
 	}
-	if !strings.Contains(err.Error(), "SITAWARE_INTERVAL") {
-		t.Errorf("error %q should mention SITAWARE_INTERVAL", err.Error())
+	if !strings.Contains(err.Error(), "VINCENTY_INTERVAL") {
+		t.Errorf("error %q should mention VINCENTY_INTERVAL", err.Error())
 	}
 }
 
@@ -324,50 +324,50 @@ func TestParseConfig_InvalidIntervalEnv(t *testing.T) {
 
 func TestParseConfig_LoopEnvTrue(t *testing.T) {
 	env := mockEnv(map[string]string{
-		"SITAWARE_TOKEN": "sat_tok",
-		"SITAWARE_FILE":  "t.gpx",
-		"SITAWARE_LOOP":  "true",
+		"VINCENTY_TOKEN": "sat_tok",
+		"VINCENTY_FILE":  "t.gpx",
+		"VINCENTY_LOOP":  "true",
 	})
 	cfg, err := parseConfig(nil, env)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 	if !cfg.Loop {
-		t.Error("Loop = false, want true for SITAWARE_LOOP=true")
+		t.Error("Loop = false, want true for VINCENTY_LOOP=true")
 	}
 }
 
 func TestParseConfig_QuietEnvOne(t *testing.T) {
 	env := mockEnv(map[string]string{
-		"SITAWARE_TOKEN": "sat_tok",
-		"SITAWARE_FILE":  "t.gpx",
-		"SITAWARE_QUIET": "1",
+		"VINCENTY_TOKEN": "sat_tok",
+		"VINCENTY_FILE":  "t.gpx",
+		"VINCENTY_QUIET": "1",
 	})
 	cfg, err := parseConfig(nil, env)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 	if !cfg.Quiet {
-		t.Error("Quiet = false, want true for SITAWARE_QUIET=1")
+		t.Error("Quiet = false, want true for VINCENTY_QUIET=1")
 	}
 }
 
 func TestParseConfig_BoolEnvFalseValues(t *testing.T) {
 	env := mockEnv(map[string]string{
-		"SITAWARE_TOKEN": "sat_tok",
-		"SITAWARE_FILE":  "t.gpx",
-		"SITAWARE_LOOP":  "false",
-		"SITAWARE_QUIET": "0",
+		"VINCENTY_TOKEN": "sat_tok",
+		"VINCENTY_FILE":  "t.gpx",
+		"VINCENTY_LOOP":  "false",
+		"VINCENTY_QUIET": "0",
 	})
 	cfg, err := parseConfig(nil, env)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 	if cfg.Loop {
-		t.Error("Loop = true, want false for SITAWARE_LOOP=false")
+		t.Error("Loop = true, want false for VINCENTY_LOOP=false")
 	}
 	if cfg.Quiet {
-		t.Error("Quiet = true, want false for SITAWARE_QUIET=0")
+		t.Error("Quiet = true, want false for VINCENTY_QUIET=0")
 	}
 }
 
@@ -377,9 +377,9 @@ func TestParseConfig_BoolEnvFalseValues(t *testing.T) {
 
 func TestParseConfig_DeviceNameFromEnv(t *testing.T) {
 	env := mockEnv(map[string]string{
-		"SITAWARE_TOKEN":       "sat_tok",
-		"SITAWARE_FILE":        "t.gpx",
-		"SITAWARE_DEVICE_NAME": "env-device",
+		"VINCENTY_TOKEN":       "sat_tok",
+		"VINCENTY_FILE":        "t.gpx",
+		"VINCENTY_DEVICE_NAME": "env-device",
 	})
 	cfg, err := parseConfig(nil, env)
 	if err != nil {

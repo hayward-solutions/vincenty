@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/sitaware/api/internal/model"
+	"github.com/vincenty/api/internal/model"
 )
 
 // Category represents the classified type of a CoT event.

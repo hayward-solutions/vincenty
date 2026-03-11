@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/sitaware/api/internal/model"
+	"github.com/vincenty/api/internal/model"
 	"nhooyr.io/websocket"
 )
 

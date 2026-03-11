@@ -1,5 +1,5 @@
 // Package track provides GPX and GeoJSON parsers that extract ordered
-// track points for streaming to the SitAware API.
+// track points for streaming to the Vincenty API.
 package track
 
 import (

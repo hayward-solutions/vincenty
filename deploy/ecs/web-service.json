@@ -1,7 +1,7 @@
 {
-  "serviceName": "sitaware-web",
-  "cluster": "sitaware",
-  "taskDefinition": "sitaware-web",
+  "serviceName": "vincenty-web",
+  "cluster": "vincenty",
+  "taskDefinition": "vincenty-web",
   "desiredCount": 2,
   "launchType": "FARGATE",
   "platformVersion": "LATEST",
@@ -19,7 +19,7 @@
   },
   "loadBalancers": [
     {
-      "targetGroupArn": "arn:aws:elasticloadbalancing:REGION:ACCOUNT_ID:targetgroup/sitaware-web/xxxx",
+      "targetGroupArn": "arn:aws:elasticloadbalancing:REGION:ACCOUNT_ID:targetgroup/vincenty-web/xxxx",
       "containerName": "web",
       "containerPort": 3000
     }

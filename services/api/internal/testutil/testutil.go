@@ -33,16 +33,16 @@ import (
 	redismod "github.com/testcontainers/testcontainers-go/modules/redis"
 	"github.com/testcontainers/testcontainers-go/wait"
 
-	"github.com/sitaware/api/internal/auth"
-	"github.com/sitaware/api/internal/config"
-	"github.com/sitaware/api/internal/database"
-	"github.com/sitaware/api/internal/handler"
-	"github.com/sitaware/api/internal/middleware"
-	"github.com/sitaware/api/internal/pubsub"
-	"github.com/sitaware/api/internal/repository"
-	"github.com/sitaware/api/internal/service"
-	"github.com/sitaware/api/internal/storage"
-	"github.com/sitaware/api/internal/ws"
+	"github.com/vincenty/api/internal/auth"
+	"github.com/vincenty/api/internal/config"
+	"github.com/vincenty/api/internal/database"
+	"github.com/vincenty/api/internal/handler"
+	"github.com/vincenty/api/internal/middleware"
+	"github.com/vincenty/api/internal/pubsub"
+	"github.com/vincenty/api/internal/repository"
+	"github.com/vincenty/api/internal/service"
+	"github.com/vincenty/api/internal/storage"
+	"github.com/vincenty/api/internal/ws"
 )
 
 // TestEnv holds a fully-wired test server and all its dependencies.
@@ -192,7 +192,7 @@ func Setup(t *testing.T) *TestEnv {
 	})
 
 	// Create test bucket
-	bucketName := "test-sitaware"
+	bucketName := "test-vincenty"
 	_, err = s3Client.CreateBucket(ctx, &s3.CreateBucketInput{
 		Bucket: aws.String(bucketName),
 	})
@@ -234,7 +234,7 @@ func Setup(t *testing.T) *TestEnv {
 		MFA: config.MFAConfig{},
 		WebAuthn: config.WebAuthnConfig{
 			RPID:          "localhost",
-			RPDisplayName: "SitAware Test",
+			RPDisplayName: "Vincenty Test",
 			RPOrigins:     []string{"http://localhost"},
 		},
 		Security: config.SecurityConfig{
@@ -374,7 +374,7 @@ func Setup(t *testing.T) *TestEnv {
 	// API info
 	mux.HandleFunc("GET /api/v1", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		fmt.Fprint(w, `{"service":"sitaware-api","version":"dev"}`)
+		fmt.Fprint(w, `{"service":"vincenty-api","version":"dev"}`)
 	})
 
 	// WebSocket
