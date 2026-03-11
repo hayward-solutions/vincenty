@@ -75,13 +75,19 @@ export function MapView({ settings, onMapReady, children }: MapViewProps) {
       minZoom: settings.min_zoom,
       maxZoom: settings.max_zoom,
       transformRequest: (url: string) => {
+        let hostname: string;
+        try {
+          hostname = new URL(url).hostname;
+        } catch {
+          return { url };
+        }
         // Inject MapBox access token for MapBox-domain URLs
-        if (mapboxToken && (url.includes("mapbox.com") || url.includes("tiles.mapbox.com"))) {
+        if (mapboxToken && (hostname === "mapbox.com" || hostname.endsWith(".mapbox.com"))) {
           const separator = url.includes("?") ? "&" : "?";
           return { url: `${url}${separator}access_token=${mapboxToken}` };
         }
         // Inject Google Maps API key for Google-domain URLs
-        if (googleKey && url.includes("googleapis.com")) {
+        if (googleKey && (hostname === "googleapis.com" || hostname.endsWith(".googleapis.com"))) {
           const separator = url.includes("?") ? "&" : "?";
           return { url: `${url}${separator}key=${googleKey}` };
         }

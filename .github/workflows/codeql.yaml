@@ -22,7 +22,7 @@ jobs:
       matrix:
         include:
           - language: go
-            build-mode: autobuild
+            build-mode: manual
           - language: javascript-typescript
             build-mode: none
     steps:
@@ -47,9 +47,10 @@ jobs:
               - "**/*.sql"
               - "**/*.gpx"
 
-      - name: Autobuild
-        if: matrix.build-mode == 'autobuild'
-        uses: github/codeql-action/autobuild@v3
+      - name: Build Go
+        if: matrix.language == 'go'
+        run: go build ./...
+        working-directory: services/api
 
       - name: Perform CodeQL Analysis
         uses: github/codeql-action/analyze@v3
