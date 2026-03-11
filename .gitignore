@@ -47,6 +47,9 @@ build/
 .build/
 clients/ios/SitAware.xcodeproj/
 
+# MkDocs build output
+site/
+
 # Claude Code / OpenCode
 .opencode/
 
