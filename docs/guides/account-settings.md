@@ -94,7 +94,7 @@ Click **Remove** to unregister a device. You cannot remove your current device (
 
 ## Activity
 
-The Activity page shows your personal audit log -- a record of every action you have performed in SitAware.
+The Activity page shows your personal audit log -- a record of every action you have performed in Vincenty.
 
 Each entry includes:
 - **Time** -- when the action occurred

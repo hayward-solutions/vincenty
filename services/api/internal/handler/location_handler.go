@@ -6,9 +6,9 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/sitaware/api/internal/gpx"
-	"github.com/sitaware/api/internal/middleware"
-	"github.com/sitaware/api/internal/service"
+	"github.com/vincenty/api/internal/gpx"
+	"github.com/vincenty/api/internal/middleware"
+	"github.com/vincenty/api/internal/service"
 )
 
 // LocationHandler handles location query endpoints.
@@ -201,7 +201,7 @@ func (h *LocationHandler) ExportGPX(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	name := fmt.Sprintf("SitAware Track %s", from.UTC().Format("2006-01-02"))
+	name := fmt.Sprintf("Vincenty Track %s", from.UTC().Format("2006-01-02"))
 	data, err := gpx.Generate(name, points)
 	if err != nil {
 		Error(w, http.StatusInternalServerError, "internal_error", "failed to generate GPX")

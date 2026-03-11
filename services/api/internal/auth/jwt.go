@@ -8,7 +8,7 @@ import (
 
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
-	"github.com/sitaware/api/internal/config"
+	"github.com/vincenty/api/internal/config"
 )
 
 // Claims represents the JWT payload for access tokens.
@@ -42,7 +42,7 @@ func (s *JWTService) GenerateAccessToken(userID uuid.UUID, isAdmin bool) (string
 			Subject:   userID.String(),
 			IssuedAt:  jwt.NewNumericDate(now),
 			ExpiresAt: jwt.NewNumericDate(now.Add(s.accessTTL)),
-			Issuer:    "sitaware",
+			Issuer:    "vincenty",
 		},
 		UserID:  userID,
 		IsAdmin: isAdmin,

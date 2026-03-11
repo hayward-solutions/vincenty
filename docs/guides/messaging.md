@@ -1,6 +1,6 @@
 # Messaging
 
-SitAware provides secure group and direct messaging with support for file attachments.
+Vincenty provides secure group and direct messaging with support for file attachments.
 
 ## Conversations View
 

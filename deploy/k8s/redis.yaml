@@ -2,7 +2,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: redis
-  namespace: sitaware
+  namespace: vincenty
 spec:
   selector:
     app: redis
@@ -14,7 +14,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: redis
-  namespace: sitaware
+  namespace: vincenty
 spec:
   replicas: 1
   selector:
@@ -35,7 +35,7 @@ spec:
             - name: REDIS_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: sitaware-secrets
+                  name: vincenty-secrets
                   key: REDIS_PASSWORD
           volumeMounts:
             - name: redisdata

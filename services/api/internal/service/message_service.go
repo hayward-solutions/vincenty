@@ -11,12 +11,12 @@ import (
 	"strings"
 
 	"github.com/google/uuid"
-	imgexif "github.com/sitaware/api/internal/exif"
-	"github.com/sitaware/api/internal/gpx"
-	"github.com/sitaware/api/internal/model"
-	"github.com/sitaware/api/internal/pubsub"
-	"github.com/sitaware/api/internal/repository"
-	"github.com/sitaware/api/internal/storage"
+	imgexif "github.com/vincenty/api/internal/exif"
+	"github.com/vincenty/api/internal/gpx"
+	"github.com/vincenty/api/internal/model"
+	"github.com/vincenty/api/internal/pubsub"
+	"github.com/vincenty/api/internal/repository"
+	"github.com/vincenty/api/internal/storage"
 )
 
 const maxAttachmentSize int64 = 25 * 1024 * 1024 // 25 MB

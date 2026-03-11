@@ -1,10 +1,10 @@
 # MFA Setup
 
-Multi-Factor Authentication (MFA) adds an extra layer of security to your SitAware account. This guide covers setting up each available MFA method.
+Multi-Factor Authentication (MFA) adds an extra layer of security to your Vincenty account. This guide covers setting up each available MFA method.
 
 ## Overview
 
-SitAware supports three MFA methods:
+Vincenty supports three MFA methods:
 
 | Method | Description | Best For |
 |---|---|---|

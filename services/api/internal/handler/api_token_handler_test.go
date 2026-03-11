@@ -11,11 +11,11 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/sitaware/api/internal/auth"
-	"github.com/sitaware/api/internal/middleware"
-	"github.com/sitaware/api/internal/model"
-	"github.com/sitaware/api/internal/repository/mock"
-	"github.com/sitaware/api/internal/service"
+	"github.com/vincenty/api/internal/auth"
+	"github.com/vincenty/api/internal/middleware"
+	"github.com/vincenty/api/internal/model"
+	"github.com/vincenty/api/internal/repository/mock"
+	"github.com/vincenty/api/internal/service"
 )
 
 // testAPITokenHandler returns a handler backed by a mock repo.

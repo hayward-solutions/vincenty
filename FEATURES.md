@@ -154,7 +154,7 @@
 - Store events with spatial indexing for efficient querying
 - Query CoT events by time range, event type, or spatial bounding box
 - Support for CoT stale time (automatic event expiry semantics)
-- Link CoT events to SitAware users/devices via event UID resolution
+- Link CoT events to Vincenty users/devices via event UID resolution
 
 ## Messaging
 

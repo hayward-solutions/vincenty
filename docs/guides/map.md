@@ -1,6 +1,6 @@
 # Using the Map
 
-The map is the core of SitAware. It provides real-time situational awareness with location markers, drawing tools, measurement, replay, and GPX support.
+The map is the core of Vincenty. It provides real-time situational awareness with location markers, drawing tools, measurement, replay, and GPX support.
 
 ## Map Overview
 

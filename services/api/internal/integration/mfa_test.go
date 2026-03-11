@@ -9,7 +9,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/pquerna/otp/totp"
-	"github.com/sitaware/api/internal/testutil"
+	"github.com/vincenty/api/internal/testutil"
 )
 
 // ---------------------------------------------------------------------------

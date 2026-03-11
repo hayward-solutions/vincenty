@@ -63,7 +63,7 @@ func Generate(name string, points []TrackPoint) ([]byte, error) {
 
 	root := gpxRoot{
 		Version: "1.1",
-		Creator: "SitAware",
+		Creator: "Vincenty",
 		XMLNS:   "http://www.topografix.com/GPX/1/1",
 		Tracks: []gpxTrk{
 			{

@@ -9,8 +9,8 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/sitaware/api/internal/pubsub"
-	"github.com/sitaware/api/internal/repository"
+	"github.com/vincenty/api/internal/pubsub"
+	"github.com/vincenty/api/internal/repository"
 )
 
 // LocationBroadcast is the JSON payload published to Redis for location updates.

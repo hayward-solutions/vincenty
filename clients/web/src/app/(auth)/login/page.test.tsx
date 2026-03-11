@@ -56,9 +56,9 @@ beforeEach(() => {
 // ---------------------------------------------------------------------------
 
 describe("LoginPage", () => {
-  it("renders SitAware title and sign in subtitle", () => {
+  it("renders Vincenty title and sign in subtitle", () => {
     render(<LoginPage />);
-    expect(screen.getByText("SitAware")).toBeInTheDocument();
+    expect(screen.getByText("Vincenty")).toBeInTheDocument();
     expect(screen.getByText("Sign in to continue")).toBeInTheDocument();
   });
 

@@ -8,9 +8,9 @@ import (
 	"strings"
 
 	"github.com/google/uuid"
-	"github.com/sitaware/api/internal/model"
-	"github.com/sitaware/api/internal/pubsub"
-	"github.com/sitaware/api/internal/repository"
+	"github.com/vincenty/api/internal/model"
+	"github.com/vincenty/api/internal/pubsub"
+	"github.com/vincenty/api/internal/repository"
 )
 
 // CreateDrawingRequest contains the fields needed to create a drawing.

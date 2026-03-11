@@ -35,7 +35,7 @@ type LocalEncryptor struct {
 func NewLocalEncryptor(jwtSecret []byte) (*LocalEncryptor, error) {
 	// HKDF: extract-then-expand with a context label to separate this key
 	// from the JWT signing key material.
-	info := []byte("sitaware-mfa-totp-v1")
+	info := []byte("vincenty-mfa-totp-v1")
 	hkdfReader := hkdf.New(sha256.New, jwtSecret, nil, info)
 
 	derivedKey := make([]byte, 32) // AES-256

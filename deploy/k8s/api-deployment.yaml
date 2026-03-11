@@ -2,7 +2,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: api
-  namespace: sitaware
+  namespace: vincenty
 spec:
   replicas: 2
   selector:
@@ -15,15 +15,15 @@ spec:
     spec:
       containers:
         - name: api
-          image: sitaware/api:latest
+          image: vincenty/api:latest
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 8080
           envFrom:
             - configMapRef:
-                name: sitaware-config
+                name: vincenty-config
             - secretRef:
-                name: sitaware-secrets
+                name: vincenty-secrets
           resources:
             requests:
               memory: 128Mi

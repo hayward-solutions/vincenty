@@ -7,9 +7,9 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/sitaware/api/internal/model"
-	"github.com/sitaware/api/internal/pubsub"
-	mockrepo "github.com/sitaware/api/internal/repository/mock"
+	"github.com/vincenty/api/internal/model"
+	"github.com/vincenty/api/internal/pubsub"
+	mockrepo "github.com/vincenty/api/internal/repository/mock"
 )
 
 func TestDrawingService_Create(t *testing.T) {

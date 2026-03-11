@@ -5,9 +5,9 @@ import (
 	"net/http"
 
 	"github.com/google/uuid"
-	"github.com/sitaware/api/internal/middleware"
-	"github.com/sitaware/api/internal/model"
-	"github.com/sitaware/api/internal/repository"
+	"github.com/vincenty/api/internal/middleware"
+	"github.com/vincenty/api/internal/model"
+	"github.com/vincenty/api/internal/repository"
 )
 
 // DeviceHandler handles device management endpoints.

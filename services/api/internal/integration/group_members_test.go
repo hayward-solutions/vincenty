@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/sitaware/api/internal/testutil"
+	"github.com/vincenty/api/internal/testutil"
 )
 
 func TestGroupMembers_AddAndList(t *testing.T) {

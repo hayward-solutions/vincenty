@@ -101,7 +101,7 @@ export default function LoginPage() {
     <main className="flex min-h-screen items-center justify-center bg-background">
       <Card className="w-full max-w-sm">
         <CardHeader>
-          <CardTitle className="text-center text-2xl">SitAware</CardTitle>
+          <CardTitle className="text-center text-2xl">Vincenty</CardTitle>
           <p className="text-center text-sm text-muted-foreground">
             Sign in to continue
           </p>

@@ -117,7 +117,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           </Button>
 
           <Link href="/dashboard" className="font-semibold text-lg">
-            SitAware
+            Vincenty
           </Link>
           <Separator orientation="vertical" className="h-6 hidden md:block" />
 
@@ -197,7 +197,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       <Sheet open={mobileNavOpen} onOpenChange={setMobileNavOpen}>
         <SheetContent side="left" className="w-64 p-0">
           <SheetHeader className="border-b px-4 py-3">
-            <SheetTitle>SitAware</SheetTitle>
+            <SheetTitle>Vincenty</SheetTitle>
           </SheetHeader>
           <nav className="flex flex-col gap-1 p-3">
             {navItems.map((item) => (

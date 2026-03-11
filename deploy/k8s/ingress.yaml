@@ -1,8 +1,8 @@
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: sitaware
-  namespace: sitaware
+  name: vincenty
+  namespace: vincenty
   annotations:
     # WebSocket support
     nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
@@ -18,10 +18,10 @@ spec:
   ingressClassName: nginx
   tls:
     - hosts:
-        - sitaware.example.com
-      secretName: sitaware-tls
+        - vincenty.example.com
+      secretName: vincenty-tls
   rules:
-    - host: sitaware.example.com
+    - host: vincenty.example.com
       http:
         paths:
           - path: /api

@@ -1,11 +1,11 @@
 # Location Sharing
 
-SitAware tracks team members' positions in real-time on the map. This guide explains how location sharing works and how to manage it.
+Vincenty tracks team members' positions in real-time on the map. This guide explains how location sharing works and how to manage it.
 
 ## How Location Sharing Works
 
-1. When you open the **Map** page, SitAware requests access to your browser's Geolocation API.
-2. If you grant permission, your position is sent via WebSocket to the SitAware API.
+1. When you open the **Map** page, Vincenty requests access to your browser's Geolocation API.
+2. If you grant permission, your position is sent via WebSocket to the Vincenty API.
 3. The API records your location in the `location_history` table and broadcasts it to all group members with read permission.
 4. Other users see your marker move on their map in real-time.
 

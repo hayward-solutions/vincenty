@@ -8,10 +8,10 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/sitaware/api/internal/model"
-	"github.com/sitaware/api/internal/pubsub"
-	"github.com/sitaware/api/internal/repository"
-	"github.com/sitaware/api/internal/service"
+	"github.com/vincenty/api/internal/model"
+	"github.com/vincenty/api/internal/pubsub"
+	"github.com/vincenty/api/internal/repository"
+	"github.com/vincenty/api/internal/service"
 )
 
 // Hub manages all active WebSocket clients and routes messages between them

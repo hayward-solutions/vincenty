@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/sitaware/api/internal/config"
+	"github.com/vincenty/api/internal/config"
 )
 
 // connectDB establishes a connection pool to PostgreSQL with retry logic.

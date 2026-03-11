@@ -9,13 +9,13 @@
         "s3:PutObject",
         "s3:DeleteObject"
       ],
-      "Resource": "arn:aws:s3:::sitaware-files/*"
+      "Resource": "arn:aws:s3:::vincenty-files/*"
     },
     {
       "Sid": "AllowBucketList",
       "Effect": "Allow",
       "Action": "s3:ListBucket",
-      "Resource": "arn:aws:s3:::sitaware-files"
+      "Resource": "arn:aws:s3:::vincenty-files"
     }
   ]
 }

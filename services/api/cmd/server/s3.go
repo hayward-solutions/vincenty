@@ -9,7 +9,7 @@ import (
 	awsconfig "github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
-	"github.com/sitaware/api/internal/config"
+	"github.com/vincenty/api/internal/config"
 )
 
 // connectS3 creates an S3 client configured for either AWS S3 or Minio.

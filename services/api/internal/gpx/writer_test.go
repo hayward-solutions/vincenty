@@ -26,7 +26,7 @@ func TestGenerate_BasicTrack(t *testing.T) {
 	if !strings.Contains(xml, `version="1.1"`) {
 		t.Error("should contain GPX version 1.1")
 	}
-	if !strings.Contains(xml, `creator="SitAware"`) {
+	if !strings.Contains(xml, `creator="Vincenty"`) {
 		t.Error("should contain creator")
 	}
 	if !strings.Contains(xml, `<name>Test Track</name>`) {

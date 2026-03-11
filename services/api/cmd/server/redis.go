@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/redis/go-redis/v9"
-	"github.com/sitaware/api/internal/config"
+	"github.com/vincenty/api/internal/config"
 )
 
 // connectRedis establishes a connection to Redis with retry logic.

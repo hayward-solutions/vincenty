@@ -7,7 +7,7 @@ import (
 
 	"golang.org/x/time/rate"
 
-	"github.com/sitaware/api/internal/config"
+	"github.com/vincenty/api/internal/config"
 )
 
 type visitor struct {

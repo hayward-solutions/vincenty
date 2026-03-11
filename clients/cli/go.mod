@@ -1,4 +1,4 @@
-module github.com/sitaware/cli
+module github.com/vincenty/cli
 
 go 1.25.0
 

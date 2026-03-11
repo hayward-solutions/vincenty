@@ -8,10 +8,10 @@ import (
 	"strings"
 
 	"github.com/google/uuid"
-	"github.com/sitaware/api/internal/middleware"
-	"github.com/sitaware/api/internal/model"
-	"github.com/sitaware/api/internal/service"
-	"github.com/sitaware/api/internal/storage"
+	"github.com/vincenty/api/internal/middleware"
+	"github.com/vincenty/api/internal/model"
+	"github.com/vincenty/api/internal/service"
+	"github.com/vincenty/api/internal/storage"
 )
 
 const (

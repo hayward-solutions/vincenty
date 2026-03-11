@@ -7,7 +7,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/sitaware/api/internal/model"
+	"github.com/vincenty/api/internal/model"
 )
 
 // DrawingRepository handles database operations for drawings.

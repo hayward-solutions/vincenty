@@ -1,0 +1,129 @@
+# ---------------------------------------------------------------------------
+# API
+# ---------------------------------------------------------------------------
+api:
+  image:
+    repository: vincenty/api
+    tag: latest
+    pullPolicy: IfNotPresent
+  replicas: 2
+  resources:
+    requests:
+      memory: 128Mi
+      cpu: 100m
+    limits:
+      memory: 512Mi
+      cpu: 500m
+  env:
+    logLevel: info
+    rateLimitRPS: "10"
+    rateLimitBurst: "20"
+    maxRequestBodyBytes: "10485760"
+    tokenCleanupInterval: "1h"
+    wsLocationThrottle: "1s"
+    jwtAccessTokenTTL: "15m"
+    jwtRefreshTokenTTL: "168h"
+
+# ---------------------------------------------------------------------------
+# Web
+# ---------------------------------------------------------------------------
+web:
+  image:
+    repository: vincenty/web
+    tag: latest
+    pullPolicy: IfNotPresent
+  replicas: 2
+  resources:
+    requests:
+      memory: 64Mi
+      cpu: 50m
+    limits:
+      memory: 256Mi
+      cpu: 250m
+
+# ---------------------------------------------------------------------------
+# Ingress
+# ---------------------------------------------------------------------------
+ingress:
+  enabled: true
+  className: nginx
+  host: vincenty.example.com
+  tls:
+    enabled: true
+    secretName: vincenty-tls
+  annotations: {}
+
+# ---------------------------------------------------------------------------
+# PostgreSQL
+# ---------------------------------------------------------------------------
+postgresql:
+  # Set to false to use an external database (e.g., RDS)
+  internal: true
+  external:
+    host: ""
+    port: "5432"
+  storage: 10Gi
+  resources:
+    requests:
+      memory: 256Mi
+      cpu: 250m
+    limits:
+      memory: 1Gi
+      cpu: "1"
+
+# ---------------------------------------------------------------------------
+# Redis
+# ---------------------------------------------------------------------------
+redis:
+  # Set to false to use an external Redis (e.g., ElastiCache)
+  internal: true
+  # Enable TLS for Redis connections (required for ElastiCache with transit encryption)
+  tls: false
+  # Enable Redis Cluster mode (required for ElastiCache with cluster mode enabled)
+  cluster: false
+  external:
+    host: ""
+    port: "6379"
+  resources:
+    requests:
+      memory: 64Mi
+      cpu: 100m
+    limits:
+      memory: 256Mi
+      cpu: 250m
+
+# ---------------------------------------------------------------------------
+# S3 (always external — no bundled Minio)
+# ---------------------------------------------------------------------------
+s3:
+  endpoint: ""
+  bucket: vincenty
+  region: us-east-1
+  usePathStyle: false
+
+# ---------------------------------------------------------------------------
+# Map defaults
+# ---------------------------------------------------------------------------
+map:
+  defaultTileURL: "https://tile.openstreetmap.org/{z}/{x}/{y}.png"
+  defaultCenterLat: "0"
+  defaultCenterLng: "0"
+  defaultZoom: "2"
+
+# ---------------------------------------------------------------------------
+# Secrets
+# Replace these before deploying. In production, use sealed-secrets
+# or external-secrets-operator to manage secrets securely.
+# ---------------------------------------------------------------------------
+secrets:
+  adminUsername: admin
+  adminPassword: CHANGE_ME
+  adminEmail: admin@vincenty.local
+  jwtSecret: CHANGE_ME_TO_A_RANDOM_SECRET
+  dbUser: vincenty
+  dbPassword: CHANGE_ME
+  dbName: vincenty
+  redisPassword: CHANGE_ME
+  s3AccessKey: CHANGE_ME
+  s3SecretKey: CHANGE_ME
+  corsAllowedOrigins: "https://vincenty.example.com"

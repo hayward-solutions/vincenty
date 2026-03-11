@@ -4,8 +4,8 @@ import (
 	"context"
 	"net/http"
 
-	"github.com/sitaware/api/internal/model"
-	"github.com/sitaware/api/internal/repository"
+	"github.com/vincenty/api/internal/model"
+	"github.com/vincenty/api/internal/repository"
 )
 
 // ServerSettingsHandler handles server settings endpoints.

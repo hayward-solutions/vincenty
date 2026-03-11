@@ -75,9 +75,9 @@ function renderLayout(children: React.ReactNode = <p>page content</p>) {
 
 describe("AppLayout", () => {
   // 1. Brand link
-  it('renders "SitAware" brand link pointing to /dashboard', () => {
+  it('renders "Vincenty" brand link pointing to /dashboard', () => {
     renderLayout();
-    const brand = screen.getByRole("link", { name: "SitAware" });
+    const brand = screen.getByRole("link", { name: "Vincenty" });
     expect(brand).toBeInTheDocument();
     expect(brand).toHaveAttribute("href", "/dashboard");
   });

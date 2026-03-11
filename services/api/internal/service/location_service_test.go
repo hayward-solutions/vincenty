@@ -6,10 +6,10 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/sitaware/api/internal/model"
-	"github.com/sitaware/api/internal/pubsub"
-	"github.com/sitaware/api/internal/repository"
-	mockrepo "github.com/sitaware/api/internal/repository/mock"
+	"github.com/vincenty/api/internal/model"
+	"github.com/vincenty/api/internal/pubsub"
+	"github.com/vincenty/api/internal/repository"
+	mockrepo "github.com/vincenty/api/internal/repository/mock"
 )
 
 func TestLocationService_Update_Accepted(t *testing.T) {

@@ -5,7 +5,7 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/sitaware/api/internal/testutil"
+	"github.com/vincenty/api/internal/testutil"
 )
 
 var (

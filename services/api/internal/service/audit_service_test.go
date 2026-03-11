@@ -8,8 +8,8 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/sitaware/api/internal/model"
-	mockrepo "github.com/sitaware/api/internal/repository/mock"
+	"github.com/vincenty/api/internal/model"
+	mockrepo "github.com/vincenty/api/internal/repository/mock"
 )
 
 // newTestPermSvc creates a PermissionPolicyService backed by a mock that

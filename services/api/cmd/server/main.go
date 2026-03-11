@@ -12,16 +12,16 @@ import (
 
 	"github.com/go-webauthn/webauthn/webauthn"
 	"github.com/google/uuid"
-	"github.com/sitaware/api/internal/auth"
-	"github.com/sitaware/api/internal/config"
-	"github.com/sitaware/api/internal/database"
-	"github.com/sitaware/api/internal/handler"
-	"github.com/sitaware/api/internal/middleware"
-	"github.com/sitaware/api/internal/pubsub"
-	"github.com/sitaware/api/internal/repository"
-	"github.com/sitaware/api/internal/service"
-	"github.com/sitaware/api/internal/storage"
-	"github.com/sitaware/api/internal/ws"
+	"github.com/vincenty/api/internal/auth"
+	"github.com/vincenty/api/internal/config"
+	"github.com/vincenty/api/internal/database"
+	"github.com/vincenty/api/internal/handler"
+	"github.com/vincenty/api/internal/middleware"
+	"github.com/vincenty/api/internal/pubsub"
+	"github.com/vincenty/api/internal/repository"
+	"github.com/vincenty/api/internal/service"
+	"github.com/vincenty/api/internal/storage"
+	"github.com/vincenty/api/internal/ws"
 )
 
 // version is set at build time via -ldflags "-X main.version=<value>".
@@ -54,7 +54,7 @@ func main() {
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: logLevel}))
 	slog.SetDefault(logger)
 
-	slog.Info("starting SitAware API",
+	slog.Info("starting Vincenty API",
 		"host", cfg.Server.Host,
 		"port", cfg.Server.Port,
 		"version", version,
@@ -285,7 +285,7 @@ func main() {
 	// API info (public)
 	mux.HandleFunc("GET /api/v1", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		fmt.Fprintf(w, `{"service":"sitaware-api","version":%q}`, version)
+		fmt.Fprintf(w, `{"service":"vincenty-api","version":%q}`, version)
 	})
 
 	// WebSocket (auth via query param in handler)

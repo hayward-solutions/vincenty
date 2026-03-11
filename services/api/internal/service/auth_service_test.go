@@ -7,10 +7,10 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/sitaware/api/internal/auth"
-	"github.com/sitaware/api/internal/config"
-	"github.com/sitaware/api/internal/model"
-	"github.com/sitaware/api/internal/repository/mock"
+	"github.com/vincenty/api/internal/auth"
+	"github.com/vincenty/api/internal/config"
+	"github.com/vincenty/api/internal/model"
+	"github.com/vincenty/api/internal/repository/mock"
 )
 
 // testJWT creates a lightweight JWTService suitable for unit tests.

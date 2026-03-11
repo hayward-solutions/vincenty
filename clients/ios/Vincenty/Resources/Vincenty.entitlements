@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>com.apple.developer.associated-domains</key>
+	<array>
+		<!-- Replace with your server's domain for passkey support.
+		     The server must also host /.well-known/apple-app-site-association
+		     with: { "webcredentials": { "apps": ["TEAMID.com.vincenty.app"] } }
+		     See: https://developer.apple.com/documentation/xcode/supporting-associated-domains -->
+		<string>webcredentials:REPLACE_WITH_YOUR_DOMAIN</string>
+	</array>
+</dict>
+</plist>

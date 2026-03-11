@@ -17,9 +17,9 @@ import (
 	"github.com/redis/go-redis/v9"
 	"golang.org/x/crypto/bcrypt"
 
-	"github.com/sitaware/api/internal/auth"
-	"github.com/sitaware/api/internal/model"
-	"github.com/sitaware/api/internal/repository"
+	"github.com/vincenty/api/internal/auth"
+	"github.com/vincenty/api/internal/model"
+	"github.com/vincenty/api/internal/repository"
 )
 
 const (
@@ -34,7 +34,7 @@ const (
 	// recoveryCodeCount is the number of recovery codes generated.
 	recoveryCodeCount = 8
 	// totpIssuer is the issuer shown in authenticator apps.
-	totpIssuer = "SitAware"
+	totpIssuer = "Vincenty"
 )
 
 // MFAService handles MFA business logic including TOTP, WebAuthn, and recovery codes.

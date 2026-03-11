@@ -7,9 +7,9 @@ import (
 	"testing"
 
 	"github.com/google/uuid"
-	"github.com/sitaware/api/internal/model"
-	mockrepo "github.com/sitaware/api/internal/repository/mock"
-	"github.com/sitaware/api/internal/storage"
+	"github.com/vincenty/api/internal/model"
+	mockrepo "github.com/vincenty/api/internal/repository/mock"
+	"github.com/vincenty/api/internal/storage"
 )
 
 func TestUserService_Create(t *testing.T) {
