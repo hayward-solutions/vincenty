@@ -10,13 +10,15 @@ A modern, lightweight situational awareness platform. Built as an alternative to
 
 ## Why Vincenty?
 
-TAK Server is powerful but heavy — complex to deploy, tightly coupled to specific clients, and difficult to run in constrained environments. Vincenty takes a different approach:
+Situational Awareness tools are powerful but heavy — complex to deploy, tightly coupled to specific clients, and difficult to run in constrained environments. Vincenty takes a different approach:
 
 - **Lightweight** — Go API with minimal dependencies, distroless container images
 - **Air-gap ready** — No CDN calls, no external fonts, local tile serving. Works on an isolated network with `docker compose up`
 - **Modern clients** — Browser-based web UI and native iOS app with real-time maps, chat, and admin tools
 - **Cloud native** — Runs on Docker Compose, Kubernetes, or AWS ECS Fargate
 - **Simple operations** — All configuration via environment variables, automatic database migrations, admin bootstrap on first start
+
+To see how we stack up against others, see [Comparisons](./docs/reference/comparisons.md).
 
 ## Quick Start
 
