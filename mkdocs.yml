@@ -1,0 +1,73 @@
+site_name: Vincenty
+site_description: A modern, lightweight situational awareness platform
+site_url: https://hayward-solutions.github.io/vincenty
+repo_url: https://github.com/hayward-solutions/vincenty
+repo_name: hayward-solutions/vincenty
+edit_uri: edit/main/docs/
+
+theme:
+  name: material
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  features:
+    - navigation.sections
+    - navigation.expand
+    - navigation.top
+    - content.code.copy
+    - content.action.edit
+    - search.highlight
+    - search.share
+  icon:
+    repo: fontawesome/brands/github
+
+markdown_extensions:
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.inlinehilite
+  - tables
+  - attr_list
+  - md_in_html
+  - toc:
+      permalink: true
+
+plugins:
+  - search
+
+nav:
+  - Home: index.md
+  - Getting Started:
+      - Quick Start: guides/getting-started.md
+      - Using the Map: guides/map.md
+      - Messaging: guides/messaging.md
+      - Location Sharing: guides/location-sharing.md
+  - Account:
+      - Account Settings: guides/account-settings.md
+      - MFA Setup: guides/mfa-setup.md
+  - Administration:
+      - Admin Guide: guides/admin-guide.md
+  - CLI: guides/cli.md
+  - Reference:
+      - Architecture: reference/architecture.md
+      - Features: reference/features.md
+      - API Endpoints: reference/api.md
+      - Configuration: reference/configuration.md
+      - Deployment: reference/deployment.md
+  - Contributing: contributing.md

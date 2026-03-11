@@ -4,7 +4,7 @@ This guide walks you through your first login and orients you around the Vincent
 
 ## Prerequisites
 
-Vincenty must be running. If you are deploying it yourself, see the [Quick Start](../../README.md#quick-start) section in the README.
+Vincenty must be running. If you are deploying it yourself, see the [Quick Start](../index.md#quick-start) section.
 
 ## First Login
 
