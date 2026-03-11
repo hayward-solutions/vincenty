@@ -15,6 +15,7 @@ import {
 import { useUsers } from "@/lib/hooks/use-users";
 import { useGroupAuditLogs } from "@/lib/hooks/use-audit-logs";
 import { AuditLogTable } from "@/components/audit/audit-log-table";
+import { GroupMediaSection } from "@/components/media/group-media-section";
 import {
   AVAILABLE_SHAPES,
   MARKER_SHAPES,
@@ -148,6 +149,8 @@ export default function GroupDetailPage() {
           </div>
         )}
       </div>
+
+      <GroupMediaSection groupId={groupId} />
 
       <GroupAuditSection groupId={groupId} />
 

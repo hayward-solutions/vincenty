@@ -39,11 +39,11 @@ const (
 
 // MFAService handles MFA business logic including TOTP, WebAuthn, and recovery codes.
 type MFAService struct {
-	mfaRepo    repository.MFARepo
-	userRepo   repository.UserRepo
-	encryptor  auth.SecretEncryptor
-	rdb        redis.Cmdable
-	webAuthn   *webauthn.WebAuthn
+	mfaRepo   repository.MFARepo
+	userRepo  repository.UserRepo
+	encryptor auth.SecretEncryptor
+	rdb       redis.Cmdable
+	webAuthn  *webauthn.WebAuthn
 }
 
 // NewMFAService creates a new MFAService.

@@ -19,6 +19,18 @@ const (
 	TypeDrawingUpdated    = "drawing_updated"
 	TypeConnected         = "connected"
 	TypeError             = "error"
+
+	// Streams
+	TypeStreamStarted = "stream_started"
+	TypeStreamStopped = "stream_stopped"
+
+	// Push-to-Talk (Client → Server)
+	TypePTTFloorRequest = "ptt_floor_request"
+	TypePTTFloorRelease = "ptt_floor_release"
+
+	// Push-to-Talk (Server → Client)
+	TypePTTFloorGranted  = "ptt_floor_granted"
+	TypePTTFloorReleased = "ptt_floor_released"
 )
 
 // Envelope is the outer JSON wrapper for all WebSocket messages.
@@ -93,4 +105,9 @@ type ConnectedGroup struct {
 // ErrorPayload is sent when the server encounters an error.
 type ErrorPayload struct {
 	Message string `json:"message"`
+}
+
+// PTTFloorRequestPayload is sent by the client to request or release the PTT floor.
+type PTTFloorRequestPayload struct {
+	ChannelID uuid.UUID `json:"channel_id"`
 }

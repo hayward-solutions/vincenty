@@ -73,6 +73,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     { href: "/dashboard", label: "Dashboard" },
     { href: "/map", label: "Map" },
     { href: "/messages", label: "Messages" },
+    { href: "/media", label: "Media" },
   ];
 
   async function handleLogout() {

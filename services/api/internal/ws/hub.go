@@ -60,6 +60,8 @@ func (h *Hub) Run(ctx context.Context) {
 		"group:*:location",
 		"group:*:messages",
 		"group:*:drawings",
+		"group:*:streams",
+		"group:*:ptt",
 		"user:*:location",
 		"user:*:membership",
 		"user:*:direct",
@@ -286,6 +288,84 @@ func (h *Hub) routeMessage(msg pubsub.Message) {
 			"target_user_id", userID,
 		)
 		h.sendToUser(userID, data)
+
+	case strings.HasSuffix(channel, ":streams"):
+		// channel format: group:<uuid>:streams
+		// Payload must include "event_type" to determine the WS message type.
+		groupID := extractID(channel)
+		if groupID == uuid.Nil {
+			return
+		}
+
+		var partial struct {
+			EventType string    `json:"event_type"`
+			UserID    uuid.UUID `json:"user_id"`
+		}
+		if err := json.Unmarshal(msg.Payload, &partial); err != nil {
+			slog.Warn("failed to unmarshal stream event", "error", err)
+			return
+		}
+
+		wsType := partial.EventType
+		if wsType == "" {
+			slog.Warn("stream event missing event_type", "channel", channel)
+			return
+		}
+
+		data, err := json.Marshal(Envelope{
+			Type:    wsType,
+			Payload: msg.Payload,
+		})
+		if err != nil {
+			slog.Warn("failed to marshal stream envelope", "error", err)
+			return
+		}
+
+		recipientCount := h.broadcastToGroup(groupID, uuid.Nil, model.ActionViewStream, data)
+		slog.Debug("routeMessage: stream event broadcast",
+			"group_id", groupID,
+			"event_type", wsType,
+			"recipients", recipientCount,
+		)
+
+	case strings.HasSuffix(channel, ":ptt"):
+		// channel format: group:<uuid>:ptt
+		// Payload must include "event_type" to determine the WS message type.
+		groupID := extractID(channel)
+		if groupID == uuid.Nil {
+			return
+		}
+
+		var partial struct {
+			EventType string    `json:"event_type"`
+			UserID    uuid.UUID `json:"user_id"`
+		}
+		if err := json.Unmarshal(msg.Payload, &partial); err != nil {
+			slog.Warn("failed to unmarshal ptt event", "error", err)
+			return
+		}
+
+		wsType := partial.EventType
+		if wsType == "" {
+			slog.Warn("ptt event missing event_type", "channel", channel)
+			return
+		}
+
+		data, err := json.Marshal(Envelope{
+			Type:    wsType,
+			Payload: msg.Payload,
+		})
+		if err != nil {
+			slog.Warn("failed to marshal ptt envelope", "error", err)
+			return
+		}
+
+		recipientCount := h.broadcastToGroup(groupID, uuid.Nil, model.ActionUsePTT, data)
+		slog.Debug("routeMessage: ptt event broadcast",
+			"group_id", groupID,
+			"event_type", wsType,
+			"recipients", recipientCount,
+		)
 
 	case strings.HasSuffix(channel, ":drawings"):
 		// channel format: group:<uuid>:drawings OR user:<uuid>:drawings
@@ -613,6 +693,73 @@ func (h *Hub) handleLocationUpdate(ctx context.Context, c *Client, payload *Loca
 	)
 }
 
+// handlePTTFloorRequest publishes a PTT floor request to Redis so it reaches
+// all API nodes. The actual floor arbitration will be handled by the PTT
+// service in a later phase.
+func (h *Hub) handlePTTFloorRequest(ctx context.Context, c *Client, payload *PTTFloorRequestPayload) {
+	// Find the group that owns this channel. For now, use the channel_id as
+	// the group ID — the PTT service will resolve channels in Phase 4.
+	groupID := payload.ChannelID
+
+	member := c.membership(groupID)
+	if member == nil {
+		c.sendError("not a member of the group")
+		return
+	}
+
+	policy, _ := h.permSvc.GetPolicy(ctx)
+	if policy != nil && !policy.CheckCommunication(model.ActionUsePTT, member, c.isAdmin) {
+		c.sendError("permission denied: use_ptt")
+		return
+	}
+
+	event, err := json.Marshal(map[string]any{
+		"event_type": TypePTTFloorRequest,
+		"channel_id": payload.ChannelID,
+		"user_id":    c.userID,
+		"device_id":  c.deviceID,
+	})
+	if err != nil {
+		slog.Error("failed to marshal ptt floor request", "error", err)
+		return
+	}
+
+	channel := "group:" + groupID.String() + ":ptt"
+	if err := h.ps.Publish(ctx, channel, event); err != nil {
+		slog.Error("failed to publish ptt floor request", "error", err, "channel", channel)
+		c.sendError("failed to relay ptt floor request")
+	}
+}
+
+// handlePTTFloorRelease publishes a PTT floor release to Redis so it reaches
+// all API nodes.
+func (h *Hub) handlePTTFloorRelease(ctx context.Context, c *Client, payload *PTTFloorRequestPayload) {
+	groupID := payload.ChannelID
+
+	member := c.membership(groupID)
+	if member == nil {
+		c.sendError("not a member of the group")
+		return
+	}
+
+	event, err := json.Marshal(map[string]any{
+		"event_type": TypePTTFloorRelease,
+		"channel_id": payload.ChannelID,
+		"user_id":    c.userID,
+		"device_id":  c.deviceID,
+	})
+	if err != nil {
+		slog.Error("failed to marshal ptt floor release", "error", err)
+		return
+	}
+
+	channel := "group:" + groupID.String() + ":ptt"
+	if err := h.ps.Publish(ctx, channel, event); err != nil {
+		slog.Error("failed to publish ptt floor release", "error", err, "channel", channel)
+		c.sendError("failed to relay ptt floor release")
+	}
+}
+
 // totalClients returns the total number of connected clients.
 func (h *Hub) totalClients() int {
 	count := 0
@@ -634,8 +781,6 @@ func extractID(channel string) uuid.UUID {
 	}
 	return id
 }
-
-
 
 // buildSnapshotLocations converts location records into LocationBroadcastPayload
 // entries, skipping the given excludeDeviceID and tagging each with groupID.

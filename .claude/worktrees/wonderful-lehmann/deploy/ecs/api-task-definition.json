@@ -1,0 +1,89 @@
+{
+  "family": "vincenty-api",
+  "networkMode": "awsvpc",
+  "requiresCompatibilities": ["FARGATE"],
+  "cpu": "512",
+  "memory": "1024",
+  "executionRoleArn": "arn:aws:iam::ACCOUNT_ID:role/vincenty-ecs-execution-role",
+  "taskRoleArn": "arn:aws:iam::ACCOUNT_ID:role/vincenty-api-task-role",
+  "containerDefinitions": [
+    {
+      "name": "api",
+      "image": "ACCOUNT_ID.dkr.ecr.REGION.amazonaws.com/vincenty/api:latest",
+      "essential": true,
+      "portMappings": [
+        {
+          "containerPort": 8080,
+          "protocol": "tcp"
+        }
+      ],
+      "healthCheck": {
+        "command": ["CMD", "/server", "healthcheck"],
+        "interval": 30,
+        "timeout": 5,
+        "retries": 3,
+        "startPeriod": 60
+      },
+      "secrets": [
+        {
+          "name": "ADMIN_PASSWORD",
+          "valueFrom": "arn:aws:ssm:REGION:ACCOUNT_ID:parameter/vincenty/admin-password"
+        },
+        {
+          "name": "JWT_SECRET",
+          "valueFrom": "arn:aws:ssm:REGION:ACCOUNT_ID:parameter/vincenty/jwt-secret"
+        },
+        {
+          "name": "DB_PASSWORD",
+          "valueFrom": "arn:aws:ssm:REGION:ACCOUNT_ID:parameter/vincenty/db-password"
+        },
+        {
+          "name": "REDIS_PASSWORD",
+          "valueFrom": "arn:aws:ssm:REGION:ACCOUNT_ID:parameter/vincenty/redis-password"
+        }
+      ],
+      "environment": [
+        { "name": "ADMIN_USERNAME", "value": "admin" },
+        { "name": "ADMIN_EMAIL", "value": "admin@vincenty.local" },
+        { "name": "API_HOST", "value": "0.0.0.0" },
+        { "name": "API_PORT", "value": "8080" },
+        { "name": "API_LOG_LEVEL", "value": "info" },
+        { "name": "JWT_ACCESS_TOKEN_TTL", "value": "15m" },
+        { "name": "JWT_REFRESH_TOKEN_TTL", "value": "168h" },
+        { "name": "DB_HOST", "value": "vincenty-db.cluster-xxxx.REGION.rds.amazonaws.com" },
+        { "name": "DB_PORT", "value": "5432" },
+        { "name": "DB_USER", "value": "vincenty" },
+        { "name": "DB_NAME", "value": "vincenty" },
+        { "name": "DB_SSLMODE", "value": "require" },
+        { "name": "REDIS_HOST", "value": "vincenty-redis.xxxx.REGION.cache.amazonaws.com" },
+        { "name": "REDIS_PORT", "value": "6379" },
+        { "name": "REDIS_TLS", "value": "true" },
+        { "name": "REDIS_CLUSTER", "value": "false" },
+        { "name": "S3_BUCKET", "value": "vincenty-files" },
+        { "name": "S3_REGION", "value": "us-east-1" },
+        { "name": "S3_USE_PATH_STYLE", "value": "false" },
+        { "name": "WS_LOCATION_THROTTLE", "value": "1s" },
+        { "name": "CORS_ALLOWED_ORIGINS", "value": "https://vincenty.example.com" },
+        { "name": "RATE_LIMIT_RPS", "value": "10" },
+        { "name": "RATE_LIMIT_BURST", "value": "20" },
+        { "name": "MAX_REQUEST_BODY_BYTES", "value": "10485760" },
+        { "name": "TOKEN_CLEANUP_INTERVAL", "value": "1h" },
+        { "name": "WEBAUTHN_RP_ID", "value": "vincenty.example.com" },
+        { "name": "WEBAUTHN_RP_DISPLAY_NAME", "value": "Vincenty" },
+        { "name": "WEBAUTHN_RP_ORIGINS", "value": "https://vincenty.example.com" },
+        { "name": "MAP_DEFAULT_TILE_URL", "value": "/api/v1/tiles/{z}/{x}/{y}.png" },
+        { "name": "MAP_DEFAULT_CENTER_LAT", "value": "0" },
+        { "name": "MAP_DEFAULT_CENTER_LNG", "value": "0" },
+        { "name": "MAP_DEFAULT_ZOOM", "value": "2" }
+      ],
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/ecs/vincenty-api",
+          "awslogs-region": "REGION",
+          "awslogs-stream-prefix": "api"
+        }
+      }
+    }
+  ]
+}

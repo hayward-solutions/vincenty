@@ -41,6 +41,10 @@ const (
 	ActionShareDrawings   = "share_drawings"
 	ActionShareLocation   = "share_location"
 	ActionViewLocations   = "view_locations"
+	ActionStartStream     = "start_stream"
+	ActionViewStream      = "view_stream"
+	ActionRecordStream    = "record_stream"
+	ActionUsePTT          = "use_ptt"
 )
 
 // Group management actions (admin panel bypasses; matrix governs group-level roles).
@@ -60,6 +64,10 @@ var ValidCommunicationActions = map[string]bool{
 	ActionShareDrawings:   true,
 	ActionShareLocation:   true,
 	ActionViewLocations:   true,
+	ActionStartStream:     true,
+	ActionViewStream:      true,
+	ActionRecordStream:    true,
+	ActionUsePTT:          true,
 }
 
 // ValidManagementActions lists every recognised management action.
@@ -100,6 +108,10 @@ func DefaultPermissionPolicy() PermissionPolicy {
 			ActionShareDrawings:   {RoleServerAdmin, RoleGroupAdmin, RoleWriter},
 			ActionShareLocation:   {RoleServerAdmin, RoleGroupAdmin, RoleWriter, RoleReader},
 			ActionViewLocations:   {RoleServerAdmin, RoleGroupAdmin, RoleWriter, RoleReader},
+			ActionStartStream:     {RoleServerAdmin, RoleGroupAdmin, RoleWriter},
+			ActionViewStream:      {RoleServerAdmin, RoleGroupAdmin, RoleWriter, RoleReader},
+			ActionRecordStream:    {RoleServerAdmin, RoleGroupAdmin},
+			ActionUsePTT:          {RoleServerAdmin, RoleGroupAdmin, RoleWriter, RoleReader},
 		},
 		GroupManagement: map[string][]string{
 			ActionAddMembers:    {RoleGroupAdmin},

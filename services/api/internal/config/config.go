@@ -49,6 +49,9 @@ type Config struct {
 	// Security
 	Security SecurityConfig
 
+	// LiveKit media server
+	LiveKit LiveKitConfig
+
 	// Token cleanup
 	TokenCleanupInterval time.Duration
 }
@@ -148,6 +151,12 @@ type SecurityConfig struct {
 	MaxRequestBodyBytes int64
 }
 
+type LiveKitConfig struct {
+	URL       string
+	APIKey    string
+	APISecret string
+}
+
 // Load reads configuration from environment variables with sensible defaults.
 func Load() (*Config, error) {
 	cfg := &Config{
@@ -217,6 +226,11 @@ func Load() (*Config, error) {
 		},
 		Security: SecurityConfig{
 			MaxRequestBodyBytes: envInt64("MAX_REQUEST_BODY_BYTES", 10<<20), // 10MB
+		},
+		LiveKit: LiveKitConfig{
+			URL:       envStr("LIVEKIT_URL", "ws://localhost:7880"),
+			APIKey:    envStr("LIVEKIT_API_KEY", "devkey"),
+			APISecret: envStr("LIVEKIT_API_SECRET", "secret0123456789"),
 		},
 		TokenCleanupInterval: envDuration("TOKEN_CLEANUP_INTERVAL", 1*time.Hour),
 	}

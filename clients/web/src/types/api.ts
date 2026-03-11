@@ -571,3 +571,117 @@ export interface PermissionPolicy {
 }
 
 export type UpdatePermissionPolicyRequest = PermissionPolicy;
+
+// ---------------------------------------------------------------------------
+// Media Rooms (backing rooms for streams and PTT channels)
+// ---------------------------------------------------------------------------
+
+export interface MediaRoom {
+  id: string;
+  name: string;
+  room_type: "stream" | "ptt_channel";
+  group_id?: string;
+  created_by: string;
+  livekit_room: string;
+  is_active: boolean;
+  max_participants: number;
+  created_at: string;
+  ended_at?: string;
+}
+
+export interface JoinRoomResponse {
+  room: MediaRoom;
+  token: string;
+  url: string;
+}
+
+// ---------------------------------------------------------------------------
+// Streams
+// ---------------------------------------------------------------------------
+
+export interface Stream {
+  id: string;
+  name: string;
+  source_type: "rtsp" | "rtmp" | "whip" | "device_camera" | "screen_share";
+  source_url?: string;
+  group_id: string;
+  created_by: string;
+  stream_key?: string;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CreateStreamRequest {
+  name: string;
+  source_type: "rtsp" | "rtmp" | "whip" | "device_camera" | "screen_share";
+  source_url?: string;
+  group_id: string;
+}
+
+export interface StreamStartResponse {
+  stream: Stream;
+  ingest_url?: string;
+  stream_key?: string;
+  token?: string;
+  url?: string;
+}
+
+// ---------------------------------------------------------------------------
+// Recordings
+// ---------------------------------------------------------------------------
+
+export interface Recording {
+  id: string;
+  room_id?: string;
+  stream_id?: string;
+  file_type: string;
+  duration_secs?: number;
+  file_size_bytes?: number;
+  status: "recording" | "processing" | "complete" | "failed";
+  playback_url?: string;
+  started_at: string;
+  ended_at?: string;
+}
+
+// ---------------------------------------------------------------------------
+// PTT Channels
+// ---------------------------------------------------------------------------
+
+export interface PTTChannel {
+  id: string;
+  group_id: string;
+  room_id: string;
+  name: string;
+  is_default: boolean;
+  created_at: string;
+}
+
+export interface CreatePTTChannelRequest {
+  name: string;
+  is_default?: boolean;
+}
+
+export interface JoinPTTChannelResponse {
+  channel: PTTChannel;
+  token: string;
+  url: string;
+}
+
+// ---------------------------------------------------------------------------
+// WebSocket media event types
+// ---------------------------------------------------------------------------
+
+export interface WSStreamEvent {
+  stream_id: string;
+  stream_name: string;
+  group_id: string;
+  event_type: "started" | "stopped";
+}
+
+export interface WSPTTFloorEvent {
+  channel_id: string;
+  event_type: "floor_granted" | "floor_released";
+  holder_id?: string;
+  holder_name?: string;
+}

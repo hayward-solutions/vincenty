@@ -10,6 +10,7 @@ struct MainTabView: View {
         case dashboard
         case map
         case messages
+        case media
         case settings
     }
 
@@ -26,6 +27,10 @@ struct MainTabView: View {
             MessagesScreen()
                 .tabItem { Label("Messages", systemImage: "message") }
                 .tag(Tab.messages)
+
+            MediaScreen()
+                .tabItem { Label("Media", systemImage: "video") }
+                .tag(Tab.media)
 
             SettingsScreen()
                 .tabItem { Label("Settings", systemImage: "gear") }

@@ -9,6 +9,9 @@ struct SitAwareApp: App {
     @State private var webSocketService = WebSocketService()
     @State private var locationManager = LocationSharingManager()
     @State private var syncManager = SyncManager()
+    @State private var callViewModel = CallViewModel()
+    @State private var pttViewModel = PTTViewModel()
+    @State private var feedViewModel = FeedViewModel()
 
     private let modelContainer: ModelContainer
 
@@ -29,6 +32,9 @@ struct SitAwareApp: App {
                 .environment(webSocketService)
                 .environment(locationManager)
                 .environment(syncManager)
+                .environment(callViewModel)
+                .environment(pttViewModel)
+                .environment(feedViewModel)
                 .modelContainer(modelContainer)
                 .task {
                     AppLogger.shared.log(.info, .app, "App launched")

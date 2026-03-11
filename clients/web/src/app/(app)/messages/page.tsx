@@ -9,6 +9,9 @@ import {
   useGroupMessages,
   useDirectMessages,
 } from "@/lib/hooks/use-messages";
+import { toast } from "sonner";
+import { ApiError } from "@/lib/api";
+import { useCreateCall } from "@/lib/hooks/use-calls";
 import { ConversationList } from "@/components/chat/conversation-list";
 import { MessageThread } from "@/components/chat/message-thread";
 import { MessageInput } from "@/components/chat/message-input";
@@ -21,7 +24,9 @@ import {
   ArrowLeft,
   Hash,
   MessageSquare,
+  Phone,
   User as UserIcon,
+  Video,
 } from "lucide-react";
 
 export default function MessagesPage() {
@@ -34,6 +39,7 @@ export default function MessagesPage() {
     addDmConversation,
   } = useConversations();
   const { sendMessage, isLoading: sending } = useSendMessage();
+  const { createCall, isLoading: callLoading } = useCreateCall();
 
   const [activeConversation, setActiveConversation] =
     useState<Conversation | null>(null);
@@ -177,6 +183,60 @@ export default function MessagesPage() {
               <h3 className="text-sm font-semibold truncate">
                 {activeConversation.name}
               </h3>
+              {activeConversation.type === "group" && (
+                <div className="ml-auto flex items-center gap-1">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 w-8 p-0"
+                    disabled={callLoading}
+                    onClick={async () => {
+                      try {
+                        await createCall({
+                          group_id: activeConversation.id,
+                          name: `${activeConversation.name} call`,
+                          video_enabled: false,
+                        });
+                        toast.success("Call started");
+                      } catch (err) {
+                        toast.error(
+                          err instanceof ApiError
+                            ? err.message
+                            : "Failed to start call"
+                        );
+                      }
+                    }}
+                    title="Start voice call"
+                  >
+                    <Phone className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 w-8 p-0"
+                    disabled={callLoading}
+                    onClick={async () => {
+                      try {
+                        await createCall({
+                          group_id: activeConversation.id,
+                          name: `${activeConversation.name} call`,
+                          video_enabled: true,
+                        });
+                        toast.success("Video call started");
+                      } catch (err) {
+                        toast.error(
+                          err instanceof ApiError
+                            ? err.message
+                            : "Failed to start call"
+                        );
+                      }
+                    }}
+                    title="Start video call"
+                  >
+                    <Video className="h-4 w-4" />
+                  </Button>
+                </div>
+              )}
             </div>
 
             {/* Messages */}

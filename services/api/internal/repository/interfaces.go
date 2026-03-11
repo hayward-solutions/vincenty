@@ -258,6 +258,69 @@ type APITokenRepo interface {
 }
 
 // ---------------------------------------------------------------------------
+// MediaRoomRepo
+// ---------------------------------------------------------------------------
+
+// MediaRoomRepo abstracts media room persistence.
+type MediaRoomRepo interface {
+	Create(ctx context.Context, room *model.MediaRoom) error
+	GetByID(ctx context.Context, id uuid.UUID) (*model.MediaRoom, error)
+	GetByLiveKitRoom(ctx context.Context, lkRoom string) (*model.MediaRoom, error)
+	ListByGroupID(ctx context.Context, groupID uuid.UUID, activeOnly bool) ([]model.MediaRoom, error)
+	ListActiveByUserGroups(ctx context.Context, userID uuid.UUID) ([]model.MediaRoom, error)
+	Update(ctx context.Context, room *model.MediaRoom) error
+	End(ctx context.Context, id uuid.UUID) error
+
+	// Participants
+	AddParticipant(ctx context.Context, p *model.MediaRoomParticipant) error
+	MarkParticipantLeft(ctx context.Context, roomID, userID uuid.UUID) error
+	ListParticipants(ctx context.Context, roomID uuid.UUID) ([]model.MediaRoomParticipant, error)
+	CountActiveParticipants(ctx context.Context, roomID uuid.UUID) (int, error)
+}
+
+// ---------------------------------------------------------------------------
+// StreamRepo
+// ---------------------------------------------------------------------------
+
+// StreamRepo abstracts stream persistence.
+type StreamRepo interface {
+	Create(ctx context.Context, s *model.Stream) error
+	GetByID(ctx context.Context, id uuid.UUID) (*model.Stream, error)
+	ListByGroupID(ctx context.Context, groupID uuid.UUID) ([]model.Stream, error)
+	ListActiveByUserGroups(ctx context.Context, userID uuid.UUID) ([]model.Stream, error)
+	Update(ctx context.Context, s *model.Stream) error
+	Delete(ctx context.Context, id uuid.UUID) error
+	SetActive(ctx context.Context, id uuid.UUID, active bool) error
+}
+
+// ---------------------------------------------------------------------------
+// RecordingRepo
+// ---------------------------------------------------------------------------
+
+// RecordingRepo abstracts recording persistence.
+type RecordingRepo interface {
+	Create(ctx context.Context, rec *model.Recording) error
+	GetByID(ctx context.Context, id uuid.UUID) (*model.Recording, error)
+	GetByEgressID(ctx context.Context, egressID string) (*model.Recording, error)
+	ListByRoomID(ctx context.Context, roomID uuid.UUID) ([]model.Recording, error)
+	ListByStreamID(ctx context.Context, streamID uuid.UUID) ([]model.Recording, error)
+	Update(ctx context.Context, rec *model.Recording) error
+}
+
+// ---------------------------------------------------------------------------
+// PTTChannelRepo
+// ---------------------------------------------------------------------------
+
+// PTTChannelRepo abstracts PTT channel persistence.
+type PTTChannelRepo interface {
+	Create(ctx context.Context, ch *model.PTTChannel) error
+	GetByID(ctx context.Context, id uuid.UUID) (*model.PTTChannel, error)
+	ListByGroupID(ctx context.Context, groupID uuid.UUID) ([]model.PTTChannel, error)
+	GetDefaultByGroupID(ctx context.Context, groupID uuid.UUID) (*model.PTTChannel, error)
+	Delete(ctx context.Context, id uuid.UUID) error
+}
+
+// ---------------------------------------------------------------------------
 // Compile-time interface satisfaction checks
 // ---------------------------------------------------------------------------
 
@@ -276,4 +339,8 @@ var (
 	_ ServerSettingsRepo = (*ServerSettingsRepository)(nil)
 	_ MFARepo            = (*MFARepository)(nil)
 	_ APITokenRepo       = (*APITokenRepository)(nil)
+	_ MediaRoomRepo      = (*MediaRoomRepository)(nil)
+	_ StreamRepo         = (*StreamRepository)(nil)
+	_ RecordingRepo      = (*RecordingRepository)(nil)
+	_ PTTChannelRepo     = (*PTTChannelRepository)(nil)
 )

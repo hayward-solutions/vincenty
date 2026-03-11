@@ -16,6 +16,7 @@ import (
 	"github.com/sitaware/api/internal/config"
 	"github.com/sitaware/api/internal/database"
 	"github.com/sitaware/api/internal/handler"
+	"github.com/sitaware/api/internal/livekit"
 	"github.com/sitaware/api/internal/middleware"
 	"github.com/sitaware/api/internal/pubsub"
 	"github.com/sitaware/api/internal/repository"
@@ -116,6 +117,10 @@ func main() {
 	mfaRepo := repository.NewMFARepository(db)
 	serverSettingsRepo := repository.NewServerSettingsRepository(db)
 	apiTokenRepo := repository.NewAPITokenRepository(db)
+	mediaRoomRepo := repository.NewMediaRoomRepository(db)
+	streamRepo := repository.NewStreamRepository(db)
+	recordingRepo := repository.NewRecordingRepository(db)
+	pttChannelRepo := repository.NewPTTChannelRepository(db)
 
 	// -----------------------------------------------------------------------
 	// Pub/Sub
@@ -198,6 +203,26 @@ func main() {
 	messageService := service.NewMessageService(messageRepo, groupRepo, storageSvc, ps, permissionPolicyService)
 	drawingService := service.NewDrawingService(drawingRepo, messageRepo, groupRepo, ps, permissionPolicyService)
 
+	// ── LiveKit Client ────────────────────────────────────────────────────
+	lkClient := livekit.NewClient(livekit.Config{
+		URL:       cfg.LiveKit.URL,
+		APIKey:    cfg.LiveKit.APIKey,
+		APISecret: cfg.LiveKit.APISecret,
+	})
+	lkS3Cfg := livekit.S3Config{
+		Endpoint:       cfg.S3.Endpoint,
+		AccessKey:      cfg.S3.AccessKey,
+		SecretKey:      cfg.S3.SecretKey,
+		Bucket:         cfg.S3.Bucket,
+		Region:         cfg.S3.Region,
+		ForcePathStyle: cfg.S3.UsePathStyle,
+	}
+
+	// ── Media Services ────────────────────────────────────────────────────
+	streamService := service.NewStreamService(streamRepo, mediaRoomRepo, groupRepo, userRepo, permissionPolicyService, lkClient, cfg.LiveKit.URL, ps)
+	recordingService := service.NewRecordingService(recordingRepo, mediaRoomRepo, streamRepo, groupRepo, permissionPolicyService, lkClient, lkS3Cfg)
+	pttService := service.NewPTTService(pttChannelRepo, mediaRoomRepo, groupRepo, userRepo, permissionPolicyService, lkClient, cfg.LiveKit.URL, ps)
+
 	// -----------------------------------------------------------------------
 	// WebSocket Hub
 	// -----------------------------------------------------------------------
@@ -226,6 +251,9 @@ func main() {
 	serverSettingsHandler := handler.NewServerSettingsHandler(serverSettingsRepo)
 	permissionPolicyHandler := handler.NewPermissionPolicyHandler(permissionPolicyService)
 	apiTokenHandler := handler.NewAPITokenHandler(apiTokenService)
+	streamHandler := handler.NewStreamHandler(streamService)
+	recordingHandler := handler.NewRecordingHandler(recordingService)
+	pttHandler := handler.NewPTTHandler(pttService)
 
 	// -----------------------------------------------------------------------
 	// Token cleanup (purge expired refresh tokens on a schedule)
@@ -443,6 +471,29 @@ func main() {
 	mux.Handle("POST /api/v1/cot/events", authMW.Authenticate(http.HandlerFunc(cotHandler.IngestEvents)))
 	mux.Handle("GET /api/v1/cot/events", authMW.Authenticate(http.HandlerFunc(cotHandler.ListEvents)))
 	mux.Handle("GET /api/v1/cot/events/{uid}", authMW.Authenticate(http.HandlerFunc(cotHandler.GetLatestByUID)))
+
+	// ── Streams (authenticated) ───────────────────────────────────────────
+	mux.Handle("GET /api/v1/streams", authMW.Authenticate(http.HandlerFunc(streamHandler.ListStreams)))
+	mux.Handle("POST /api/v1/streams", authMW.Authenticate(http.HandlerFunc(streamHandler.CreateStream)))
+	mux.Handle("GET /api/v1/streams/{id}", authMW.Authenticate(http.HandlerFunc(streamHandler.GetStream)))
+	mux.Handle("PUT /api/v1/streams/{id}", authMW.Authenticate(http.HandlerFunc(streamHandler.UpdateStream)))
+	mux.Handle("DELETE /api/v1/streams/{id}", authMW.Authenticate(http.HandlerFunc(streamHandler.DeleteStream)))
+	mux.Handle("POST /api/v1/streams/{id}/start", authMW.Authenticate(http.HandlerFunc(streamHandler.StartStream)))
+	mux.Handle("POST /api/v1/streams/{id}/stop", authMW.Authenticate(http.HandlerFunc(streamHandler.StopStream)))
+	mux.Handle("GET /api/v1/streams/{id}/view", authMW.Authenticate(http.HandlerFunc(streamHandler.ViewStream)))
+	mux.Handle("GET /api/v1/groups/{id}/streams", authMW.Authenticate(http.HandlerFunc(streamHandler.ListGroupStreams)))
+
+	// ── Recordings (authenticated) ────────────────────────────────────────
+	mux.Handle("POST /api/v1/streams/{id}/recordings/start", authMW.Authenticate(http.HandlerFunc(recordingHandler.StartRecording)))
+	mux.Handle("GET /api/v1/streams/{id}/recordings", authMW.Authenticate(http.HandlerFunc(recordingHandler.ListByStream)))
+	mux.Handle("POST /api/v1/recordings/{id}/stop", authMW.Authenticate(http.HandlerFunc(recordingHandler.StopRecording)))
+	mux.Handle("GET /api/v1/recordings/{id}", authMW.Authenticate(http.HandlerFunc(recordingHandler.GetRecording)))
+
+	// ── PTT Channels (authenticated) ──────────────────────────────────────
+	mux.Handle("POST /api/v1/groups/{id}/ptt-channels", authMW.Authenticate(http.HandlerFunc(pttHandler.CreateChannel)))
+	mux.Handle("GET /api/v1/groups/{id}/ptt-channels", authMW.Authenticate(http.HandlerFunc(pttHandler.ListChannels)))
+	mux.Handle("POST /api/v1/groups/{id}/ptt-channels/{channelId}/join", authMW.Authenticate(http.HandlerFunc(pttHandler.JoinChannel)))
+	mux.Handle("DELETE /api/v1/groups/{id}/ptt-channels/{channelId}", authMW.Authenticate(http.HandlerFunc(pttHandler.DeleteChannel)))
 
 	// -----------------------------------------------------------------------
 	// Apply global middleware and start server

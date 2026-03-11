@@ -25,6 +25,9 @@ packages:
   MapLibre:
     url: https://github.com/maplibre/maplibre-gl-native-distribution
     from: "6.9.0"
+  LiveKit:
+    url: https://github.com/livekit/client-sdk-swift
+    from: "2.0.0"
 
 targets:
   SitAware:
@@ -42,6 +45,8 @@ targets:
     dependencies:
       - package: MapLibre
         product: MapLibre
+      - package: LiveKit
+        product: LiveKit
       - target: SitAwareWidgets
         embed: true
     settings:

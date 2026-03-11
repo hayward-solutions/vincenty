@@ -432,4 +432,108 @@ export const handlers = [
     const body = await request.json();
     return HttpResponse.json(body);
   }),
+
+  // -----------------------------------------------------------------------
+  // Media / Calls
+  // -----------------------------------------------------------------------
+  http.get("/api/v1/calls", () => {
+    return HttpResponse.json([]);
+  }),
+
+  http.get("/api/v1/groups/:groupId/calls", () => {
+    return HttpResponse.json([]);
+  }),
+
+  http.post("/api/v1/calls", () => {
+    return HttpResponse.json({
+      room: { id: "room-1", name: "Test Call", room_type: "call", group_id: null, created_by: "user-1", livekit_room: "lk-room-1", is_active: true, max_participants: 50, created_at: "2025-01-01T00:00:00Z", ended_at: null },
+      token: "test-token",
+      url: "ws://localhost:7880",
+    });
+  }),
+
+  http.post("/api/v1/calls/:id/join", () => {
+    return HttpResponse.json({
+      room: { id: "room-1", name: "Test Call", room_type: "call", group_id: null, created_by: "user-1", livekit_room: "lk-room-1", is_active: true, max_participants: 50, created_at: "2025-01-01T00:00:00Z", ended_at: null },
+      token: "test-token",
+      url: "ws://localhost:7880",
+    });
+  }),
+
+  http.post("/api/v1/calls/:id/view", () => {
+    return HttpResponse.json({
+      room: { id: "room-1", name: "Test Call", room_type: "call", group_id: null, created_by: "user-1", livekit_room: "lk-room-1", is_active: true, max_participants: 50, created_at: "2025-01-01T00:00:00Z", ended_at: null },
+      token: "test-token",
+      url: "ws://localhost:7880",
+    });
+  }),
+
+  http.post("/api/v1/calls/:id/leave", () => {
+    return new HttpResponse(null, { status: 204 });
+  }),
+
+  http.delete("/api/v1/calls/:id", () => {
+    return new HttpResponse(null, { status: 204 });
+  }),
+
+  // -----------------------------------------------------------------------
+  // Video Feeds
+  // -----------------------------------------------------------------------
+  http.get("/api/v1/groups/:groupId/feeds", () => {
+    return HttpResponse.json([]);
+  }),
+
+  http.post("/api/v1/feeds", () => {
+    return HttpResponse.json({ id: "feed-1", name: "Test Feed", feed_type: "rtmp", group_id: "group-1", created_by: "user-1", is_active: false, created_at: "2025-01-01T00:00:00Z", updated_at: "2025-01-01T00:00:00Z" });
+  }),
+
+  http.post("/api/v1/feeds/:id/start", () => {
+    return HttpResponse.json({ feed: { id: "feed-1", name: "Test Feed", feed_type: "rtmp", group_id: "group-1", created_by: "user-1", is_active: true, created_at: "2025-01-01T00:00:00Z", updated_at: "2025-01-01T00:00:00Z" }, ingest_url: "rtmp://localhost/live", stream_key: "test-key" });
+  }),
+
+  http.post("/api/v1/feeds/:id/stop", () => {
+    return new HttpResponse(null, { status: 204 });
+  }),
+
+  http.get("/api/v1/feeds/:id/view", () => {
+    return HttpResponse.json({ room: { id: "room-1", name: "Feed Room", room_type: "video_feed" }, token: "test-token", url: "ws://localhost:7880" });
+  }),
+
+  http.delete("/api/v1/feeds/:id", () => {
+    return new HttpResponse(null, { status: 204 });
+  }),
+
+  // -----------------------------------------------------------------------
+  // Recordings
+  // -----------------------------------------------------------------------
+  http.get("/api/v1/calls/:roomId/recordings", () => {
+    return HttpResponse.json([]);
+  }),
+
+  http.post("/api/v1/recordings/:roomId/start", () => {
+    return HttpResponse.json({ id: "rec-1", room_id: "room-1", file_type: "mp4", status: "recording", started_at: "2025-01-01T00:00:00Z" });
+  }),
+
+  http.post("/api/v1/recordings/:id/stop", () => {
+    return HttpResponse.json({ id: "rec-1", room_id: "room-1", file_type: "mp4", status: "complete", started_at: "2025-01-01T00:00:00Z", ended_at: "2025-01-01T01:00:00Z" });
+  }),
+
+  // -----------------------------------------------------------------------
+  // PTT Channels
+  // -----------------------------------------------------------------------
+  http.get("/api/v1/groups/:groupId/ptt-channels", () => {
+    return HttpResponse.json([]);
+  }),
+
+  http.post("/api/v1/groups/:groupId/ptt-channels", () => {
+    return HttpResponse.json({ id: "ptt-1", group_id: "group-1", room_id: "room-ptt-1", name: "Default", is_default: true, created_at: "2025-01-01T00:00:00Z" });
+  }),
+
+  http.post("/api/v1/groups/:groupId/ptt-channels/:channelId/join", () => {
+    return HttpResponse.json({ channel: { id: "ptt-1", group_id: "group-1", room_id: "room-ptt-1", name: "Default", is_default: true, created_at: "2025-01-01T00:00:00Z" }, token: "ptt-token", url: "ws://localhost:7880" });
+  }),
+
+  http.delete("/api/v1/groups/:groupId/ptt-channels/:channelId", () => {
+    return new HttpResponse(null, { status: 204 });
+  }),
 ];

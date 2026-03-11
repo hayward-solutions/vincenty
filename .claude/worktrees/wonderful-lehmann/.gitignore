@@ -1,0 +1,54 @@
+# Environment
+.env
+.gpx
+
+# Go
+services/api/bin/
+clients/cli/bin/
+services/api/tmp/
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+
+# Node / Next.js
+node_modules/
+clients/web/.next/
+clients/web/out/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+TODO.md
+
+# Docker volumes (local dev data)
+.docker-data/
+
+# Logs
+*.log
+
+# iOS / Xcode
+clients/ios/Local.xcconfig
+clients/ios/Vincenty/Resources/Vincenty.local.entitlements
+xcuserdata/
+*.xcuserstate
+DerivedData/
+build/
+*.ipa
+*.dSYM.zip
+*.dSYM
+.build/
+clients/ios/SitAware.xcodeproj/
+
+# Claude Code / OpenCode
+.opencode/
+
+# OS
+Thumbs.db

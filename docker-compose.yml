@@ -65,6 +65,70 @@ services:
       MINIO_ROOT_PASSWORD: ${S3_SECRET_KEY:-sitaware123}
 
   # ---------------------------------------------------------------------------
+  # LiveKit (real-time media)
+  # ---------------------------------------------------------------------------
+  livekit:
+    image: livekit/livekit-server:latest
+    command: --config /etc/livekit.yaml
+    ports:
+      - "7880:7880"
+      - "7881:7881"
+      - "50000-50060:50000-50060/udp"
+    volumes:
+      - ./livekit.yaml:/etc/livekit.yaml:ro
+    depends_on:
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:7880"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  livekit-egress:
+    image: livekit/egress:latest
+    cap_add:
+      - SYS_ADMIN
+    environment:
+      EGRESS_CONFIG_BODY: |
+        api_key: ${LIVEKIT_API_KEY:-devkey}
+        api_secret: ${LIVEKIT_API_SECRET:-secret0123456789}
+        ws_url: ws://livekit:7880
+        redis:
+          address: redis:${REDIS_PORT:-6379}
+        storage:
+          s3:
+            access_key: ${S3_ACCESS_KEY:-sitaware}
+            secret: ${S3_SECRET_KEY:-sitaware123}
+            region: ${S3_REGION:-us-east-1}
+            endpoint: http://minio:9000
+            bucket: ${S3_BUCKET:-sitaware}
+            force_path_style: true
+    depends_on:
+      livekit:
+        condition: service_healthy
+      minio-init:
+        condition: service_completed_successfully
+
+  livekit-ingress:
+    image: livekit/ingress:latest
+    ports:
+      - "1935:1935"
+      - "8085:8080"
+    environment:
+      INGRESS_CONFIG_BODY: |
+        api_key: ${LIVEKIT_API_KEY:-devkey}
+        api_secret: ${LIVEKIT_API_SECRET:-secret0123456789}
+        ws_url: ws://livekit:7880
+        redis:
+          address: redis:${REDIS_PORT:-6379}
+        rtmp_port: 1935
+        http_relay_port: 9090
+    depends_on:
+      livekit:
+        condition: service_healthy
+
+  # ---------------------------------------------------------------------------
   # Application
   # ---------------------------------------------------------------------------
   api:
@@ -87,6 +151,8 @@ services:
         condition: service_healthy
       minio-init:
         condition: service_completed_successfully
+      livekit:
+        condition: service_healthy
 
   web:
     build:

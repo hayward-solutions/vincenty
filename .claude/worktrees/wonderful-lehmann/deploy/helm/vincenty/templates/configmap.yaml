@@ -1,0 +1,33 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Release.Name }}-config
+  labels:
+    {{- include "vincenty.labels" . | nindent 4 }}
+data:
+  API_HOST: "0.0.0.0"
+  API_PORT: "8080"
+  API_LOG_LEVEL: {{ .Values.api.env.logLevel | quote }}
+  DB_HOST: {{ include "vincenty.dbHost" . | quote }}
+  DB_PORT: {{ .Values.postgresql.external.port | default "5432" | quote }}
+  DB_NAME: {{ .Values.secrets.dbName | quote }}
+  DB_SSLMODE: disable
+  REDIS_HOST: {{ include "vincenty.redisHost" . | quote }}
+  REDIS_PORT: {{ .Values.redis.external.port | default "6379" | quote }}
+  REDIS_TLS: {{ .Values.redis.tls | default false | quote }}
+  REDIS_CLUSTER: {{ .Values.redis.cluster | default false | quote }}
+  S3_ENDPOINT: {{ .Values.s3.endpoint | quote }}
+  S3_BUCKET: {{ .Values.s3.bucket | quote }}
+  S3_REGION: {{ .Values.s3.region | quote }}
+  S3_USE_PATH_STYLE: {{ .Values.s3.usePathStyle | quote }}
+  WS_LOCATION_THROTTLE: {{ .Values.api.env.wsLocationThrottle | quote }}
+  JWT_ACCESS_TOKEN_TTL: {{ .Values.api.env.jwtAccessTokenTTL | quote }}
+  JWT_REFRESH_TOKEN_TTL: {{ .Values.api.env.jwtRefreshTokenTTL | quote }}
+  RATE_LIMIT_RPS: {{ .Values.api.env.rateLimitRPS | quote }}
+  RATE_LIMIT_BURST: {{ .Values.api.env.rateLimitBurst | quote }}
+  MAX_REQUEST_BODY_BYTES: {{ .Values.api.env.maxRequestBodyBytes | quote }}
+  TOKEN_CLEANUP_INTERVAL: {{ .Values.api.env.tokenCleanupInterval | quote }}
+  MAP_DEFAULT_TILE_URL: {{ .Values.map.defaultTileURL | quote }}
+  MAP_DEFAULT_CENTER_LAT: {{ .Values.map.defaultCenterLat | quote }}
+  MAP_DEFAULT_CENTER_LNG: {{ .Values.map.defaultCenterLng | quote }}
+  MAP_DEFAULT_ZOOM: {{ .Values.map.defaultZoom | quote }}

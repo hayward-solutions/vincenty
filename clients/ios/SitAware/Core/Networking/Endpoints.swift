@@ -127,6 +127,32 @@ enum Endpoints {
     // MARK: - WebSocket
     static let ws = "/api/v1/ws"
 
+    // MARK: - Media / Calls
+    static let calls = "/api/v1/calls"
+    static func call(_ id: String) -> String { "/api/v1/calls/\(id)" }
+    static func callJoin(_ id: String) -> String { "/api/v1/calls/\(id)/join" }
+    static func callView(_ id: String) -> String { "/api/v1/calls/\(id)/view" }
+    static func callLeave(_ id: String) -> String { "/api/v1/calls/\(id)/leave" }
+    static func groupCalls(_ groupId: String) -> String { "/api/v1/groups/\(groupId)/calls" }
+
+    // MARK: - Video Feeds
+    static let feeds = "/api/v1/feeds"
+    static func feed(_ id: String) -> String { "/api/v1/feeds/\(id)" }
+    static func feedStart(_ id: String) -> String { "/api/v1/feeds/\(id)/start" }
+    static func feedStop(_ id: String) -> String { "/api/v1/feeds/\(id)/stop" }
+    static func feedView(_ id: String) -> String { "/api/v1/feeds/\(id)/view" }
+    static func groupFeeds(_ groupId: String) -> String { "/api/v1/groups/\(groupId)/feeds" }
+
+    // MARK: - Recordings
+    static func roomRecordings(_ roomId: String) -> String { "/api/v1/calls/\(roomId)/recordings" }
+    static func recordingStart(_ roomId: String) -> String { "/api/v1/recordings/\(roomId)/start" }
+    static func recordingStop(_ id: String) -> String { "/api/v1/recordings/\(id)/stop" }
+
+    // MARK: - PTT Channels
+    static func groupPTTChannels(_ groupId: String) -> String { "/api/v1/groups/\(groupId)/ptt-channels" }
+    static func groupPTTChannel(_ groupId: String, _ channelId: String) -> String { "/api/v1/groups/\(groupId)/ptt-channels/\(channelId)" }
+    static func pttChannelJoin(_ groupId: String, _ channelId: String) -> String { "/api/v1/groups/\(groupId)/ptt-channels/\(channelId)/join" }
+
     // MARK: - Health
     static let healthz = "/healthz"
     static let readyz = "/readyz"

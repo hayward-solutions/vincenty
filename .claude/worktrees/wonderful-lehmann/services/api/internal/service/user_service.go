@@ -1,0 +1,285 @@
+package service
+
+import (
+	"context"
+	"fmt"
+	"io"
+
+	"github.com/google/uuid"
+	"github.com/vincenty/api/internal/auth"
+	"github.com/vincenty/api/internal/model"
+	"github.com/vincenty/api/internal/repository"
+	"github.com/vincenty/api/internal/storage"
+)
+
+// UserService handles user management business logic.
+type UserService struct {
+	userRepo   repository.UserRepo
+	tokenRepo  repository.TokenRepo
+	storageSvc storage.Storage
+}
+
+// NewUserService creates a new UserService.
+func NewUserService(userRepo repository.UserRepo, tokenRepo repository.TokenRepo, storageSvc storage.Storage) *UserService {
+	return &UserService{userRepo: userRepo, tokenRepo: tokenRepo, storageSvc: storageSvc}
+}
+
+// Create creates a new user.
+func (s *UserService) Create(ctx context.Context, req *model.CreateUserRequest) (*model.User, error) {
+	// Check uniqueness
+	if exists, _ := s.userRepo.ExistsByUsername(ctx, req.Username); exists {
+		return nil, model.ErrConflict("username already taken")
+	}
+	if exists, _ := s.userRepo.ExistsByEmail(ctx, req.Email); exists {
+		return nil, model.ErrConflict("email already in use")
+	}
+
+	hash, err := auth.HashPassword(req.Password)
+	if err != nil {
+		return nil, err
+	}
+
+	var displayName *string
+	if req.DisplayName != "" {
+		displayName = &req.DisplayName
+	}
+
+	user := &model.User{
+		Username:     req.Username,
+		Email:        req.Email,
+		PasswordHash: hash,
+		DisplayName:  displayName,
+		IsAdmin:      req.IsAdmin,
+		IsActive:     true,
+	}
+
+	if err := s.userRepo.Create(ctx, user); err != nil {
+		return nil, err
+	}
+
+	return user, nil
+}
+
+// GetByID retrieves a user by ID.
+func (s *UserService) GetByID(ctx context.Context, id uuid.UUID) (*model.User, error) {
+	return s.userRepo.GetByID(ctx, id)
+}
+
+// List retrieves a paginated list of users.
+func (s *UserService) List(ctx context.Context, page, pageSize int) ([]model.User, int, error) {
+	return s.userRepo.List(ctx, page, pageSize)
+}
+
+// Update modifies a user (admin operation).
+func (s *UserService) Update(ctx context.Context, id uuid.UUID, req *model.UpdateUserRequest) (*model.User, error) {
+	user, err := s.userRepo.GetByID(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+
+	if req.Email != nil && *req.Email != user.Email {
+		if exists, _ := s.userRepo.ExistsByEmail(ctx, *req.Email); exists {
+			return nil, model.ErrConflict("email already in use")
+		}
+		user.Email = *req.Email
+	}
+
+	if req.DisplayName != nil {
+		user.DisplayName = req.DisplayName
+	}
+
+	if req.Password != nil {
+		if len(*req.Password) < 8 {
+			return nil, model.ErrValidation("password must be at least 8 characters")
+		}
+		hash, err := auth.HashPassword(*req.Password)
+		if err != nil {
+			return nil, err
+		}
+		user.PasswordHash = hash
+		// Invalidate all refresh tokens when password changes
+		_ = s.tokenRepo.DeleteAllForUser(ctx, id)
+	}
+
+	if req.IsAdmin != nil {
+		// Prevent removing admin from the last admin
+		if user.IsAdmin && !*req.IsAdmin {
+			count, err := s.userRepo.CountAdmins(ctx)
+			if err != nil {
+				return nil, err
+			}
+			if count <= 1 {
+				return nil, model.ErrValidation("cannot remove admin role from the last admin")
+			}
+		}
+		user.IsAdmin = *req.IsAdmin
+	}
+
+	if req.IsActive != nil {
+		user.IsActive = *req.IsActive
+		if !*req.IsActive {
+			// Invalidate all refresh tokens when deactivating
+			_ = s.tokenRepo.DeleteAllForUser(ctx, id)
+		}
+	}
+
+	if err := s.userRepo.Update(ctx, user); err != nil {
+		return nil, err
+	}
+
+	return user, nil
+}
+
+// UpdateMe modifies the current user's own profile.
+func (s *UserService) UpdateMe(ctx context.Context, id uuid.UUID, req *model.UpdateMeRequest) (*model.User, error) {
+	user, err := s.userRepo.GetByID(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+
+	if req.Email != nil && *req.Email != user.Email {
+		if exists, _ := s.userRepo.ExistsByEmail(ctx, *req.Email); exists {
+			return nil, model.ErrConflict("email already in use")
+		}
+		user.Email = *req.Email
+	}
+
+	if req.DisplayName != nil {
+		user.DisplayName = req.DisplayName
+	}
+
+	if req.MarkerIcon != nil {
+		if !model.AllowedMarkerIcons[*req.MarkerIcon] {
+			return nil, model.ErrValidation("invalid marker_icon value")
+		}
+		user.MarkerIcon = *req.MarkerIcon
+	}
+
+	if req.MarkerColor != nil {
+		if !model.HexColorRegex.MatchString(*req.MarkerColor) {
+			return nil, model.ErrValidation("marker_color must be a valid hex color (e.g. #ff0000)")
+		}
+		user.MarkerColor = *req.MarkerColor
+	}
+
+	if err := s.userRepo.Update(ctx, user); err != nil {
+		return nil, err
+	}
+
+	return user, nil
+}
+
+// ChangePassword verifies the current password and sets a new one.
+func (s *UserService) ChangePassword(ctx context.Context, id uuid.UUID, req *model.ChangePasswordRequest) error {
+	user, err := s.userRepo.GetByID(ctx, id)
+	if err != nil {
+		return err
+	}
+
+	// Verify current password
+	if err := auth.CheckPassword(req.CurrentPassword, user.PasswordHash); err != nil {
+		return model.ErrValidation("current password is incorrect")
+	}
+
+	// Hash new password
+	hash, err := auth.HashPassword(req.NewPassword)
+	if err != nil {
+		return err
+	}
+	user.PasswordHash = hash
+
+	if err := s.userRepo.Update(ctx, user); err != nil {
+		return err
+	}
+
+	// Invalidate all refresh tokens so other sessions are logged out
+	_ = s.tokenRepo.DeleteAllForUser(ctx, id)
+
+	return nil
+}
+
+// UploadAvatar uploads an avatar image to storage and updates the user record.
+func (s *UserService) UploadAvatar(ctx context.Context, id uuid.UUID, file io.Reader, filename, contentType string, size int64) (*model.User, error) {
+	user, err := s.userRepo.GetByID(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+
+	// Delete existing avatar if present
+	if user.AvatarURL != nil && *user.AvatarURL != "" {
+		_ = s.storageSvc.Delete(ctx, *user.AvatarURL)
+	}
+
+	// Upload new avatar
+	key := fmt.Sprintf("avatars/%s/%s", id.String(), filename)
+	if err := s.storageSvc.Upload(ctx, key, file, contentType, size); err != nil {
+		return nil, fmt.Errorf("upload avatar: %w", err)
+	}
+
+	user.AvatarURL = &key
+	if err := s.userRepo.Update(ctx, user); err != nil {
+		return nil, err
+	}
+
+	return user, nil
+}
+
+// DeleteAvatar removes the user's avatar from storage and clears the record.
+func (s *UserService) DeleteAvatar(ctx context.Context, id uuid.UUID) (*model.User, error) {
+	user, err := s.userRepo.GetByID(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+
+	if user.AvatarURL != nil && *user.AvatarURL != "" {
+		_ = s.storageSvc.Delete(ctx, *user.AvatarURL)
+	}
+
+	user.AvatarURL = nil
+	if err := s.userRepo.Update(ctx, user); err != nil {
+		return nil, err
+	}
+
+	return user, nil
+}
+
+// GetAvatarKey returns the S3 object key for a user's avatar.
+// Returns empty string if the user has no avatar.
+func (s *UserService) GetAvatarKey(ctx context.Context, id uuid.UUID) (string, error) {
+	user, err := s.userRepo.GetByID(ctx, id)
+	if err != nil {
+		return "", err
+	}
+	if user.AvatarURL == nil {
+		return "", nil
+	}
+	return *user.AvatarURL, nil
+}
+
+// Delete removes a user. Prevents deleting the last admin.
+func (s *UserService) Delete(ctx context.Context, id uuid.UUID) error {
+	user, err := s.userRepo.GetByID(ctx, id)
+	if err != nil {
+		return err
+	}
+
+	if user.IsAdmin {
+		count, err := s.userRepo.CountAdmins(ctx)
+		if err != nil {
+			return err
+		}
+		if count <= 1 {
+			return model.ErrValidation("cannot delete the last admin user")
+		}
+	}
+
+	// Delete avatar from storage if present
+	if user.AvatarURL != nil && *user.AvatarURL != "" {
+		_ = s.storageSvc.Delete(ctx, *user.AvatarURL)
+	}
+
+	// Invalidate all refresh tokens
+	_ = s.tokenRepo.DeleteAllForUser(ctx, id)
+
+	return s.userRepo.Delete(ctx, id)
+}

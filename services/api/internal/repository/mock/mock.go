@@ -104,21 +104,21 @@ var _ repository.TokenRepo = (*TokenRepo)(nil)
 
 // GroupRepo is a mock implementation of repository.GroupRepo.
 type GroupRepo struct {
-	CreateFn        func(ctx context.Context, group *model.Group) error
-	GetByIDFn       func(ctx context.Context, id uuid.UUID) (*model.Group, error)
-	ListFn          func(ctx context.Context, page, pageSize int) ([]model.Group, []int, int, error)
-	ListByUserIDFn  func(ctx context.Context, userID uuid.UUID) ([]model.Group, []int, error)
-	UpdateFn        func(ctx context.Context, group *model.Group) error
-	UpdateMarkerFn  func(ctx context.Context, id uuid.UUID, markerIcon, markerColor string) (*model.Group, error)
-	DeleteFn        func(ctx context.Context, id uuid.UUID) error
-	MemberCountFn   func(ctx context.Context, groupID uuid.UUID) (int, error)
-	AddMemberFn     func(ctx context.Context, member *model.GroupMember) error
-	GetMemberFn     func(ctx context.Context, groupID, userID uuid.UUID) (*model.GroupMember, error)
-	GetMemberByIDFn func(ctx context.Context, memberID uuid.UUID) (*model.GroupMember, error)
-	ListMembersFn              func(ctx context.Context, groupID uuid.UUID) ([]model.GroupMemberWithUser, error)
-	ListMembershipsByUserIDFn  func(ctx context.Context, userID uuid.UUID) ([]model.GroupMember, error)
-	UpdateMemberFn             func(ctx context.Context, member *model.GroupMember) error
-	RemoveMemberFn             func(ctx context.Context, groupID, userID uuid.UUID) error
+	CreateFn                  func(ctx context.Context, group *model.Group) error
+	GetByIDFn                 func(ctx context.Context, id uuid.UUID) (*model.Group, error)
+	ListFn                    func(ctx context.Context, page, pageSize int) ([]model.Group, []int, int, error)
+	ListByUserIDFn            func(ctx context.Context, userID uuid.UUID) ([]model.Group, []int, error)
+	UpdateFn                  func(ctx context.Context, group *model.Group) error
+	UpdateMarkerFn            func(ctx context.Context, id uuid.UUID, markerIcon, markerColor string) (*model.Group, error)
+	DeleteFn                  func(ctx context.Context, id uuid.UUID) error
+	MemberCountFn             func(ctx context.Context, groupID uuid.UUID) (int, error)
+	AddMemberFn               func(ctx context.Context, member *model.GroupMember) error
+	GetMemberFn               func(ctx context.Context, groupID, userID uuid.UUID) (*model.GroupMember, error)
+	GetMemberByIDFn           func(ctx context.Context, memberID uuid.UUID) (*model.GroupMember, error)
+	ListMembersFn             func(ctx context.Context, groupID uuid.UUID) ([]model.GroupMemberWithUser, error)
+	ListMembershipsByUserIDFn func(ctx context.Context, userID uuid.UUID) ([]model.GroupMember, error)
+	UpdateMemberFn            func(ctx context.Context, member *model.GroupMember) error
+	RemoveMemberFn            func(ctx context.Context, groupID, userID uuid.UUID) error
 }
 
 func (m *GroupRepo) Create(ctx context.Context, group *model.Group) error {

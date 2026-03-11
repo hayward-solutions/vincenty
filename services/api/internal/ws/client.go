@@ -201,6 +201,22 @@ func (c *Client) handleMessage(ctx context.Context, env *Envelope) {
 		}
 		c.hub.handleLocationUpdate(ctx, c, &payload)
 
+	case TypePTTFloorRequest:
+		var payload PTTFloorRequestPayload
+		if err := json.Unmarshal(env.Payload, &payload); err != nil {
+			c.sendError("invalid ptt_floor_request payload")
+			return
+		}
+		c.hub.handlePTTFloorRequest(ctx, c, &payload)
+
+	case TypePTTFloorRelease:
+		var payload PTTFloorRequestPayload
+		if err := json.Unmarshal(env.Payload, &payload); err != nil {
+			c.sendError("invalid ptt_floor_release payload")
+			return
+		}
+		c.hub.handlePTTFloorRelease(ctx, c, &payload)
+
 	default:
 		c.sendError("unknown message type: " + env.Type)
 	}
