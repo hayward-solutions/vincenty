@@ -67,6 +67,7 @@ nav:
   - Reference:
       - Architecture: reference/architecture.md
       - Features: reference/features.md
+      - Comparisons: reference/comparisons.md
       - API Endpoints: reference/api.md
       - Configuration: reference/configuration.md
       - Deployment: reference/deployment.md
