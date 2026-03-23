@@ -462,7 +462,10 @@ func (s *MFAService) GenerateRecoveryCodes(ctx context.Context, userID uuid.UUID
 	hashes := make([]string, recoveryCodeCount)
 
 	for i := range recoveryCodeCount {
-		code := generateRecoveryCode()
+		code, err := generateRecoveryCode()
+		if err != nil {
+			return nil, fmt.Errorf("generate recovery code: %w", err)
+		}
 		codes[i] = code
 		// Normalize before hashing: strip dashes and lowercase, matching
 		// the normalization in ValidateRecoveryCode.
@@ -746,15 +749,15 @@ func (s *MFAService) maybeDisableMFA(ctx context.Context, userID uuid.UUID) erro
 
 // generateRecoveryCode generates a random 8-character alphanumeric code
 // formatted as xxxx-xxxx for readability.
-func generateRecoveryCode() string {
+func generateRecoveryCode() (string, error) {
 	b := make([]byte, 6) // 6 bytes = enough entropy for 8 base32 chars
 	if _, err := rand.Read(b); err != nil {
-		panic("crypto/rand failed: " + err.Error())
+		return "", fmt.Errorf("crypto/rand failed: %w", err)
 	}
 	raw := strings.ToLower(base64.RawStdEncoding.EncodeToString(b))
 	// Take first 8 chars, insert dash in the middle
 	if len(raw) > 8 {
 		raw = raw[:8]
 	}
-	return raw[:4] + "-" + raw[4:]
+	return raw[:4] + "-" + raw[4:], nil
 }
