@@ -72,6 +72,9 @@ var auditRoutes = map[routeKey]auditAction{
 
 	// CoT
 	{"POST", "/api/v1/cot/events"}: {"cot.ingest", "cot_event", ""},
+
+	// Server settings
+	{"PUT", "/api/v1/server/settings"}: {"server_settings.update", "server_settings", ""},
 }
 
 // Audit returns middleware that records API actions to the audit_logs table.
