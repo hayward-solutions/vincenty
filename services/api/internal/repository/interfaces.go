@@ -244,6 +244,21 @@ type MFARepo interface {
 }
 
 // ---------------------------------------------------------------------------
+// GarminInReachRepo
+// ---------------------------------------------------------------------------
+
+// GarminInReachRepo abstracts Garmin InReach feed persistence.
+type GarminInReachRepo interface {
+	Create(ctx context.Context, feed *model.GarminInReachFeed) error
+	GetByID(ctx context.Context, id uuid.UUID) (*model.GarminInReachFeed, error)
+	List(ctx context.Context) ([]model.GarminInReachFeed, error)
+	ListEnabled(ctx context.Context) ([]model.GarminInReachFeed, error)
+	Update(ctx context.Context, feed *model.GarminInReachFeed) error
+	UpdatePollStatus(ctx context.Context, id uuid.UUID, lastPointAt *time.Time, pollErr error) error
+	Delete(ctx context.Context, id uuid.UUID) error
+}
+
+// ---------------------------------------------------------------------------
 // APITokenRepo
 // ---------------------------------------------------------------------------
 
@@ -276,4 +291,5 @@ var (
 	_ ServerSettingsRepo = (*ServerSettingsRepository)(nil)
 	_ MFARepo            = (*MFARepository)(nil)
 	_ APITokenRepo       = (*APITokenRepository)(nil)
+	_ GarminInReachRepo  = (*GarminInReachRepository)(nil)
 )

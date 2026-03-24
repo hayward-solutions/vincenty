@@ -116,6 +116,7 @@ func main() {
 	mfaRepo := repository.NewMFARepository(db)
 	serverSettingsRepo := repository.NewServerSettingsRepository(db)
 	apiTokenRepo := repository.NewAPITokenRepository(db)
+	garminInReachRepo := repository.NewGarminInReachRepository(db)
 
 	// -----------------------------------------------------------------------
 	// Pub/Sub
@@ -174,6 +175,7 @@ func main() {
 	auditService := service.NewAuditService(auditRepo, groupRepo, permissionPolicyService)
 	cotService := service.NewCotService(cotRepo, deviceRepo, userRepo, groupRepo, locationService)
 	apiTokenService := service.NewAPITokenService(apiTokenRepo)
+	garminInReachService := service.NewGarminInReachService(garminInReachRepo, deviceRepo, userRepo, groupRepo, locationService)
 
 	// -----------------------------------------------------------------------
 	// Bootstrap admin user
@@ -226,6 +228,7 @@ func main() {
 	serverSettingsHandler := handler.NewServerSettingsHandler(serverSettingsRepo)
 	permissionPolicyHandler := handler.NewPermissionPolicyHandler(permissionPolicyService)
 	apiTokenHandler := handler.NewAPITokenHandler(apiTokenService)
+	garminInReachHandler := handler.NewGarminInReachHandler(garminInReachService)
 
 	// -----------------------------------------------------------------------
 	// Token cleanup (purge expired refresh tokens on a schedule)
@@ -253,6 +256,13 @@ func main() {
 			}
 		}
 	}()
+
+	// -----------------------------------------------------------------------
+	// Garmin InReach background poller
+	// -----------------------------------------------------------------------
+	if cfg.Garmin.Enabled {
+		go garminInReachService.RunPoller(hubCtx, cfg.Garmin.PollTick)
+	}
 
 	// -----------------------------------------------------------------------
 	// Middleware
@@ -443,6 +453,17 @@ func main() {
 	mux.Handle("POST /api/v1/cot/events", authMW.Authenticate(http.HandlerFunc(cotHandler.IngestEvents)))
 	mux.Handle("GET /api/v1/cot/events", authMW.Authenticate(http.HandlerFunc(cotHandler.ListEvents)))
 	mux.Handle("GET /api/v1/cot/events/{uid}", authMW.Authenticate(http.HandlerFunc(cotHandler.GetLatestByUID)))
+
+	// Garmin InReach feeds (admin)
+	mux.Handle("POST /api/v1/garmin/inreach/feeds", authMW.RequireAdmin(http.HandlerFunc(garminInReachHandler.Create)))
+	mux.Handle("GET /api/v1/garmin/inreach/feeds", authMW.RequireAdmin(http.HandlerFunc(garminInReachHandler.List)))
+	mux.Handle("GET /api/v1/garmin/inreach/feeds/{id}", authMW.RequireAdmin(http.HandlerFunc(garminInReachHandler.Get)))
+	mux.Handle("PUT /api/v1/garmin/inreach/feeds/{id}", authMW.RequireAdmin(http.HandlerFunc(garminInReachHandler.Update)))
+	mux.Handle("DELETE /api/v1/garmin/inreach/feeds/{id}", authMW.RequireAdmin(http.HandlerFunc(garminInReachHandler.Delete)))
+	mux.Handle("POST /api/v1/garmin/inreach/poll", authMW.RequireAdmin(http.HandlerFunc(garminInReachHandler.Poll)))
+
+	// Garmin InReach webhook (authenticated — Garmin Explore outbound)
+	mux.Handle("POST /api/v1/webhooks/garmin/inreach/{mapshareId}", authMW.Authenticate(http.HandlerFunc(garminInReachHandler.Webhook)))
 
 	// -----------------------------------------------------------------------
 	// Apply global middleware and start server
