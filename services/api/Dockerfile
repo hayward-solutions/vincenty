@@ -11,8 +11,8 @@ RUN go mod download
 
 # Copy source and build
 COPY . .
-ARG GIT_COMMIT=dev
-RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w -X main.version=${GIT_COMMIT}" -o /build/server ./cmd/server
+ARG VERSION=dev
+RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w -X main.version=${VERSION}" -o /build/server ./cmd/server
 
 # =============================================================================
 # Runtime stage

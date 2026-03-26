@@ -1,0 +1,229 @@
+name: Release
+run-name: Release ${{ github.ref_name }}
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+  packages: write
+
+env:
+  REGISTRY: ghcr.io
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # CLI — cross-platform binaries
+  # ---------------------------------------------------------------------------
+  build-cli:
+    name: Build CLI binaries
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - goos: linux
+            goarch: amd64
+          - goos: linux
+            goarch: arm64
+          - goos: darwin
+            goarch: amd64
+          - goos: darwin
+            goarch: arm64
+          - goos: windows
+            goarch: amd64
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: clients/cli/go.mod
+          cache-dependency-path: clients/cli/go.sum
+
+      - name: Build
+        working-directory: clients/cli
+        env:
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+          CGO_ENABLED: '0'
+        run: |
+          EXT=""
+          if [ "$GOOS" = "windows" ]; then EXT=".exe"; fi
+          go build -ldflags="-s -w -X main.version=${GITHUB_REF_NAME}" -o "vincenty${EXT}" .
+
+      - name: Package
+        working-directory: clients/cli
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          EXT="tar.gz"
+          BINARY="vincenty"
+          if [ "${{ matrix.goos }}" = "windows" ]; then
+            EXT="zip"
+            BINARY="vincenty.exe"
+          fi
+
+          ARCHIVE="vincenty_${VERSION}_${{ matrix.goos }}_${{ matrix.goarch }}.${EXT}"
+
+          if [ "$EXT" = "zip" ]; then
+            zip "$ARCHIVE" "$BINARY"
+          else
+            tar -czf "$ARCHIVE" "$BINARY"
+          fi
+
+          echo "ARCHIVE=${ARCHIVE}" >> "$GITHUB_ENV"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: vincenty_${{ matrix.goos }}_${{ matrix.goarch }}
+          path: clients/cli/${{ env.ARCHIVE }}
+
+  # ---------------------------------------------------------------------------
+  # Docker images — multi-arch build & publish
+  # ---------------------------------------------------------------------------
+  build-docker:
+    name: Publish Docker Images
+    runs-on: ${{ matrix.arch == 'arm64' && 'ubuntu-24.04-arm' || 'ubuntu-latest' }}
+    strategy:
+      matrix:
+        container:
+          - name: api
+            context: services/api
+          - name: web
+            context: clients/web
+        arch:
+          - amd64
+          - arm64
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push image
+        uses: docker/build-push-action@v6
+        with:
+          context: "{{defaultContext}}:${{ matrix.container.context }}"
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/${{ github.repository }}/${{ matrix.container.name }}:${{ github.ref_name }}-${{ matrix.arch }}
+            ${{ env.REGISTRY }}/${{ github.repository }}/${{ matrix.container.name }}:latest-${{ matrix.arch }}
+          build-args: VERSION=${{ github.ref_name }}
+          cache-from: type=gha,scope=${{ matrix.container.name }}-${{ matrix.arch }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.container.name }}-${{ matrix.arch }}
+          platforms: linux/${{ matrix.arch }}
+
+  # ---------------------------------------------------------------------------
+  # Multi-arch manifests
+  # ---------------------------------------------------------------------------
+  publish-manifests:
+    name: Publish multi-arch manifests
+    runs-on: ubuntu-latest
+    needs: [build-docker]
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+        with:
+          install: true
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create and push manifests
+        run: |
+          set -euo pipefail
+          for img in api web; do
+            repo="${{ env.REGISTRY }}/${{ github.repository }}/${img}"
+
+            # version tag (multi-arch)
+            docker buildx imagetools create -t "${repo}:${{ github.ref_name }}" "${repo}:${{ github.ref_name }}-amd64" "${repo}:${{ github.ref_name }}-arm64"
+
+            # latest tag (multi-arch)
+            docker buildx imagetools create -t "${repo}:latest" "${repo}:latest-amd64" "${repo}:latest-arm64"
+          done
+
+  # ---------------------------------------------------------------------------
+  # Helm chart — package & publish
+  # ---------------------------------------------------------------------------
+  release-helm:
+    name: Package and Publish Helm Chart
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Helm
+        uses: azure/setup-helm@v4
+
+      - name: Log in to GHCR
+        run: echo "${{ secrets.GITHUB_TOKEN }}" | helm registry login ${{ env.REGISTRY }} --username ${{ github.actor }} --password-stdin
+
+      - name: Package chart
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          mkdir -p .helm-packages
+          sed -i "s/^version:.*/version: ${VERSION}/" deploy/helm/vincenty/Chart.yaml
+          sed -i "s/^appVersion:.*/appVersion: \"${VERSION}\"/" deploy/helm/vincenty/Chart.yaml
+          helm package deploy/helm/vincenty --destination .helm-packages
+
+      - name: Push chart to GHCR
+        run: |
+          for pkg in .helm-packages/*.tgz; do
+            helm push "$pkg" oci://${{ env.REGISTRY }}/${{ github.repository_owner }}/charts
+          done
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: vincenty_helm_chart
+          path: .helm-packages/*.tgz
+
+  # ---------------------------------------------------------------------------
+  # GitHub Release
+  # ---------------------------------------------------------------------------
+  release:
+    name: Create GitHub Release
+    runs-on: ubuntu-latest
+    needs: [build-cli, build-docker, publish-manifests, release-helm]
+
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          pattern: vincenty_*
+          merge-multiple: true
+
+      - name: Generate checksums
+        run: |
+          cd artifacts
+          sha256sum * > checksums.txt
+
+      - name: Create release
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+          files: artifacts/*

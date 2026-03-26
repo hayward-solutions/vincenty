@@ -20,6 +20,7 @@ jobs:
       api: ${{ steps.filter.outputs.api }}
       web: ${{ steps.filter.outputs.web }}
       cli: ${{ steps.filter.outputs.cli }}
+      helm: ${{ steps.filter.outputs.helm }}
     steps:
       - uses: actions/checkout@v4
 
@@ -33,6 +34,8 @@ jobs:
               - 'clients/web/**'
             cli:
               - 'clients/cli/**'
+            helm:
+              - 'deploy/helm/**'
 
   # ---------------------------------------------------------------------------
   # Go API — build & test
@@ -112,3 +115,19 @@ jobs:
 
       - name: Test
         run: npm test
+
+  # ---------------------------------------------------------------------------
+  # Helm — lint
+  # ---------------------------------------------------------------------------
+  helm:
+    needs: changes
+    if: needs.changes.outputs.helm == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Helm
+        uses: azure/setup-helm@v4
+
+      - name: Lint chart
+        run: helm lint deploy/helm/vincenty --strict

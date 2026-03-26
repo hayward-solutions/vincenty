@@ -3,7 +3,7 @@
 # ---------------------------------------------------------------------------
 api:
   image:
-    repository: vincenty/api
+    repository: ghcr.io/hayward-solutions/vincenty/api
     tag: latest
     pullPolicy: IfNotPresent
   replicas: 2
@@ -29,7 +29,7 @@ api:
 # ---------------------------------------------------------------------------
 web:
   image:
-    repository: vincenty/web
+    repository: ghcr.io/hayward-solutions/vincenty/web
     tag: latest
     pullPolicy: IfNotPresent
   replicas: 2
