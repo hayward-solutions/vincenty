@@ -32,7 +32,7 @@ spec:
     spec:
       containers:
         - name: postgres
-          image: postgis/postgis:16-3.4
+          image: {{ .Values.postgresql.image }}
           ports:
             - containerPort: 5432
           env:
@@ -63,6 +63,9 @@ spec:
         name: pgdata
       spec:
         accessModes: ["ReadWriteOnce"]
+        {{- if .Values.postgresql.storageClassName }}
+        storageClassName: {{ .Values.postgresql.storageClassName | quote }}
+        {{- end }}
         resources:
           requests:
             storage: {{ .Values.postgresql.storage }}
