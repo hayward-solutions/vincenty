@@ -64,6 +64,7 @@ ingress:
 postgresql:
   # Set to false to use an external database (e.g., RDS)
   internal: true
+  image: postgis/postgis:16-3.4
   external:
     host: ""
     port: "5432"
@@ -82,6 +83,7 @@ postgresql:
 redis:
   # Set to false to use an external Redis (e.g., ElastiCache)
   internal: true
+  image: redis:7-alpine
   # Enable TLS for Redis connections (required for ElastiCache with transit encryption)
   tls: false
   # Enable Redis Cluster mode (required for ElastiCache with cluster mode enabled)
