@@ -68,6 +68,7 @@ postgresql:
   external:
     host: ""
     port: "5432"
+  storageClassName: ""
   storage: 10Gi
   resources:
     requests:

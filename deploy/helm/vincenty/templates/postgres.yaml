@@ -63,6 +63,9 @@ spec:
         name: pgdata
       spec:
         accessModes: ["ReadWriteOnce"]
+        {{- if .Values.postgresql.storageClassName }}
+        storageClassName: {{ .Values.postgresql.storageClassName | quote }}
+        {{- end }}
         resources:
           requests:
             storage: {{ .Values.postgresql.storage }}
