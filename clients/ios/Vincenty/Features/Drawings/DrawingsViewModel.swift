@@ -163,7 +163,7 @@ final class DrawingsViewModel {
         defer { isSharing = false }
 
         let body = ShareDrawingRequest(groupId: groupId)
-        try await api.post(Endpoints.drawingShare(drawingId), body: body) as EmptyResponse
+        let _: EmptyResponse = try await api.post(Endpoints.drawingShare(drawingId), body: body)
     }
 
     func unshareDrawing(drawingId: String, messageId: String) async throws {

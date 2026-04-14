@@ -212,7 +212,8 @@ struct MapContainerView: UIViewRepresentable {
 
     // MARK: - Coordinator
 
-    final class Coordinator: NSObject, MLNMapViewDelegate {
+    @MainActor
+    final class Coordinator: NSObject, @preconcurrency MLNMapViewDelegate {
         var parent: MapContainerView
         private var didNotifyReady = false
 

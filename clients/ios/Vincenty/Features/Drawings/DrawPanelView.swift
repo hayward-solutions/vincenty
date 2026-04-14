@@ -101,7 +101,7 @@ struct DrawPanelView: View {
                                     .fill(
                                         Color(
                                             hex: shape.feature.properties?["stroke"]?.value
-                                                as? String ?? "#3b82f6") ?? .blue)
+                                                as? String ?? "#3b82f6"))
                                     .frame(width: 10, height: 10)
                                 Text(shape.shapeType.rawValue.capitalized)
                                     .font(.caption)

@@ -204,9 +204,9 @@ final class AuthManager {
         AppLogger.shared.log(.info, .auth, "Logging out")
         if let refreshToken = KeychainStore.shared.refreshToken {
             do {
-                try await api.post(
+                let _: EmptyResponse = try await api.post(
                     Endpoints.logout,
-                    body: LogoutRequest(refreshToken: refreshToken)) as EmptyResponse
+                    body: LogoutRequest(refreshToken: refreshToken))
             } catch {
                 // Ignore errors during logout — clear local state regardless
                 AppLogger.shared.log(.warning, .auth, "Logout: server revocation failed",

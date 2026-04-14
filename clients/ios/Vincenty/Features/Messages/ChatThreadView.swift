@@ -49,7 +49,7 @@ struct ChatThreadView: View {
             }
             .onChange(of: messages.first?.id) { _, newId in
                 // Scroll to bottom when new messages arrive
-                if let newId {
+                if newId != nil {
                     withAnimation(.easeOut(duration: 0.3)) {
                         proxy.scrollTo("bottom", anchor: .bottom)
                     }

@@ -47,6 +47,11 @@ targets:
     settings:
       base:
         INFOPLIST_FILE: Vincenty/Resources/Info.plist
+    scheme:
+      testTargets:
+        - VincentyTests
+        - VincentyUITests
+      gatherCoverageData: true
 
   VincentyWidgets:
     type: app-extension

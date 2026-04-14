@@ -1,6 +1,6 @@
 import Foundation
 #if os(iOS)
-import ActivityKit
+@preconcurrency import ActivityKit
 #endif
 
 /// Message handler closure type — receives (type, raw message bytes).
@@ -227,7 +227,7 @@ final class WebSocketService {
         // that drop idle connections. URLSession automatically handles server pings
         // (pong response), but client-initiated pings also detect dead connections
         // on the client side faster than waiting for the next receive timeout.
-        pingTask = Task { [weak self] in
+        pingTask = Task {
             while !Task.isCancelled {
                 try? await Task.sleep(for: .seconds(25))
                 guard !Task.isCancelled else { break }
