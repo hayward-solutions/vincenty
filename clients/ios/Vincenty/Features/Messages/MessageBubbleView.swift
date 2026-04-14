@@ -98,7 +98,9 @@ struct MessageBubbleView: View {
                 }
             }
         }
-        .frame(maxWidth: UIScreen.main.bounds.width * 0.75, alignment: isOwn ? .trailing : .leading)
+        .containerRelativeFrame(.horizontal, alignment: isOwn ? .trailing : .leading) { width, _ in
+            width * 0.75
+        }
         .frame(maxWidth: .infinity, alignment: isOwn ? .trailing : .leading)
         .accessibilityElement(children: .combine)
         .accessibilityLabel(messageAccessibilityLabel)

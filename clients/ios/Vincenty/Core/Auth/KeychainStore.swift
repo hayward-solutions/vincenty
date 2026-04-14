@@ -6,7 +6,7 @@ import Security
 final class KeychainStore: Sendable {
     static let shared = KeychainStore()
 
-    private let service = "com.vincenty.app"
+    private let service = "solutions.hayward.vincentyapp"
 
     private init() {}
 

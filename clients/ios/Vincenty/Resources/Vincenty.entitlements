@@ -6,7 +6,7 @@
 	<array>
 		<!-- Replace with your server's domain for passkey support.
 		     The server must also host /.well-known/apple-app-site-association
-		     with: { "webcredentials": { "apps": ["TEAMID.com.vincenty.app"] } }
+		     with: { "webcredentials": { "apps": ["TEAMID.solutions.hayward.vincentyapp"] } }
 		     See: https://developer.apple.com/documentation/xcode/supporting-associated-domains -->
 		<string>webcredentials:REPLACE_WITH_YOUR_DOMAIN</string>
 	</array>

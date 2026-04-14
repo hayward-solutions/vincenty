@@ -101,7 +101,7 @@ struct DrawPanelView: View {
                                     .fill(
                                         Color(
                                             hex: shape.feature.properties?["stroke"]?.value
-                                                as? String ?? "#3b82f6") ?? .blue)
+                                                as? String ?? "#3b82f6"))
                                     .frame(width: 10, height: 10)
                                 Text(shape.shapeType.rawValue.capitalized)
                                     .font(.caption)
@@ -179,7 +179,8 @@ struct DrawPanelView: View {
             }
             .padding(12)
         }
-        .frame(width: 280, height: UIScreen.main.bounds.height * 0.7)
+        .frame(width: 280)
+        .containerRelativeFrame(.vertical) { height, _ in height * 0.7 }
         .background(.ultraThinMaterial)
         .clipShape(RoundedRectangle(cornerRadius: 10))
         .shadow(color: .black.opacity(0.15), radius: 4, x: 0, y: 2)

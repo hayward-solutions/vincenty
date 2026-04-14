@@ -194,14 +194,16 @@ extension PasskeyManager: ASAuthorizationControllerPresentationContextProviding 
     func presentationAnchor(
         for controller: ASAuthorizationController
     ) -> ASPresentationAnchor {
-        guard let scene = UIApplication.shared.connectedScenes
-            .compactMap({ $0 as? UIWindowScene })
-            .first,
-            let window = scene.windows.first(where: { $0.isKeyWindow })
-        else {
-            return UIWindow()
+        let scenes = UIApplication.shared.connectedScenes
+            .compactMap { $0 as? UIWindowScene }
+        if let window = scenes.flatMap(\.windows).first(where: { $0.isKeyWindow }) {
+            return window
         }
-        return window
+        // Passkey flows are always presented while a scene is active.
+        guard let scene = scenes.first else {
+            fatalError("No active UIWindowScene for passkey presentation anchor")
+        }
+        return scene.windows.first ?? UIWindow(windowScene: scene)
     }
 }
 

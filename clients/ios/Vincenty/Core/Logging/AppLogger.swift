@@ -84,7 +84,7 @@ struct LogEntry: Identifiable, Sendable {
 @Observable @MainActor
 final class AppLogger {
 
-    nonisolated(unsafe) static let shared = AppLogger()
+    nonisolated static let shared = AppLogger()
 
     /// All entries (newest last), capped at `maxEntries`.
     private(set) var entries: [LogEntry] = []
