@@ -32,7 +32,7 @@ EOF
 
 # ---- 2. Build number from git -------------------------------------------------
 BUILD_NUMBER=$(git -C "$CI_PRIMARY_REPOSITORY_PATH" rev-list --count HEAD)
-echo "CI_BUILD_NUMBER=$BUILD_NUMBER" >> "$CI_XCODE_CLOUD_ENV_FILE" 2>/dev/null || true
+echo "CI_BUILD_NUMBER=$BUILD_NUMBER" >> "${CI_XCODE_CLOUD_ENV_FILE:-/dev/null}" 2>/dev/null || true
 # xcconfig reads from the process env via the ${} syntax above; export it too.
 export CI_BUILD_NUMBER="$BUILD_NUMBER"
 # Rewrite the placeholder we just templated so it reflects the resolved value.
@@ -49,3 +49,20 @@ if [ "${REGENERATE_XCODEGEN:-0}" = "1" ]; then
   xcodegen generate
   echo "ci_post_clone: regenerated Vincenty.xcodeproj from project.yml"
 fi
+
+# ---- 4. Pre-resolve Swift packages (retry on transient DNS/network) ----------
+# MapLibre is a binary SPM target hosted on github.com/releases. Xcode Cloud
+# occasionally sees transient DNS failures fetching it; retry a few times so a
+# flaky network doesn't fail the whole build.
+for attempt in 1 2 3; do
+  if xcodebuild -resolvePackageDependencies \
+       -project Vincenty.xcodeproj \
+       -scheme Vincenty \
+       -clonedSourcePackagesDirPath "$CI_DERIVED_DATA_PATH/SourcePackages"; then
+    echo "ci_post_clone: package dependencies resolved (attempt $attempt)"
+    break
+  fi
+  echo "ci_post_clone: package resolve failed (attempt $attempt); retrying…"
+  sleep $((attempt * 5))
+  [ "$attempt" = "3" ] && { echo "ci_post_clone: giving up after 3 attempts"; exit 1; }
+done
