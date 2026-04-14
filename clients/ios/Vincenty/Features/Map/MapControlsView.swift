@@ -9,6 +9,7 @@ import SwiftUI
 /// - Track My Location (fly to self + continuous following)
 struct MapControlsView: View {
     @Bindable var viewModel: MapViewModel
+    @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
         VStack(spacing: 0) {
@@ -71,7 +72,13 @@ struct MapControlsView: View {
             .accessibilityValue(viewModel.isTracking ? "Tracking" : "Not tracking")
             .accessibilityHint("Double-tap to center map on your location")
         }
-        .glassEffect(.regular, in: .rect(cornerRadius: 10))
+        // Tint the glass toward the system theme so it doesn't read purely
+        // from the (often light) map tiles underneath on iPhone.
+        .glassEffect(
+            .regular.tint(colorScheme == .dark
+                ? Color.black.opacity(0.35)
+                : Color.white.opacity(0.25)),
+            in: .rect(cornerRadius: 10))
         .shadow(color: .black.opacity(0.15), radius: 4, x: 0, y: 2)
         .fixedSize(horizontal: true, vertical: false)
     }
