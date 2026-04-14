@@ -82,6 +82,7 @@
 		ECBFE14F13F3E31E1CE680EB /* Endpoints.swift in Sources */ = {isa = PBXBuildFile; fileRef = DB4A7377C5195913B15BA04D /* Endpoints.swift */; };
 		ED6FDE95BA15D856DE7BE3D1 /* MessagesViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 14E570F795264518F516F7B0 /* MessagesViewModel.swift */; };
 		EDE913D23E2833D4A2D15326 /* AppLogger.swift in Sources */ = {isa = PBXBuildFile; fileRef = 626E949AFB813CA12A1E26E8 /* AppLogger.swift */; };
+		EF4DC6AF08BD7FB777E367B8 /* AppIcon.icon in Resources */ = {isa = PBXBuildFile; fileRef = 1D456E44311EAEA4F6F9CF9C /* AppIcon.icon */; };
 		F00503992D560A95662E6C77 /* MultipartFormData.swift in Sources */ = {isa = PBXBuildFile; fileRef = D2DF8D337BD6DF050FD5873C /* MultipartFormData.swift */; };
 		F1FD4222D78D3A0FAC7FFFA7 /* NetworkMonitor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 356CD212ECADADBCA5EDA510 /* NetworkMonitor.swift */; };
 		F2066EA66BFAD75D1B5048E9 /* VincentyTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1C44577E8D5E1D188D506AC /* VincentyTests.swift */; };
@@ -150,6 +151,7 @@
 		191721CD1C290EEF2592356B /* Auth.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Auth.swift; sourceTree = "<group>"; };
 		1C4AEC465F6D4E48F46F89F5 /* ReplayControlsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReplayControlsView.swift; sourceTree = "<group>"; };
 		1C63DB89168C6B5DC777090D /* LocationMarkersController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocationMarkersController.swift; sourceTree = "<group>"; };
+		1D456E44311EAEA4F6F9CF9C /* AppIcon.icon */ = {isa = PBXFileReference; lastKnownFileType = folder.iconcomposer.icon; path = AppIcon.icon; sourceTree = "<group>"; };
 		1EBAD8471ADDC3CECFF40986 /* User.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = User.swift; sourceTree = "<group>"; };
 		1F6D88CD384ACA8E4DE5C46F /* DeviceEnrolmentSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceEnrolmentSheet.swift; sourceTree = "<group>"; };
 		2035BCCD6C5F4E8EEA055C5F /* SelfMarkerController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SelfMarkerController.swift; sourceTree = "<group>"; };
@@ -171,7 +173,7 @@
 		5FCD5CF4664B064CFEA49FB8 /* AdminUsersView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AdminUsersView.swift; sourceTree = "<group>"; };
 		604F277CBAE212CF75415D04 /* Data+Base64URL.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Data+Base64URL.swift"; sourceTree = "<group>"; };
 		626E949AFB813CA12A1E26E8 /* AppLogger.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppLogger.swift; sourceTree = "<group>"; };
-		65E15B7C207054F92F5695E2 /* VincentyTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = VincentyTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		65E15B7C207054F92F5695E2 /* VincentyTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = VincentyTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		66F99A7480183658841514D7 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		6974AA5DD1183390B8E17760 /* ProfileView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileView.swift; sourceTree = "<group>"; };
 		6EBBBCE8408E60408F6677DA /* Date+Formatting.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Date+Formatting.swift"; sourceTree = "<group>"; };
@@ -211,7 +213,7 @@
 		CB6FB6058B438625DDA28084 /* ReplaySetupView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReplaySetupView.swift; sourceTree = "<group>"; };
 		CBB6F959DB98457AA987E0A7 /* MapFilterPanel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MapFilterPanel.swift; sourceTree = "<group>"; };
 		CD9EB1474A4265CBEA2EACFC /* LocationHistory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocationHistory.swift; sourceTree = "<group>"; };
-		CF9C2E9C85288FD728190540 /* VincentyUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = VincentyUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		CF9C2E9C85288FD728190540 /* VincentyUITests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = VincentyUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		D012CCFCB5BCCD6294042C9F /* MapScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MapScreen.swift; sourceTree = "<group>"; };
 		D1FAE555DC0E98C35CFBE629 /* SystemLogView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SystemLogView.swift; sourceTree = "<group>"; };
 		D2DF8D337BD6DF050FD5873C /* MultipartFormData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MultipartFormData.swift; sourceTree = "<group>"; };
@@ -436,6 +438,7 @@
 		8571D030415AA1F956C0C4D5 /* Resources */ = {
 			isa = PBXGroup;
 			children = (
+				1D456E44311EAEA4F6F9CF9C /* AppIcon.icon */,
 				66F99A7480183658841514D7 /* Assets.xcassets */,
 				BD7A755C2DB3F98C93BF0EF0 /* Vincenty.entitlements */,
 				03F4538DDC912359788ADBEF /* Vincenty.local.entitlements */,
@@ -691,7 +694,7 @@
 			isa = PBXProject;
 			attributes = {
 				BuildIndependentTargetsInParallel = YES;
-				LastUpgradeCheck = 2640;
+				LastUpgradeCheck = 1600;
 				TargetAttributes = {
 					2A5132864852E51D5DD6F253 = {
 						TestTargetID = ED0397E7117A549B3B2FC8FA;
@@ -730,6 +733,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				EF4DC6AF08BD7FB777E367B8 /* AppIcon.icon in Resources */,
 				FC6DC3CE3C0200BE80CBCB6C /* Assets.xcassets in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -892,14 +896,14 @@
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 5N8336D89T;
 				INFOPLIST_FILE = VincentyWidgets/Info.plist;
-				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
 				MARKETING_VERSION = 1.0.0;
-				PRODUCT_BUNDLE_IDENTIFIER = solutions.hayward.vincenty.widgets;
+				PRODUCT_BUNDLE_IDENTIFIER = solutions.hayward.vincentyapp.widgets;
 				SDKROOT = iphoneos;
 				SKIP_INSTALL = YES;
 				SWIFT_STRICT_CONCURRENCY = complete;
@@ -948,7 +952,6 @@
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
-				ENABLE_USER_SCRIPT_SANDBOXING = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu11;
 				GCC_DYNAMIC_NO_PIC = NO;
 				GCC_NO_COMMON_BLOCKS = YES;
@@ -964,15 +967,14 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				INFOPLIST_FILE = Vincenty/Resources/Info.plist;
-				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
 				MARKETING_VERSION = 1.0.0;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
-				PRODUCT_BUNDLE_IDENTIFIER = solutions.hayward.vincenty;
+				PRODUCT_BUNDLE_IDENTIFIER = solutions.hayward.vincentyapp;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = iphoneos;
-				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = YES;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
@@ -1005,7 +1007,6 @@
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				DEVELOPMENT_TEAM = 5N8336D89T;
 				INFOPLIST_FILE = Vincenty/Resources/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = Vincenty;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -1022,14 +1023,14 @@
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 5N8336D89T;
 				INFOPLIST_FILE = VincentyWidgets/Info.plist;
-				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
 				MARKETING_VERSION = 1.0.0;
-				PRODUCT_BUNDLE_IDENTIFIER = solutions.hayward.vincenty.widgets;
+				PRODUCT_BUNDLE_IDENTIFIER = solutions.hayward.vincentyapp.widgets;
 				SDKROOT = iphoneos;
 				SKIP_INSTALL = YES;
 				SWIFT_STRICT_CONCURRENCY = complete;
@@ -1093,7 +1094,6 @@
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
-				ENABLE_USER_SCRIPT_SANDBOXING = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu11;
 				GCC_NO_COMMON_BLOCKS = YES;
 				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
@@ -1103,14 +1103,13 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				INFOPLIST_FILE = Vincenty/Resources/Info.plist;
-				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
 				MARKETING_VERSION = 1.0.0;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
-				PRODUCT_BUNDLE_IDENTIFIER = solutions.hayward.vincenty;
+				PRODUCT_BUNDLE_IDENTIFIER = solutions.hayward.vincentyapp;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = iphoneos;
-				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = YES;
 				SWIFT_COMPILATION_MODE = wholemodule;
 				SWIFT_OPTIMIZATION_LEVEL = "-O";
@@ -1128,7 +1127,6 @@
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				DEVELOPMENT_TEAM = 5N8336D89T;
 				INFOPLIST_FILE = Vincenty/Resources/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = Vincenty;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
