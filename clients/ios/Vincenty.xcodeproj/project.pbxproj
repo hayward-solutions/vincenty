@@ -171,7 +171,7 @@
 		5FCD5CF4664B064CFEA49FB8 /* AdminUsersView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AdminUsersView.swift; sourceTree = "<group>"; };
 		604F277CBAE212CF75415D04 /* Data+Base64URL.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Data+Base64URL.swift"; sourceTree = "<group>"; };
 		626E949AFB813CA12A1E26E8 /* AppLogger.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppLogger.swift; sourceTree = "<group>"; };
-		65E15B7C207054F92F5695E2 /* VincentyTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = VincentyTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		65E15B7C207054F92F5695E2 /* VincentyTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = VincentyTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		66F99A7480183658841514D7 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		6974AA5DD1183390B8E17760 /* ProfileView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileView.swift; sourceTree = "<group>"; };
 		6EBBBCE8408E60408F6677DA /* Date+Formatting.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Date+Formatting.swift"; sourceTree = "<group>"; };
@@ -180,7 +180,7 @@
 		7AA8DD11CE005DDE3F9BF980 /* DrawToolController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DrawToolController.swift; sourceTree = "<group>"; };
 		7AB81603415CCD3CC1AD5521 /* VincentyWidgets.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = VincentyWidgets.entitlements; sourceTree = "<group>"; };
 		7ADCF1DEA96EC42AAE7AD627 /* APIClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIClient.swift; sourceTree = "<group>"; };
-		7D1D3E2FF37625AD9F40ABC8 /* VincentyWidgets.appex */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = "wrapper.app-extension"; path = VincentyWidgets.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		7D1D3E2FF37625AD9F40ABC8 /* VincentyWidgets.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = VincentyWidgets.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		7D4714EA5666379D8DC6DAF4 /* PersistentModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PersistentModels.swift; sourceTree = "<group>"; };
 		7D65E5D8955F73965793D237 /* ActivityView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActivityView.swift; sourceTree = "<group>"; };
 		7E08A876A0B22ED6ED4AB3A4 /* DataContainer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DataContainer.swift; sourceTree = "<group>"; };
@@ -211,7 +211,7 @@
 		CB6FB6058B438625DDA28084 /* ReplaySetupView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReplaySetupView.swift; sourceTree = "<group>"; };
 		CBB6F959DB98457AA987E0A7 /* MapFilterPanel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MapFilterPanel.swift; sourceTree = "<group>"; };
 		CD9EB1474A4265CBEA2EACFC /* LocationHistory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocationHistory.swift; sourceTree = "<group>"; };
-		CF9C2E9C85288FD728190540 /* VincentyUITests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = VincentyUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		CF9C2E9C85288FD728190540 /* VincentyUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = VincentyUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		D012CCFCB5BCCD6294042C9F /* MapScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MapScreen.swift; sourceTree = "<group>"; };
 		D1FAE555DC0E98C35CFBE629 /* SystemLogView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SystemLogView.swift; sourceTree = "<group>"; };
 		D2DF8D337BD6DF050FD5873C /* MultipartFormData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MultipartFormData.swift; sourceTree = "<group>"; };
@@ -691,7 +691,7 @@
 			isa = PBXProject;
 			attributes = {
 				BuildIndependentTargetsInParallel = YES;
-				LastUpgradeCheck = 1600;
+				LastUpgradeCheck = 2640;
 				TargetAttributes = {
 					2A5132864852E51D5DD6F253 = {
 						TestTargetID = ED0397E7117A549B3B2FC8FA;
@@ -890,6 +890,7 @@
 			buildSettings = {
 				CODE_SIGN_ENTITLEMENTS = VincentyWidgets/VincentyWidgets.entitlements;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 5N8336D89T;
 				INFOPLIST_FILE = VincentyWidgets/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -898,7 +899,7 @@
 					"@executable_path/../../Frameworks",
 				);
 				MARKETING_VERSION = 1.0.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.vincenty.app.widgets;
+				PRODUCT_BUNDLE_IDENTIFIER = solutions.hayward.vincenty.widgets;
 				SDKROOT = iphoneos;
 				SKIP_INSTALL = YES;
 				SWIFT_STRICT_CONCURRENCY = complete;
@@ -947,6 +948,7 @@
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu11;
 				GCC_DYNAMIC_NO_PIC = NO;
 				GCC_NO_COMMON_BLOCKS = YES;
@@ -967,9 +969,10 @@
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
-				PRODUCT_BUNDLE_IDENTIFIER = com.vincenty.app;
+				PRODUCT_BUNDLE_IDENTIFIER = solutions.hayward.vincenty;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = iphoneos;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = YES;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
@@ -1000,9 +1003,8 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
-				DEVELOPMENT_TEAM = 8NCG4649A2;
+				DEVELOPMENT_TEAM = 5N8336D89T;
 				INFOPLIST_FILE = Vincenty/Resources/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = Vincenty;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -1017,6 +1019,7 @@
 			buildSettings = {
 				CODE_SIGN_ENTITLEMENTS = VincentyWidgets/VincentyWidgets.entitlements;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 5N8336D89T;
 				INFOPLIST_FILE = VincentyWidgets/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -1025,7 +1028,7 @@
 					"@executable_path/../../Frameworks",
 				);
 				MARKETING_VERSION = 1.0.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.vincenty.app.widgets;
+				PRODUCT_BUNDLE_IDENTIFIER = solutions.hayward.vincenty.widgets;
 				SDKROOT = iphoneos;
 				SKIP_INSTALL = YES;
 				SWIFT_STRICT_CONCURRENCY = complete;
@@ -1089,6 +1092,7 @@
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu11;
 				GCC_NO_COMMON_BLOCKS = YES;
 				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
@@ -1102,9 +1106,10 @@
 				MARKETING_VERSION = 1.0.0;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
-				PRODUCT_BUNDLE_IDENTIFIER = com.vincenty.app;
+				PRODUCT_BUNDLE_IDENTIFIER = solutions.hayward.vincenty;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = iphoneos;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = YES;
 				SWIFT_COMPILATION_MODE = wholemodule;
 				SWIFT_OPTIMIZATION_LEVEL = "-O";
@@ -1120,9 +1125,8 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
-				DEVELOPMENT_TEAM = 8NCG4649A2;
+				DEVELOPMENT_TEAM = 5N8336D89T;
 				INFOPLIST_FILE = Vincenty/Resources/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = Vincenty;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
