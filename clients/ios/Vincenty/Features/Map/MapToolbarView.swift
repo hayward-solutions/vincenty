@@ -51,8 +51,7 @@ struct MapToolbarView: View {
                 label: "Draw",
                 action: viewModel.toggleDraw)
         }
-        .background(.ultraThinMaterial)
-        .clipShape(RoundedRectangle(cornerRadius: 10))
+        .glassEffect(.regular, in: .rect(cornerRadius: 10))
         .shadow(color: .black.opacity(0.15), radius: 4, x: 0, y: 2)
     }
 
@@ -63,7 +62,7 @@ struct MapToolbarView: View {
         Button(action: action) {
             Image(systemName: icon)
                 .font(.system(size: 16, weight: .medium))
-                .foregroundStyle(isActive ? .primary : .secondary)
+                .foregroundStyle(isActive ? AnyShapeStyle(.tint) : AnyShapeStyle(.primary))
                 .frame(width: 44, height: 44)
         }
         .accessibilityLabel(label)

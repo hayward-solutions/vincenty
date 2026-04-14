@@ -47,6 +47,12 @@ struct MapScreen: View {
 
     var body: some View {
         mapToolView
+            // Force the tab bar to use its standard system material rather than
+            // the translucent "over content" appearance. The map's `.ignoresSafeArea()`
+            // lets the map content sit under the tab bar, which caused the tab bar
+            // to render light regardless of the system theme. Making the background
+            // explicitly visible lets it adopt the correct dark/light material.
+            .toolbarBackground(.visible, for: .tabBar)
             // Phase 1: replay session activated — data ready, create stable layers.
             .onChange(of: replayViewModel.isActive) { _, isNowActive in
                 if isNowActive {
