@@ -1005,6 +1005,7 @@
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				DEVELOPMENT_TEAM = 5N8336D89T;
 				INFOPLIST_FILE = Vincenty/Resources/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = Vincenty;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -1127,6 +1128,7 @@
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				DEVELOPMENT_TEAM = 5N8336D89T;
 				INFOPLIST_FILE = Vincenty/Resources/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = Vincenty;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
