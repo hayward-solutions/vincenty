@@ -10,7 +10,16 @@
 #   2. Derive a monotonic CFBundleVersion from the git commit count so every
 #      TestFlight upload has a unique, ever-increasing build number. Exported
 #      via CI_XCODE_CLOUD_BUILD_NUMBER so the xcconfig picks it up.
-#   3. (Optional) Regenerate the Xcode project from project.yml via XcodeGen.
+#   3. (Optional) Inject an Associated Domains entitlement for passkey support.
+#      The committed Vincenty.entitlements is intentionally empty so the
+#      open-source repo builds and signs cleanly without any per-deployment
+#      configuration. To enable passkeys, set VINCENTY_ASSOCIATED_DOMAIN in
+#      the Xcode Cloud workflow's environment variables (App Store Connect →
+#      Xcode Cloud → Workflow → Environment) to the bare hostname of your
+#      server, e.g. "vincenty.example.com". The server must also serve
+#      /.well-known/apple-app-site-association with:
+#        { "webcredentials": { "apps": ["TEAMID.solutions.hayward.vincentyapp"] } }
+#   4. (Optional) Regenerate the Xcode project from project.yml via XcodeGen.
 #      Enabled only if REGENERATE_XCODEGEN=1 is set in the workflow's env; by
 #      default we trust the committed pbxproj.
 
@@ -40,7 +49,30 @@ export CI_BUILD_NUMBER="$BUILD_NUMBER"
 
 echo "ci_post_clone: wrote Local.xcconfig with build number $BUILD_NUMBER"
 
-# ---- 3. Optional: regenerate Xcode project ------------------------------------
+# ---- 3. Optional: inject Associated Domains entitlement -----------------------
+# If VINCENTY_ASSOCIATED_DOMAIN is set in the workflow environment, rewrite the
+# entitlements file with a webcredentials entry so passkey sign-in works against
+# that domain. Without it, the file stays empty and signing succeeds without
+# requiring the Associated Domains capability on the App ID.
+if [ -n "${VINCENTY_ASSOCIATED_DOMAIN:-}" ]; then
+  cat > Vincenty/Resources/Vincenty.entitlements <<EOF
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>com.apple.developer.associated-domains</key>
+	<array>
+		<string>webcredentials:${VINCENTY_ASSOCIATED_DOMAIN}</string>
+	</array>
+</dict>
+</plist>
+EOF
+  echo "ci_post_clone: injected associated domain webcredentials:${VINCENTY_ASSOCIATED_DOMAIN}"
+else
+  echo "ci_post_clone: VINCENTY_ASSOCIATED_DOMAIN not set; passkeys disabled"
+fi
+
+# ---- 4. Optional: regenerate Xcode project ------------------------------------
 if [ "${REGENERATE_XCODEGEN:-0}" = "1" ]; then
   if ! command -v xcodegen >/dev/null 2>&1; then
     echo "Installing XcodeGen…"
@@ -50,7 +82,7 @@ if [ "${REGENERATE_XCODEGEN:-0}" = "1" ]; then
   echo "ci_post_clone: regenerated Vincenty.xcodeproj from project.yml"
 fi
 
-# ---- 4. Pre-resolve Swift packages (retry on transient DNS/network) ----------
+# ---- 5. Pre-resolve Swift packages (retry on transient DNS/network) ----------
 # MapLibre is a binary SPM target hosted on github.com/releases. Xcode Cloud
 # occasionally sees transient DNS failures fetching it; retry a few times so a
 # flaky network doesn't fail the whole build.

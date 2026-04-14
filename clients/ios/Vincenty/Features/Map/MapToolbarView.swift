@@ -11,6 +11,7 @@ import SwiftUI
 /// Mutual exclusion of panels is handled by the view model.
 struct MapToolbarView: View {
     @Bindable var viewModel: MapViewModel
+    @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
         HStack(spacing: 0) {
@@ -51,8 +52,13 @@ struct MapToolbarView: View {
                 label: "Draw",
                 action: viewModel.toggleDraw)
         }
-        .background(.ultraThinMaterial)
-        .clipShape(RoundedRectangle(cornerRadius: 10))
+        // Tint the glass toward the system theme so it doesn't read purely
+        // from the (often light) map tiles underneath on iPhone.
+        .glassEffect(
+            .regular.tint(colorScheme == .dark
+                ? Color.black.opacity(0.35)
+                : Color.white.opacity(0.25)),
+            in: .rect(cornerRadius: 10))
         .shadow(color: .black.opacity(0.15), radius: 4, x: 0, y: 2)
     }
 
@@ -63,7 +69,7 @@ struct MapToolbarView: View {
         Button(action: action) {
             Image(systemName: icon)
                 .font(.system(size: 16, weight: .medium))
-                .foregroundStyle(isActive ? .primary : .secondary)
+                .foregroundStyle(isActive ? AnyShapeStyle(.tint) : AnyShapeStyle(.primary))
                 .frame(width: 44, height: 44)
         }
         .accessibilityLabel(label)

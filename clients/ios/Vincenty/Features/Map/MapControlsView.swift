@@ -9,6 +9,7 @@ import SwiftUI
 /// - Track My Location (fly to self + continuous following)
 struct MapControlsView: View {
     @Bindable var viewModel: MapViewModel
+    @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
         VStack(spacing: 0) {
@@ -31,7 +32,7 @@ struct MapControlsView: View {
                     .rotationEffect(.degrees(-viewModel.bearing))
                     .foregroundStyle(
                         viewModel.bearing != 0 || viewModel.pitch != 0
-                            ? .primary : .secondary)
+                            ? AnyShapeStyle(.tint) : AnyShapeStyle(.primary))
                     .frame(width: 44, height: 44)
             }
             .accessibilityLabel("Reset north")
@@ -46,7 +47,7 @@ struct MapControlsView: View {
                 } label: {
                     Image(systemName: viewModel.terrainEnabled ? "mountain.2.fill" : "mountain.2")
                         .font(.system(size: 16, weight: .medium))
-                        .foregroundStyle(viewModel.terrainEnabled ? .primary : .secondary)
+                        .foregroundStyle(viewModel.terrainEnabled ? AnyShapeStyle(.tint) : AnyShapeStyle(.primary))
                         .frame(width: 44, height: 44)
                 }
                 .accessibilityLabel("Terrain")
@@ -64,15 +65,20 @@ struct MapControlsView: View {
                     systemName: viewModel.isTracking
                         ? "location.fill" : "location")
                     .font(.system(size: 16, weight: .medium))
-                    .foregroundStyle(viewModel.isTracking ? .blue : .secondary)
+                    .foregroundStyle(viewModel.isTracking ? AnyShapeStyle(.tint) : AnyShapeStyle(.primary))
                     .frame(width: 44, height: 44)
             }
             .accessibilityLabel("My location")
             .accessibilityValue(viewModel.isTracking ? "Tracking" : "Not tracking")
             .accessibilityHint("Double-tap to center map on your location")
         }
-        .background(.ultraThinMaterial)
-        .clipShape(RoundedRectangle(cornerRadius: 10))
+        // Tint the glass toward the system theme so it doesn't read purely
+        // from the (often light) map tiles underneath on iPhone.
+        .glassEffect(
+            .regular.tint(colorScheme == .dark
+                ? Color.black.opacity(0.35)
+                : Color.white.opacity(0.25)),
+            in: .rect(cornerRadius: 10))
         .shadow(color: .black.opacity(0.15), radius: 4, x: 0, y: 2)
         .fixedSize(horizontal: true, vertical: false)
     }

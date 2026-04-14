@@ -22,6 +22,7 @@ struct MapScreen: View {
     @Environment(WebSocketService.self) private var webSocket
     @Environment(LocationSharingManager.self) private var locationSharing
     @Environment(DeviceManager.self) private var deviceManager
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
 
     @State private var viewModel = MapViewModel()
     @State private var locationMarkers = LocationMarkersController()
@@ -47,6 +48,12 @@ struct MapScreen: View {
 
     var body: some View {
         mapToolView
+            // Force the tab bar to use its standard system material rather than
+            // the translucent "over content" appearance. The map's `.ignoresSafeArea()`
+            // lets the map content sit under the tab bar, which caused the tab bar
+            // to render light regardless of the system theme. Making the background
+            // explicitly visible lets it adopt the correct dark/light material.
+            .toolbarBackground(.visible, for: .tabBar)
             // Phase 1: replay session activated — data ready, create stable layers.
             .onChange(of: replayViewModel.isActive) { _, isNowActive in
                 if isNowActive {
@@ -200,6 +207,22 @@ struct MapScreen: View {
         return .all
     }
 
+    // MARK: - Layout Helpers
+
+    /// True on iPad where the TabView renders as a top nav bar.
+    private var isRegularWidth: Bool { horizontalSizeClass == .regular }
+
+    /// On iPad, the TabView sits at the top of the screen as a nav bar; the
+    /// map overlays need to ignore the top safe area and tuck up alongside it
+    /// (filling the otherwise-empty top corners). We still need to clear the
+    /// status bar (time/battery/wifi), so the padding is roughly status-bar
+    /// height + a small margin — this lands the overlays vertically aligned
+    /// with the centered TabView bar.
+    /// On iPhone the tab bar is at the bottom, so we keep the standard inset
+    /// below the status bar (safe area is respected, so 12pt is below the
+    /// notch / Dynamic Island already).
+    private var overlayTopPadding: CGFloat { isRegularWidth ? 32 : 12 }
+
     // MARK: - Map Container
 
     @ViewBuilder
@@ -288,8 +311,9 @@ struct MapScreen: View {
             Spacer()
         }
         .padding(.leading, 12)
-        .padding(.top, 12)
+        .padding(.top, overlayTopPadding)
         .frame(maxWidth: .infinity, alignment: .leading)
+        .ignoresSafeArea(.container, edges: isRegularWidth ? .top : [])
         .animation(.easeInOut(duration: 0.2), value: viewModel.showFilterPanel)
         .animation(.easeInOut(duration: 0.2), value: viewModel.showReplayPanel)
         .animation(.easeInOut(duration: 0.2), value: viewModel.showMeasurePanel)
@@ -301,8 +325,9 @@ struct MapScreen: View {
             Spacer()
         }
         .padding(.trailing, 12)
-        .padding(.top, 12)
+        .padding(.top, overlayTopPadding)
         .frame(maxWidth: .infinity, alignment: .trailing)
+        .ignoresSafeArea(.container, edges: isRegularWidth ? .top : [])
 
         // Top-center: WebSocket status banner (hidden when connected)
         if webSocket.connectionState != .connected {

@@ -38,8 +38,13 @@ struct MapContainerView: UIViewRepresentable {
     /// When true, our custom double-tap recognizer fires instead of MapLibre's zoom.
     var toolIsActive: Bool = false
 
-    func makeUIView(context: Context) -> MLNMapView {
-        let mapView = MLNMapView(frame: .zero)
+    func makeUIView(context: Context) -> MapContainerUIView {
+        let container = MapContainerUIView(frame: .zero)
+        container.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+        let mapView = MLNMapView(frame: container.bounds)
+        mapView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+        container.mapView = mapView
+        container.addSubview(mapView)
         mapView.delegate = context.coordinator
         mapView.logoView.isHidden = true
         mapView.attributionButton.isHidden = true
@@ -96,15 +101,33 @@ struct MapContainerView: UIViewRepresentable {
         // Apply style
         applyStyle(to: mapView)
 
-        return mapView
+        return container
     }
 
-    func updateUIView(_ mapView: MLNMapView, context: Context) {
+    func updateUIView(_ container: MapContainerUIView, context: Context) {
         // Keep coordinator's parent reference current so delegate methods read
         // the latest draw style and toolIsActive on every SwiftUI re-render.
         context.coordinator.parent = self
         // Sync toolIsActive into the recognizer so it gates itself correctly.
         context.coordinator.customDoubleTap?.toolIsActive = toolIsActive
+        // Ensure the map's frame tracks any SwiftUI-driven size changes
+        // (orientation changes, split view, side panels opening/closing).
+        container.setNeedsLayout()
+        container.layoutIfNeeded()
+    }
+
+    /// Tell SwiftUI to give this representable the full proposed size.
+    /// Without this, SwiftUI falls back to `systemLayoutSizeFitting`, which
+    /// returns zero for a bare `UIView` container — leaving the map stuck at
+    /// a tiny size on some layout passes (observed on iPad landscape).
+    func sizeThatFits(
+        _ proposal: ProposedViewSize,
+        uiView: MapContainerUIView,
+        context: Context
+    ) -> CGSize? {
+        CGSize(
+            width: proposal.width ?? UIView.layoutFittingExpandedSize.width,
+            height: proposal.height ?? UIView.layoutFittingExpandedSize.height)
     }
 
     func makeCoordinator() -> Coordinator {
@@ -415,6 +438,46 @@ struct MapContainerView: UIViewRepresentable {
                 options: options)
             style.addSource(source)
         }
+    }
+}
+
+// MARK: - Map Container UIView
+
+/// A thin `UIView` wrapper that hosts `MLNMapView` as a subview and forces
+/// its frame to match `bounds` on every layout pass.
+///
+/// This works around an iPad landscape bug where MapLibre's GL/Metal drawable
+/// surface desyncs from the SwiftUI-provided bounds after orientation changes
+/// (map only renders in the top-left corner). Overriding `layoutSubviews`
+/// guarantees the map's frame tracks the container's bounds, and MapLibre
+/// reshapes its drawable accordingly.
+final class MapContainerUIView: UIView {
+    var mapView: MLNMapView?
+
+    override func layoutSubviews() {
+        super.layoutSubviews()
+        guard let mapView else { return }
+        mapView.frame = bounds
+        mapView.setNeedsLayout()
+        mapView.layoutIfNeeded()
+    }
+
+    /// Force a layout + Metal drawable resync when the view is reattached to a
+    /// window. In a `TabView`, switching tabs detaches this view from the
+    /// window; on return, bounds are unchanged so `layoutSubviews` alone won't
+    /// re-trigger MapLibre's internal resize of its `CAMetalLayer`. Nudging
+    /// the map view's layer directly forces the drawable size to refresh.
+    override func didMoveToWindow() {
+        super.didMoveToWindow()
+        guard window != nil, let mapView else { return }
+        mapView.frame = bounds
+        mapView.setNeedsLayout()
+        mapView.layoutIfNeeded()
+        // Kick the Metal layer: contentsScale assignment forces a drawable
+        // size recompute even when bounds are unchanged.
+        let scale = mapView.layer.contentsScale
+        mapView.layer.contentsScale = scale
+        mapView.setNeedsDisplay()
     }
 }
 
