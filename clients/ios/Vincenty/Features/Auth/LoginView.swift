@@ -110,6 +110,8 @@ struct LoginView: View {
                     .accessibilityLabel("Connected to server \(serverURL)")
                 }
             }
+            .frame(maxWidth: 420)
+            .frame(maxWidth: .infinity)
         }
     }
 
