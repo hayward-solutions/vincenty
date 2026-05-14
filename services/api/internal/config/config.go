@@ -49,6 +49,9 @@ type Config struct {
 	// Security
 	Security SecurityConfig
 
+	// Garmin InReach
+	Garmin GarminConfig
+
 	// Token cleanup
 	TokenCleanupInterval time.Duration
 }
@@ -144,6 +147,13 @@ type WebAuthnConfig struct {
 	RPOrigins []string
 }
 
+type GarminConfig struct {
+	// PollTick is how often the background poller checks for feeds due to be polled.
+	PollTick time.Duration
+	// Enabled controls whether the background MapShare poller runs.
+	Enabled bool
+}
+
 type SecurityConfig struct {
 	MaxRequestBodyBytes int64
 }
@@ -217,6 +227,10 @@ func Load() (*Config, error) {
 		},
 		Security: SecurityConfig{
 			MaxRequestBodyBytes: envInt64("MAX_REQUEST_BODY_BYTES", 10<<20), // 10MB
+		},
+		Garmin: GarminConfig{
+			PollTick: envDuration("GARMIN_POLL_TICK", 30*time.Second),
+			Enabled:  envBool("GARMIN_INREACH_ENABLED", true),
 		},
 		TokenCleanupInterval: envDuration("TOKEN_CLEANUP_INTERVAL", 1*time.Hour),
 	}
